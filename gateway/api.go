@@ -38,8 +38,8 @@ type Gateway struct {
 }
 
 type RegisterParams struct {
-	Type int
-	Name int
+	Type Type
+	Name Name
 }
 
 func (g *Gateway) Register(params *RegisterParams, reply *int) error {
@@ -48,7 +48,7 @@ func (g *Gateway) Register(params *RegisterParams, reply *int) error {
 
 type ReportStateParams struct {
 	DeviceId int
-	State    int
+	State    State
 }
 
 func (g *Gateway) ReportState(params *ReportStateParams, _ *struct{}) error {
@@ -56,7 +56,7 @@ func (g *Gateway) ReportState(params *ReportStateParams, _ *struct{}) error {
 }
 
 type ChangeModeParams struct {
-	Mode int
+	Mode Mode
 }
 
 func (g *Gateway) ChangeMode(params *ChangeModeParams, _ *struct{}) error {
