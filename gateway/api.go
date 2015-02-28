@@ -1,4 +1,4 @@
-package api
+package gateway
 
 import ()
 
@@ -34,7 +34,10 @@ const (
 	Away Mode = iota
 )
 
-type Gateway struct {
+type Interface interface {
+	Register(params *RegisterParams, reply *int) error
+	ReportState(params *ReportStateParams, _ *struct{}) error
+	ChangeMode(params *ChangeModeParams, _ *struct{}) error
 }
 
 type RegisterParams struct {
@@ -42,23 +45,11 @@ type RegisterParams struct {
 	Name Name
 }
 
-func (g *Gateway) Register(params *RegisterParams, reply *int) error {
-	return nil
-}
-
 type ReportStateParams struct {
 	DeviceId int
 	State    State
 }
 
-func (g *Gateway) ReportState(params *ReportStateParams, _ *struct{}) error {
-	return nil
-}
-
 type ChangeModeParams struct {
 	Mode Mode
-}
-
-func (g *Gateway) ChangeMode(params *ChangeModeParams, _ *struct{}) error {
-	return nil
 }
