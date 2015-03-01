@@ -1,10 +1,7 @@
-package api
+package main
 
 import ()
 
-type User struct {
-}
-
-func (u *User) TextMessage(params *string, _ *struct{}) error {
-	return nil
+type Interface interface {
+	TextMessage(params *string, _ *struct{}) error
 }

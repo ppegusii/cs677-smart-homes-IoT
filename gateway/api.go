@@ -1,6 +1,8 @@
-package gateway
+package main
 
-import ()
+import (
+	"net"
+)
 
 type Type int
 
@@ -43,6 +45,9 @@ type Interface interface {
 type RegisterParams struct {
 	Type Type
 	Name Name
+	//Cannot get caller IP from rpc library.
+	//Might as well send listening port too.
+	ListenSocket net.TCPAddr
 }
 
 type ReportStateParams struct {
