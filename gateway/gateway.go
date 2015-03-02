@@ -6,49 +6,38 @@ import (
 	"net"
 	"net/rpc"
 	"os"
-	"sync"
 )
 
-type syncInt struct {
-	sync.Mutex
-	i int
-}
-
-type syncMapIntBool struct {
-	sync.RWMutex
-	m map[int]bool
-}
-
-type syncMapIntRegParam struct {
-	sync.RWMutex
-	m map[int]RegisterParams
-}
-
-type syncMode struct {
-	sync.RWMutex
-	m Mode
-}
-
 type Gateway struct {
+	bulbDev   syncMapIntBool
 	mode      syncMode
-	nextId    syncInt
+	motionSen syncMapIntBool
+	outletDev syncMapIntBool
 	port      string
-	pullSen   syncMapIntBool
 	senAndDev syncMapIntRegParam
+	tempSen   syncMapIntBool
 }
 
 func newGateway(mode Mode, port string) *Gateway {
 	return &Gateway{
+		bulbDev: syncMapIntBool{
+			m: make(map[int]bool),
+		},
 		mode: syncMode{
 			m: mode,
 		},
-		nextId: syncInt{},
-		port:   port,
-		pullSen: syncMapIntBool{
+		motionSen: syncMapIntBool{
 			m: make(map[int]bool),
 		},
+		outletDev: syncMapIntBool{
+			m: make(map[int]bool),
+		},
+		port: port,
 		senAndDev: syncMapIntRegParam{
-			m: make(map[int]RegisterParams),
+			m: make(map[int]*RegisterParams),
+		},
+		tempSen: syncMapIntBool{
+			m: make(map[int]bool),
 		},
 	}
 }
@@ -68,15 +57,44 @@ func (g *Gateway) start() {
 	rpc.Accept(listener)
 }
 
-//Unfinished
+func (g *Gateway) pollTempSensors() {
+}
+
 func (g *Gateway) Register(params *RegisterParams, reply *int) error {
 	var err error = nil
+	var id int
 	switch params.Type {
 	case Sensor:
+		switch params.Name {
+		case Motion:
+			id = g.senAndDev.addRegParam(params)
+			g.motionSen.addInt(id)
+			break
+		case Temperature:
+			id = g.senAndDev.addRegParam(params)
+			g.tempSen.addInt(id)
+			break
+		default:
+			err = errors.New(fmt.Sprintf("Invalid Sensor Name: %v", params.Name))
+			break
+		}
 		break
 	case Device:
+		switch params.Name {
+		case Bulb:
+			id = g.senAndDev.addRegParam(params)
+			g.bulbDev.addInt(id)
+			break
+		case Outlet:
+			id = g.senAndDev.addRegParam(params)
+			g.outletDev.addInt(id)
+			break
+		default:
+			err = errors.New(fmt.Sprintf("Invalid Device Name: %v", params.Name))
+		}
 		break
 	default:
+		err = errors.New(fmt.Sprintf("Invalid Type: %v", params.Type))
 	}
 	return err
 }
@@ -90,32 +108,10 @@ func (g *Gateway) ChangeMode(params *ChangeModeParams, _ *struct{}) error {
 	switch params.Mode {
 	case Home:
 	case Away:
-		g.setMode(params.Mode)
+		g.mode.setMode(params.Mode)
 		break
 	default:
 		err = errors.New(fmt.Sprintf("Invalid Mode: %v", params.Mode))
 	}
 	return err
-}
-
-func (g *Gateway) incAndReturnNextId() int {
-	g.nextId.Lock()
-	var nextId int = g.nextId.i
-	g.nextId.i++
-	g.nextId.Unlock()
-	return nextId
-}
-
-func (g *Gateway) getMode() Mode {
-	g.mode.RLock()
-	var mode Mode = g.mode.m
-	g.mode.RUnlock()
-	return mode
-}
-
-func (g *Gateway) setMode(mode Mode) {
-	g.mode.Lock()
-	g.mode.m = mode
-	g.mode.Unlock()
-	fmt.Printf("Mode changed to: %v", mode)
 }
