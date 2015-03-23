@@ -1,7 +1,7 @@
 package main
 
 import (
-	"net"
+//"net"
 )
 
 type Type int
@@ -44,12 +44,12 @@ type Interface interface {
 
 type RegisterParams struct {
 	Type Type
-	Name Type
+	Name Name
 	//Cannot get caller IP from rpc library.
 	//Might as well send listening port too.
 	Address string
-	Port string
-//	ListenSocket net.TCPAddr
+	Port    string
+	//	ListenSocket net.TCPAddr
 }
 
 type ReportStateParams struct {

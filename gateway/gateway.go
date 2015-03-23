@@ -55,9 +55,11 @@ func (g *Gateway) start() {
 		os.Exit(1)
 	}
 	rpc.Accept(listener)
-	go 	g.pollTempSensors()
+	//go 	g.pollTempSensors()
 }
 
+/*
+//I commented out this function because of compilation issues.
 func (g *Gateway) pollTempSensors() {
 	args := &RegisterParams{0}
 	fmt.Println("Connecting to Sensor")
@@ -67,7 +69,7 @@ func (g *Gateway) pollTempSensors() {
 	}
 	var reply *StateResponse
 
-/* This is the call for registration populate the deviceID field accordingly */
+//This is the call for registration populate the deviceID field accordingly
 	err = client.Call("temperatureSensor.QueryState", args, &reply)
 	if err != nil {
 		fmt.Println(err)
@@ -76,6 +78,7 @@ func (g *Gateway) pollTempSensors() {
 		fmt.Println("Temperarture returned from sensor is:", reply.state, &reply)
 	}
 }
+*/
 
 func (g *Gateway) Register(params *RegisterParams, reply *int) error {
 	var err error = nil
