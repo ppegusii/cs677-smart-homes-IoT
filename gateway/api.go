@@ -44,10 +44,12 @@ type Interface interface {
 
 type RegisterParams struct {
 	Type Type
-	Name Name
+	Name Type
 	//Cannot get caller IP from rpc library.
 	//Might as well send listening port too.
-	ListenSocket net.TCPAddr
+	Address string
+	Port string
+//	ListenSocket net.TCPAddr
 }
 
 type ReportStateParams struct {
