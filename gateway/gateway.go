@@ -120,6 +120,12 @@ func (g *Gateway) Register(params *RegisterParams, reply *int) error {
 }
 
 func (g *Gateway) ReportState(params *ReportStateParams, _ *struct{}) error {
+	//only expecting motion sensor
+	var exists bool = g.motionSen.exists(params.DeviceId)
+	if !exists {
+		return errors.New(fmt.Sprintf("Device with following id not motion sensor or not registered: %v", params.DeviceId))
+	}
+	//TODO turn light bulbs on and start timer
 	return nil
 }
 

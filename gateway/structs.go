@@ -25,6 +25,13 @@ func (s *syncMapIntBool) getInts() *map[int]bool {
 	return &newM
 }
 
+func (s *syncMapIntBool) exists(i int) bool {
+	s.RLock()
+	_, ok := s.m[i]
+	s.RUnlock()
+	return ok
+}
+
 type syncMapIntRegParam struct {
 	sync.RWMutex
 	m map[int]*RegisterParams
