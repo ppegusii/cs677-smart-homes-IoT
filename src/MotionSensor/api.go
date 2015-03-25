@@ -9,14 +9,9 @@ const (
 	MotionStop  State = iota
 )
 
-type Newstate struct {
+type SmartAppliance struct {
 	Deviceid int
-	Nstate State
-}
- 
-type Motionsensor struct {
-	Deviceid int
-	state State
+	State State
 }
 
 type RegisterParams struct {
@@ -46,8 +41,8 @@ const (
 )
 
 type Interface interface {
-	Querystate(args *int, reply *Motionsensor) error // args is the deviceid
-	Changestate(args *Newstate, reply *int) error // Possible values of reply and its indication are as below:
+	Querystate(args *int, reply *SmartAppliance) error // args is the deviceid
+	Changestate(args *SmartAppliance, reply *int) error // Possible values of reply and its indication are as below:
 	/* Value Meaning
 		-1 -> The DeviceID in the args send by the gateway was incorrect so no state change has been done
 		 0 -> Device ID is correct but the device is already in the state requested by gateway eg: Changestate to Motionstart

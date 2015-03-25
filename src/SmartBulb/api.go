@@ -41,6 +41,6 @@ const (
 )
 
 type Interface interface {
-	Changestate(args *Newstate, reply *int) error
-	Querystate(args *Newstate, reply *State) error // reply is the ack
+	Changestate(args *SmartAppliance, reply *int) error
+	Querystate(args *SmartAppliance, reply *State) error // reply is the ack
 }

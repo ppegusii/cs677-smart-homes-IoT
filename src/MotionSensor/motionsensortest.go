@@ -16,14 +16,9 @@ const (
 	MotionStop  State = iota
 )
 
-type Newstate struct {
+type SmartAppliance struct {
 	Deviceid int
-	Nstate State
-}
-
-type Motionsensor struct {
-	Deviceid int
-	state State
+	State State
 }
 
 func main(){
@@ -35,35 +30,35 @@ log.Fatal("dialing:", err)
 
 var args int
 args = 2
-var reply Motionsensor
-err = client.Call("Motionsensor.Querystate", args, &reply)
+var reply SmartAppliance
+err = client.Call("SmartAppliance.Querystate", args, &reply)
  if err != nil {
 log.Fatal("Querystate error:", err)
  }
-fmt.Printf("Querystate State: %d\n", reply.state)
+fmt.Printf("Querystate State: %d\n", reply.State)
 fmt.Printf("Device ID is %d\n", reply.Deviceid)
 
 var ack int
 
 /* Test for incorrect DeviceID */
-nstate := &Newstate{3,MotionStop}
-err = client.Call("Motionsensor.Changestate", nstate, &ack)
+nstate := &SmartAppliance{2,MotionStop}
+err = client.Call("SmartAppliance.ManualMotion", nstate, &ack)
  if err != nil {
 log.Fatal("Changestate error:", err)
  }
 fmt.Printf("Changestate State for device is : %d\n", ack)
 
 /* Correct device ID but same state as current state of the motion sensor */
-nstate = &Newstate{2,MotionStart}
-err = client.Call("Motionsensor.Changestate", nstate, &ack)
+nstate1 := &SmartAppliance{2,MotionStart}
+err = client.Call("SmartAppliance.ManualMotion", nstate1, &ack)
  if err != nil {
 log.Fatal("Changestate error:", err)
  }
 fmt.Printf("Changestate State for device is : %d\n", ack)
 
 /* Correct device ID and  different state than current state of the motion sensor */
-nstate = &Newstate{2,MotionStop}
-err = client.Call("Motionsensor.Changestate", nstate, &ack)
+nstate2 := &SmartAppliance{2,MotionStop}
+err = client.Call("SmartAppliance.ManualMotion", nstate2, &ack)
  if err != nil {
 log.Fatal("Changestate error:", err)
  }

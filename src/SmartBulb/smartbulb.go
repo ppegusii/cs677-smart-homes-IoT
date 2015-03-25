@@ -1,31 +1,31 @@
 package main
 
 import (
- "net"
- "net/rpc"
- "log"
- "fmt"
+"net"
+"net/rpc"
+"log"
+"fmt"
 )
 
 func (t *SmartAppliance) Querystate(args *SmartAppliance, reply *State) error {
 	if(args.Deviceid == t.Deviceid){
 		*reply = t.State
-		} else {
-			log.Println("Incorrect device ID")
-		}
-				return nil
+	} else {
+		log.Println("Incorrect device ID")
+	}
+	return nil
 }
 
 // This would be used to manually change state of the device
 func (t *SmartAppliance) Manualswitch(args *SmartAppliance, reply *int) error {
 	if(args.Deviceid == t.Deviceid){
 		if (t.State == args.State) {
-		*reply = -1
-	} else {
-		t.State = args.State
-		*reply = 0
-	}
-	return nil
+			*reply = -1
+		} else {
+			t.State = args.State
+			*reply = 0
+		}
+		return nil
 	} else {
 		fmt.Println("Queried an incorrect device type")
 		*reply = -1
@@ -45,31 +45,29 @@ func (t *SmartAppliance) Manualswitch(args *SmartAppliance, reply *int) error {
 func (t *SmartAppliance) Changestate(args *SmartAppliance, reply *int) error {
 	if(args.Deviceid == t.Deviceid){
 		if (t.State == args.State) {
-		*reply = 0
-	} else {
-		oldstate := t. State
-		t.State = args.State
-		fmt.Println("State change from %d %d", oldstate, t.State)
-		*reply = 1
-	}
-	return nil
+			*reply = 0
+		} else {
+			t.State = args.State
+			*reply = 1
+		}
+		return nil
 	} else {
 		fmt.Println("Queried an incorrect device type")
 		*reply = -1
 		return nil
 	}
 }
- 
+
 func main(){
-	soutlet := new(SmartAppliance)
+	sbulb := new(SmartAppliance)
 
 //TODO: add the code for registration
-	soutlet.State = Off
-	soutlet.Deviceid = 3
-	rpc.Register(soutlet)
+	sbulb.State = Off
+	sbulb.Deviceid = 4
+	rpc.Register(sbulb)
 
 // Listening string hardcode or input from user
-	listener, e := net.Listen("tcp", ":1234")
+	listener, e := net.Listen("tcp", ":3456")
 	if e != nil {
 		log.Fatal("listen error:", e)
 	}

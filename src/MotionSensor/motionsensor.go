@@ -9,23 +9,25 @@ import (
  "net"
  "net/rpc"
  "log"
- "fmt"
+// "fmt"
 )
 
-func (m *Motionsensor) Querystate(args *int, reply *Motionsensor) error {
+func (m *SmartAppliance) Querystate(args *int, reply *SmartAppliance) error {
 	if(*args == m.Deviceid) {
 		reply.Deviceid = m.Deviceid
-		reply.state = m.state
-		log.Printf("Returned the current motion state of %d to the gateway",m.state)
+		reply.State = m.State
+		log.Printf("Returned the current motion state %d of device %d %d to the gateway",*args, m.Deviceid, m.State)
 		return nil
 	} else {
-		log.Printf("Returned the current motion state of %d to the gateway",m.state)
+		log.Printf("Incorrect device ID",m.State)
+		reply.Deviceid = m.Deviceid
+		reply.State = -1
 		return nil // TODO: Error code in gateway to be returned
 	}
 }
 
-func (m *Motionsensor) Negatestate(args *Newstate, reply *int) error {
-	if(m.state == On) {
+func (m *SmartAppliance) Negatestate(args *SmartAppliance, reply *int) error {
+	if(m.State == On) {
 		*reply = 0
 	} else {
 		*reply = 1
@@ -33,12 +35,12 @@ func (m *Motionsensor) Negatestate(args *Newstate, reply *int) error {
 	return nil
 }
 
-func (m *Motionsensor) ManualMotion(args *Newstate, reply *int) error {
-	if (m.state == args.Nstate) {
+func (m *SmartAppliance) ManualMotion(args *SmartAppliance, reply *int) error {
+	if (m.State == args.State) {
 		//Device state is same as the new state requested by gateway, so no change in state
 		*reply = 0
 	} else {
-		m.state = args.Nstate
+		m.State = args.State
 		*reply = 1
 		//TODO: Issue a call to report_state(int device id, state) interface in gateway when change in state is observed
 	}
@@ -46,9 +48,9 @@ func (m *Motionsensor) ManualMotion(args *Newstate, reply *int) error {
 }
  
 func main(){
-msensor := new(Motionsensor)
+msensor := new(SmartAppliance)
 // Register to get the Deviceid and decide on initial state
-msensor.state = MotionStart
+msensor.State = MotionStop
 msensor.Deviceid = 2
 rpc.Register(msensor)
 
