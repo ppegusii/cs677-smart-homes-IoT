@@ -14,6 +14,15 @@ type SmartAppliance struct {
 	State State
 }
 
+type SmartBulb struct {
+	Type Type
+	Name Name
+	State State
+	Deviceid int
+	Port string
+	Address string
+}
+
 type RegisterParams struct {
 	Type Type
 	Name Name
@@ -21,7 +30,6 @@ type RegisterParams struct {
 	//Might as well send listening port too.
 	Address string
 	Port string
-//	ListenSocket net.TCPAddr
 }
 
 type Type int
