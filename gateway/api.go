@@ -26,19 +26,20 @@ const (
 	On          State = iota
 	Off         State = iota
 	MotionStart State = iota
-	MotionStop  State = iota
 )
 
 type Mode int
 
 const (
-	Home Mode = iota
-	Away Mode = iota
+	Home       Mode = iota
+	Away       Mode = iota
+	OutletsOn  Mode = iota
+	OutletsOff Mode = iota
 )
 
 type Interface interface {
 	Register(params *RegisterParams, reply *int) error
-	ReportState(params *ReportStateParams, _ *struct{}) error
+	ReportMotion(params *ReportMotionParams, _ *struct{}) error
 	ChangeMode(params *ChangeModeParams, _ *struct{}) error
 }
 
@@ -52,11 +53,16 @@ type RegisterParams struct {
 	//	ListenSocket net.TCPAddr
 }
 
-type ReportStateParams struct {
+type ReportMotionParams struct {
 	DeviceId int
 	State    State
 }
 
 type ChangeModeParams struct {
 	Mode Mode
+}
+
+type ChangeStateParams struct {
+	DeviceId int
+	State    State
 }

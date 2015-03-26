@@ -2,6 +2,7 @@ package main
 
 import (
 	"sync"
+	"time"
 )
 
 type syncMapIntBool struct {
@@ -48,13 +49,13 @@ func (s *syncMapIntRegParam) addRegParam(regParam *RegisterParams) int {
 	return i
 }
 
-func (s *syncMapIntRegParam) getRegParams(is *map[int]bool) *map[*RegisterParams]bool {
-	var newM map[*RegisterParams]bool = make(map[*RegisterParams]bool)
+func (s *syncMapIntRegParam) getRegParams(is *map[int]bool) *map[int]*RegisterParams {
+	var newM map[int]*RegisterParams = make(map[int]*RegisterParams)
 	s.RLock()
 	for i, _ := range *is {
 		r, ok := s.m[i]
 		if ok {
-			newM[r] = false
+			newM[i] = r
 		}
 	}
 	s.RUnlock()
@@ -77,4 +78,29 @@ func (s *syncMode) setMode(mode Mode) {
 	s.Lock()
 	s.m = mode
 	s.Unlock()
+}
+
+type syncTimer struct {
+	d time.Duration
+	f func()
+	sync.Mutex
+	t *time.Timer
+}
+
+func (s *syncTimer) reset() bool {
+	s.Lock()
+	var active bool = s.t.Stop()
+	s.t = time.AfterFunc(s.d, s.f)
+	s.Unlock()
+	return active
+}
+
+func newSyncTimer(d time.Duration, f func()) *syncTimer {
+	var s *syncTimer = &syncTimer{
+		d: d,
+		f: f,
+		t: time.NewTimer(d),
+	}
+	s.t.Stop()
+	return s
 }

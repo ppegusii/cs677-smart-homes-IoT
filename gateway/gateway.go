@@ -3,23 +3,28 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/rpc"
 	"os"
+	"time"
 )
 
 type Gateway struct {
-	bulbDev   syncMapIntBool
-	mode      syncMode
-	motionSen syncMapIntBool
-	outletDev syncMapIntBool
-	port      string
-	senAndDev syncMapIntRegParam
-	tempSen   syncMapIntBool
+	bulbDev         syncMapIntBool
+	bulbTimer       syncTimer
+	mode            syncMode
+	motionSen       syncMapIntBool
+	outletDev       syncMapIntBool
+	outletMode      syncMode
+	pollingInterval int
+	port            string
+	senAndDev       syncMapIntRegParam
+	tempSen         syncMapIntBool
 }
 
-func newGateway(mode Mode, port string) *Gateway {
-	return &Gateway{
+func newGateway(mode Mode, pollingInterval int, port string) *Gateway {
+	var g *Gateway = &Gateway{
 		bulbDev: syncMapIntBool{
 			m: make(map[int]bool),
 		},
@@ -32,7 +37,11 @@ func newGateway(mode Mode, port string) *Gateway {
 		outletDev: syncMapIntBool{
 			m: make(map[int]bool),
 		},
-		port: port,
+		outletMode: syncMode{
+			m: OutletsOff,
+		},
+		pollingInterval: pollingInterval,
+		port:            port,
 		senAndDev: syncMapIntRegParam{
 			m: make(map[int]*RegisterParams),
 		},
@@ -40,22 +49,81 @@ func newGateway(mode Mode, port string) *Gateway {
 			m: make(map[int]bool),
 		},
 	}
+	g.bulbTimer = *newSyncTimer(5*time.Minute, g.turnBulbsOff)
+	return g
 }
 
 func (g *Gateway) start() {
 	var err error = rpc.Register(Interface(g))
 	if err != nil {
-		fmt.Printf("rpc.Register error: %s\n", err)
+		log.Printf("rpc.Register error: %s\n", err)
 		os.Exit(1)
 	}
 	var listener net.Listener
 	listener, err = net.Listen("tcp", ":"+g.port)
 	if err != nil {
-		fmt.Printf("net.Listen error: %s\n", err)
+		log.Printf("net.Listen error: %s\n", err)
 		os.Exit(1)
 	}
 	rpc.Accept(listener)
-	//go 	g.pollTempSensors()
+	g.pollTempSensors()
+}
+
+func (g *Gateway) pollTempSensors() {
+	//this function would need changes if there were
+	//many temperature sensors
+	var ticker *time.Ticker = time.NewTicker(time.Duration(g.pollingInterval) * time.Second)
+	for range ticker.C {
+		var tempIdRegParams map[int]*RegisterParams = *g.senAndDev.getRegParams(g.tempSen.getInts())
+		if len(tempIdRegParams) != 0 {
+			var tempVal float64 = 0
+			for tempId, regParams := range tempIdRegParams {
+				var client *rpc.Client
+				var err error
+				client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+				if err != nil {
+					log.Printf("dialing error: %v", err)
+				}
+				err = client.Call("TemperatureSensor.QueryState", &tempId, &tempVal)
+				if err != nil {
+					log.Printf("calling error: %v", err)
+				}
+			}
+			//just using the last tempVal
+			var s State
+			var outletState Mode = g.outletMode.getMode()
+			if tempVal < 1 && outletState == OutletsOff {
+				s = On
+				g.outletMode.setMode(OutletsOn)
+			} else if tempVal > 2 && outletState == OutletsOn {
+				s = Off
+				g.outletMode.setMode(OutletsOff)
+			} else {
+				switch outletState {
+				case OutletsOff:
+					s = Off
+					break
+				case OutletsOn:
+					s = On
+					break
+				}
+			}
+			var outletIdRegParams map[int]*RegisterParams = *g.senAndDev.getRegParams(g.outletDev.getInts())
+			if len(outletIdRegParams) != 0 {
+				var empty struct{}
+				for outletId, regParams := range outletIdRegParams {
+					var client *rpc.Client
+					var err error
+					client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+					if err != nil {
+						log.Printf("dialing error: %v", err)
+					}
+					client.Go("SmartOutlet.ChangeState", ChangeStateParams{outletId, s}, empty, nil)
+					log.Printf("calling error: %v", err)
+				}
+			}
+		}
+	}
 }
 
 /*
@@ -119,14 +187,46 @@ func (g *Gateway) Register(params *RegisterParams, reply *int) error {
 	return err
 }
 
-func (g *Gateway) ReportState(params *ReportStateParams, _ *struct{}) error {
+func (g *Gateway) ReportMotion(params *ReportMotionParams, _ *struct{}) error {
 	//only expecting motion sensor
 	var exists bool = g.motionSen.exists(params.DeviceId)
 	if !exists {
 		return errors.New(fmt.Sprintf("Device with following id not motion sensor or not registered: %v", params.DeviceId))
 	}
-	//TODO turn light bulbs on and start timer
+	switch g.mode.getMode() {
+	case Home:
+		g.turnBulbsOn()
+		break
+	case Away:
+		//TODO g.sendText()
+		break
+	}
 	return nil
+}
+
+func (g *Gateway) turnBulbsOn() {
+	var timerActive bool = g.bulbTimer.reset()
+	if !timerActive {
+		g.changeBulbStates(On)
+	}
+}
+
+func (g *Gateway) turnBulbsOff() {
+	g.changeBulbStates(Off)
+}
+
+func (g *Gateway) changeBulbStates(s State) {
+	var bulbIdRegParams map[int]*RegisterParams = *g.senAndDev.getRegParams(g.bulbDev.getInts())
+	var empty struct{}
+	for bulbId, regParams := range bulbIdRegParams {
+		var client *rpc.Client
+		var err error
+		client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+		if err != nil {
+			log.Printf("dialing error: %v", err)
+		}
+		client.Go("SmartBulb.ChangeState", ChangeStateParams{bulbId, s}, empty, nil)
+	}
 }
 
 func (g *Gateway) ChangeMode(params *ChangeModeParams, _ *struct{}) error {
