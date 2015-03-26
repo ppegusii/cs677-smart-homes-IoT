@@ -9,25 +9,23 @@ const (
 	MotionStop  State = iota
 )
 
+type TemperatureSensor struct {
+	Type Type
+	Name Name
+	Temp float64
+	Deviceid int
+	Address string
+	Port    string
+}
+
 type SmartAppliance struct {
 	Deviceid int
 	State State
-	GatewayIP string
 }
 
-type MotionSensor struct {
-	Type Type
-	Name Name
-	State State
+type StateTemperature struct {
 	Deviceid int
-	Port string
-	Address string
-	GatewayIP string
-}
-
-type ReportMotionParams struct {
-	DeviceId int
-	State    State
+	CurrentTemp float64
 }
 
 type RegisterParams struct {
