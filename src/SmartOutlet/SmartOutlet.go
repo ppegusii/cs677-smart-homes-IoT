@@ -7,27 +7,50 @@ import (
  "fmt"
 )
 
-func (t *SmartOutlet) Querystate(args *Newstate, reply *State) error {
-	*reply = t.state
-	return nil
-}
-
-func (t *SmartOutlet) Negatestate(args *Newstate, reply *int) error {
-	if(t.state == On) {
-		*reply = 0
-	} else {
-		*reply = 1
-	}
-	return nil
-}
-
-func (t *SmartOutlet) Changestate(args *Newstate, reply *int) error {
+func (t *SmartAppliance) Querystate(args *SmartAppliance, reply *State) error {
 	if(args.Deviceid == t.Deviceid){
-		if (t.state == args.Nstate) {
+		*reply = t.State
+		} else {
+			log.Println("Incorrect device ID")
+		}
+				return nil
+}
+
+// This would be used to manually change state of the device
+func (t *SmartAppliance) Manualswitch(args *SmartAppliance, reply *int) error {
+	if(args.Deviceid == t.Deviceid){
+		if (t.State == args.State) {
 		*reply = -1
 	} else {
-		t.state = args.Nstate
+		t.State = args.State
 		*reply = 0
+	}
+	return nil
+	} else {
+		fmt.Println("Queried an incorrect device type")
+		*reply = -1
+		return nil
+	}
+}
+
+/* Possible values of reply and its indication are as below:
+  Value  -> Meaning
+  =====     =======
+   -1   -> The DeviceID in the args send by the gateway was incorrect so no state change has been done
+	0    -> Device ID is correct but the device is already in the state requested by gateway eg: Changestate to Motionstart
+		    for a motion device in start state
+	1    -> Device ID is correct and state toggle by new state change
+*/
+
+func (t *SmartAppliance) Changestate(args *SmartAppliance, reply *int) error {
+	if(args.Deviceid == t.Deviceid){
+		if (t.State == args.State) {
+		*reply = 0
+	} else {
+		oldstate := t. State
+		t.State = args.State
+		fmt.Println("State change from %d %d", oldstate, t.State)
+		*reply = 1
 	}
 	return nil
 	} else {
@@ -38,22 +61,24 @@ func (t *SmartOutlet) Changestate(args *Newstate, reply *int) error {
 }
  
 func main(){
-cal := new(SmartOutlet)
-// Register to get the Deviceid and decide on initial state
-cal.state = On
-cal.Deviceid = 3
-rpc.Register(cal)
+	soutlet := new(SmartAppliance)
+
+//TODO: add the code for registration
+	soutlet.State = Off
+	soutlet.Deviceid = 3
+	rpc.Register(soutlet)
+
 // Listening string hardcode or input from user
-listener, e := net.Listen("tcp", ":1234")
- if e != nil {
-log.Fatal("listen error:", e)
- }
- for {
- if conn, err := listener.Accept(); err != nil {
-log.Fatal("accept error: " + err.Error())
- } else {
-log.Printf("new connection established\n")
-go rpc.ServeConn(conn)
- }
- }
+	listener, e := net.Listen("tcp", ":1234")
+	if e != nil {
+		log.Fatal("listen error:", e)
+	}
+	for {
+		if conn, err := listener.Accept(); err != nil {
+			log.Fatal("accept error: " + err.Error())
+		} else {
+			log.Printf("new connection established\n")
+			go rpc.ServeConn(conn)
+		}
+	}
 }
