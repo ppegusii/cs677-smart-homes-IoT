@@ -5,6 +5,8 @@ import (
  "net/rpc"
  "log"
  "fmt"
+ "os"
+ "flag"
 )
 
 func (t *SmartAppliance) Querystate(args *SmartAppliance, reply *State) error {
@@ -59,17 +61,77 @@ func (t *SmartAppliance) Changestate(args *SmartAppliance, reply *int) error {
 		return nil
 	}
 }
+
+func NewSmartOutlet(state State, address string, port string) *SmartOutlet {
+	return &SmartOutlet {
+		Type : Device,
+		Name : Outlet,
+		State : state,
+		Deviceid : -1, // Device ID -1 implies device is unregistered
+		Port : port,
+		Address : address,
+	}
+}
+
+func getOwnIP() string{     
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	for _, address := range addrs {
+    	// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return (ipnet.IP.String())
+			}
+		}
+	}
+	return "" //To exit or continue?
+}
  
 func main(){
-	soutlet := new(SmartAppliance)
+	//parse input args
+	if len(os.Args) != 2 {
+		fmt.Println("Usage: ", os.Args[0], "server:port") //Server and port address of Gateway
+		fmt.Println("NOTE: server:port address of the gateway")
+		os.Exit(1)
+	}
 
-//TODO: add the code for registration
-	soutlet.State = Off
-	soutlet.Deviceid = 3
+	var port *string = flag.String("p", "1234", "port") //Listening port of the sensor
+	flag.Parse()
+
+// Dial Gateway
+	service := os.Args[1]
+	client, err := rpc.Dial("tcp", service)
+	if err != nil {
+		log.Fatal("dialing:", err)
+	}
+
+	address := getOwnIP()
+	state := On 
+	var so *SmartOutlet = NewSmartOutlet(state, address, *port)
+
+// Register Device
+	var reply int
+	args := &RegisterParams{so.Type, so.Name, so.Address, so.Port}
+
+	err = client.Call("Gateway.Register", args, &reply)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println("Connection Established with Gateway...")
+		so.Deviceid = reply
+	}
+	client.Close()
+
+	soutlet := new(SmartAppliance)
+	soutlet.State = so.State
+	soutlet.Deviceid = so.Deviceid
 	rpc.Register(soutlet)
 
 // Listening string hardcode or input from user
-	listener, e := net.Listen("tcp", ":1234")
+	listener, e := net.Listen("tcp", ":"+(*port))
 	if e != nil {
 		log.Fatal("listen error:", e)
 	}

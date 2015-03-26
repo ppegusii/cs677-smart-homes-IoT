@@ -14,6 +14,15 @@ type SmartAppliance struct {
 	State State
 }
 
+type SmartOutlet struct {
+	Type Type
+	Name Name
+	State State
+	Deviceid int
+	Port string
+	Address string
+}
+
 type RegisterParams struct {
 	Type Type
 	Name Name
@@ -41,6 +50,6 @@ const (
 )
 
 type Interface interface {
-	Changestate(args *Newstate, reply *int) error
-	Querystate(args *Newstate, reply *State) error // reply is the ack
+	Changestate(args *SmartAppliance, reply *int) error
+	Querystate(args *SmartAppliance, reply *State) error // reply is the ack
 }
