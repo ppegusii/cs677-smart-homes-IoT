@@ -1,6 +1,4 @@
-package main
-
-/*
+package api
 
 import (
 //"net"
@@ -28,6 +26,7 @@ const (
 	On          State = iota
 	Off         State = iota
 	MotionStart State = iota
+	MotionStop  State = iota
 )
 
 type Mode int
@@ -39,10 +38,14 @@ const (
 	OutletsOff Mode = iota
 )
 
-type Interface interface {
+type GatewayInterface interface {
 	Register(params *RegisterParams, reply *int) error
 	ReportMotion(params *ReportMotionParams, _ *struct{}) error
 	ChangeMode(params *ChangeModeParams, _ *struct{}) error
+}
+
+type SensorInterface interface {
+	QueryState(params *int, reply *QueryStateParams) error
 }
 
 type RegisterParams struct {
@@ -68,4 +71,8 @@ type ChangeStateParams struct {
 	DeviceId int
 	State    State
 }
-*/
+
+type QueryStateParams struct {
+	DeviceId int
+	State    State
+}

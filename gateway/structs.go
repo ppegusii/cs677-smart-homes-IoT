@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"sync"
 	"time"
 )
@@ -35,11 +36,11 @@ func (s *syncMapIntBool) exists(i int) bool {
 
 type syncMapIntRegParam struct {
 	sync.RWMutex
-	m map[int]*RegisterParams
+	m map[int]*api.RegisterParams
 	i int
 }
 
-func (s *syncMapIntRegParam) addRegParam(regParam *RegisterParams) int {
+func (s *syncMapIntRegParam) addRegParam(regParam *api.RegisterParams) int {
 	var i int
 	s.Lock()
 	s.m[s.i] = regParam
@@ -49,8 +50,8 @@ func (s *syncMapIntRegParam) addRegParam(regParam *RegisterParams) int {
 	return i
 }
 
-func (s *syncMapIntRegParam) getRegParams(is *map[int]bool) *map[int]*RegisterParams {
-	var newM map[int]*RegisterParams = make(map[int]*RegisterParams)
+func (s *syncMapIntRegParam) getRegParams(is *map[int]bool) *map[int]*api.RegisterParams {
+	var newM map[int]*api.RegisterParams = make(map[int]*api.RegisterParams)
 	s.RLock()
 	for i, _ := range *is {
 		r, ok := s.m[i]
@@ -64,17 +65,17 @@ func (s *syncMapIntRegParam) getRegParams(is *map[int]bool) *map[int]*RegisterPa
 
 type syncMode struct {
 	sync.RWMutex
-	m Mode
+	m api.Mode
 }
 
-func (s *syncMode) getMode() Mode {
+func (s *syncMode) getMode() api.Mode {
 	s.RLock()
-	var mode Mode = s.m
+	var mode api.Mode = s.m
 	s.RUnlock()
 	return mode
 }
 
-func (s *syncMode) setMode(mode Mode) {
+func (s *syncMode) setMode(mode api.Mode) {
 	s.Lock()
 	s.m = mode
 	s.Unlock()

@@ -3,16 +3,17 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"log"
 	"net"
 	"net/rpc"
-	"os"
 	"time"
 )
 
 type Gateway struct {
 	bulbDev         syncMapIntBool
 	bulbTimer       syncTimer
+	ip              string
 	mode            syncMode
 	motionSen       syncMapIntBool
 	outletDev       syncMapIntBool
@@ -23,11 +24,12 @@ type Gateway struct {
 	tempSen         syncMapIntBool
 }
 
-func newGateway(mode Mode, pollingInterval int, port string) *Gateway {
+func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gateway {
 	var g *Gateway = &Gateway{
 		bulbDev: syncMapIntBool{
 			m: make(map[int]bool),
 		},
+		ip: ip,
 		mode: syncMode{
 			m: mode,
 		},
@@ -38,12 +40,12 @@ func newGateway(mode Mode, pollingInterval int, port string) *Gateway {
 			m: make(map[int]bool),
 		},
 		outletMode: syncMode{
-			m: OutletsOff,
+			m: api.OutletsOff,
 		},
 		pollingInterval: pollingInterval,
 		port:            port,
 		senAndDev: syncMapIntRegParam{
-			m: make(map[int]*RegisterParams),
+			m: make(map[int]*api.RegisterParams),
 		},
 		tempSen: syncMapIntBool{
 			m: make(map[int]bool),
@@ -54,18 +56,16 @@ func newGateway(mode Mode, pollingInterval int, port string) *Gateway {
 }
 
 func (g *Gateway) start() {
-	var err error = rpc.Register(Interface(g))
+	var err error = rpc.Register(api.GatewayInterface(g))
 	if err != nil {
-		log.Printf("rpc.Register error: %s\n", err)
-		os.Exit(1)
+		log.Fatal("rpc.Register error: %s\n", err)
 	}
 	var listener net.Listener
-	listener, err = net.Listen("tcp", ":"+g.port)
+	listener, err = net.Listen("tcp", g.ip+":"+g.port)
 	if err != nil {
-		log.Printf("net.Listen error: %s\n", err)
-		os.Exit(1)
+		log.Fatal("net.Listen error: %s\n", err)
 	}
-	rpc.Accept(listener)
+	go rpc.Accept(listener)
 	g.pollTempSensors()
 }
 
@@ -74,7 +74,7 @@ func (g *Gateway) pollTempSensors() {
 	//many temperature sensors
 	var ticker *time.Ticker = time.NewTicker(time.Duration(g.pollingInterval) * time.Second)
 	for range ticker.C {
-		var tempIdRegParams map[int]*RegisterParams = *g.senAndDev.getRegParams(g.tempSen.getInts())
+		var tempIdRegParams map[int]*api.RegisterParams = *g.senAndDev.getRegParams(g.tempSen.getInts())
 		if len(tempIdRegParams) != 0 {
 			var tempVal float64 = 0
 			for tempId, regParams := range tempIdRegParams {
@@ -90,25 +90,25 @@ func (g *Gateway) pollTempSensors() {
 				}
 			}
 			//just using the last tempVal
-			var s State
-			var outletState Mode = g.outletMode.getMode()
-			if tempVal < 1 && outletState == OutletsOff {
-				s = On
-				g.outletMode.setMode(OutletsOn)
-			} else if tempVal > 2 && outletState == OutletsOn {
-				s = Off
-				g.outletMode.setMode(OutletsOff)
+			var s api.State
+			var outletState api.Mode = g.outletMode.getMode()
+			if tempVal < 1 && outletState == api.OutletsOff {
+				s = api.On
+				g.outletMode.setMode(api.OutletsOn)
+			} else if tempVal > 2 && outletState == api.OutletsOn {
+				s = api.Off
+				g.outletMode.setMode(api.OutletsOff)
 			} else {
 				switch outletState {
-				case OutletsOff:
-					s = Off
+				case api.OutletsOff:
+					s = api.Off
 					break
-				case OutletsOn:
-					s = On
+				case api.OutletsOn:
+					s = api.On
 					break
 				}
 			}
-			var outletIdRegParams map[int]*RegisterParams = *g.senAndDev.getRegParams(g.outletDev.getInts())
+			var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.getRegParams(g.outletDev.getInts())
 			if len(outletIdRegParams) != 0 {
 				var empty struct{}
 				for outletId, regParams := range outletIdRegParams {
@@ -118,8 +118,7 @@ func (g *Gateway) pollTempSensors() {
 					if err != nil {
 						log.Printf("dialing error: %v", err)
 					}
-					client.Go("SmartOutlet.ChangeState", ChangeStateParams{outletId, s}, empty, nil)
-					log.Printf("calling error: %v", err)
+					client.Go("SmartOutlet.ChangeState", api.ChangeStateParams{outletId, s}, empty, nil)
 				}
 			}
 		}
@@ -148,17 +147,17 @@ func (g *Gateway) pollTempSensors() {
 }
 */
 
-func (g *Gateway) Register(params *RegisterParams, reply *int) error {
+func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	var err error = nil
 	var id int
 	switch params.Type {
-	case Sensor:
+	case api.Sensor:
 		switch params.Name {
-		case Motion:
+		case api.Motion:
 			id = g.senAndDev.addRegParam(params)
 			g.motionSen.addInt(id)
 			break
-		case Temperature:
+		case api.Temperature:
 			id = g.senAndDev.addRegParam(params)
 			g.tempSen.addInt(id)
 			break
@@ -167,13 +166,13 @@ func (g *Gateway) Register(params *RegisterParams, reply *int) error {
 			break
 		}
 		break
-	case Device:
+	case api.Device:
 		switch params.Name {
-		case Bulb:
+		case api.Bulb:
 			id = g.senAndDev.addRegParam(params)
 			g.bulbDev.addInt(id)
 			break
-		case Outlet:
+		case api.Outlet:
 			id = g.senAndDev.addRegParam(params)
 			g.outletDev.addInt(id)
 			break
@@ -184,20 +183,21 @@ func (g *Gateway) Register(params *RegisterParams, reply *int) error {
 	default:
 		err = errors.New(fmt.Sprintf("Invalid Type: %v", params.Type))
 	}
+	*reply = id
 	return err
 }
 
-func (g *Gateway) ReportMotion(params *ReportMotionParams, _ *struct{}) error {
+func (g *Gateway) ReportMotion(params *api.ReportMotionParams, _ *struct{}) error {
 	//only expecting motion sensor
 	var exists bool = g.motionSen.exists(params.DeviceId)
 	if !exists {
 		return errors.New(fmt.Sprintf("Device with following id not motion sensor or not registered: %v", params.DeviceId))
 	}
 	switch g.mode.getMode() {
-	case Home:
+	case api.Home:
 		g.turnBulbsOn()
 		break
-	case Away:
+	case api.Away:
 		//TODO g.sendText()
 		break
 	}
@@ -207,16 +207,16 @@ func (g *Gateway) ReportMotion(params *ReportMotionParams, _ *struct{}) error {
 func (g *Gateway) turnBulbsOn() {
 	var timerActive bool = g.bulbTimer.reset()
 	if !timerActive {
-		g.changeBulbStates(On)
+		g.changeBulbStates(api.On)
 	}
 }
 
 func (g *Gateway) turnBulbsOff() {
-	g.changeBulbStates(Off)
+	g.changeBulbStates(api.Off)
 }
 
-func (g *Gateway) changeBulbStates(s State) {
-	var bulbIdRegParams map[int]*RegisterParams = *g.senAndDev.getRegParams(g.bulbDev.getInts())
+func (g *Gateway) changeBulbStates(s api.State) {
+	var bulbIdRegParams map[int]*api.RegisterParams = *g.senAndDev.getRegParams(g.bulbDev.getInts())
 	var empty struct{}
 	for bulbId, regParams := range bulbIdRegParams {
 		var client *rpc.Client
@@ -225,15 +225,15 @@ func (g *Gateway) changeBulbStates(s State) {
 		if err != nil {
 			log.Printf("dialing error: %v", err)
 		}
-		client.Go("SmartBulb.ChangeState", ChangeStateParams{bulbId, s}, empty, nil)
+		client.Go("SmartBulb.ChangeState", api.ChangeStateParams{bulbId, s}, empty, nil)
 	}
 }
 
-func (g *Gateway) ChangeMode(params *ChangeModeParams, _ *struct{}) error {
+func (g *Gateway) ChangeMode(params *api.ChangeModeParams, _ *struct{}) error {
 	var err error = nil
 	switch params.Mode {
-	case Home:
-	case Away:
+	case api.Home:
+	case api.Away:
 		g.mode.setMode(params.Mode)
 		break
 	default:
