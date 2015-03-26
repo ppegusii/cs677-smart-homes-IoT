@@ -78,7 +78,7 @@ func NewMotionSensor(state State, address string, port string,service string) *M
 	return &MotionSensor {
 		Type : Sensor,
 		Name : Motion,
-		State : On,
+		State : state,
 		Deviceid : -1, // Device ID -1 implies device is unregistered
 		Port : port,
 		Address : address,
@@ -106,7 +106,7 @@ func main(){
 	}
 
 	address := getOwnIP()
-	state := On 
+	state := MotionStart 
 	var ms *MotionSensor = NewMotionSensor(state, address, *port,service)
 
 // Register Device
