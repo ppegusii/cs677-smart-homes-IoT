@@ -46,11 +46,11 @@ func (t *TemperatureSensor) start() {
 	var client *rpc.Client
 	client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
 	if err != nil {
-		log.Printf("dialing error: %v", err)
+		log.Printf("dialing error: %+v", err)
 	}
 	err = client.Call("Gateway.Register", &api.RegisterParams{api.Sensor, api.Temperature, t.selfIp, t.selfPort}, &t.id)
 	if err != nil {
-		log.Printf("calling error: %v", err)
+		log.Printf("calling error: %+v", err)
 	}
 	log.Printf("Device id: %d", t.id)
 	//listen on stdin for temperature triggers

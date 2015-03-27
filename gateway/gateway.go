@@ -23,6 +23,7 @@ type Gateway struct {
 	port            string
 	senAndDev       structs.SyncMapIntRegParam
 	tempSen         structs.SyncMapIntBool
+	user            structs.SyncRegUserParam
 }
 
 func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gateway {
@@ -37,6 +38,7 @@ func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gat
 		port:            port,
 		senAndDev:       *structs.NewSyncMapIntRegParam(),
 		tempSen:         *structs.NewSyncMapIntBool(),
+		user:            *structs.NewSyncRegUserParam(),
 	}
 	g.bulbTimer = *structs.NewSyncTimer(5*time.Minute, g.turnBulbsOff)
 	return g
@@ -63,22 +65,23 @@ func (g *Gateway) pollTempSensors() {
 	for range ticker.C {
 		var tempIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.tempSen.GetInts())
 		if len(tempIdRegParams) != 0 {
-			var tempVal float64 = 0
+			var tempReply api.QueryTemperatureParams
 			for tempId, regParams := range tempIdRegParams {
 				var client *rpc.Client
 				var err error
 				client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
 				if err != nil {
-					log.Printf("dialing error: %v", err)
+					log.Printf("dialing error: %+v", err)
 				}
-				err = client.Call("TemperatureSensor.QueryState", &tempId, &tempVal)
+				err = client.Call("TemperatureSensor.QueryState", &tempId, &tempReply)
 				if err != nil {
-					log.Printf("calling error: %v", err)
+					log.Printf("calling error: %+v", err)
 				}
-				log.Printf("Received temp: %f", tempVal)
+				log.Printf("Received temp: %f", tempReply.Temperature)
 			}
 			//update the outlets
 			//just using the last tempVal
+			var tempVal float64 = tempReply.Temperature
 			var s api.State
 			var outletState api.Mode = g.outletMode.GetMode()
 			if tempVal < 1 && outletState == api.OutletsOff {
@@ -105,7 +108,7 @@ func (g *Gateway) pollTempSensors() {
 					var err error
 					client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
 					if err != nil {
-						log.Printf("dialing error: %v", err)
+						log.Printf("dialing error: %+v", err)
 					}
 					client.Go("SmartOutlet.ChangeState", api.ChangeStateParams{outletId, s}, empty, nil)
 				}
@@ -114,8 +117,14 @@ func (g *Gateway) pollTempSensors() {
 	}
 }
 
+func (g *Gateway) RegisterUser(params *api.RegisterUserParams, _ *struct{}) error {
+	log.Printf("Registering user with info: %+v", params)
+	g.user.Set(*params)
+	return nil
+}
+
 func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
-	log.Printf("Attempting to register device with this info: %v", params)
+	log.Printf("Attempting to register device with this info: %+v", params)
 	var err error = nil
 	var id int
 	switch params.Type {
@@ -130,7 +139,7 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 			g.tempSen.AddInt(id)
 			break
 		default:
-			err = errors.New(fmt.Sprintf("Invalid Sensor Name: %v", params.Name))
+			err = errors.New(fmt.Sprintf("Invalid Sensor Name: %+v", params.Name))
 			break
 		}
 		break
@@ -145,21 +154,21 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 			g.outletDev.AddInt(id)
 			break
 		default:
-			err = errors.New(fmt.Sprintf("Invalid Device Name: %v", params.Name))
+			err = errors.New(fmt.Sprintf("Invalid Device Name: %+v", params.Name))
 		}
 		break
 	default:
-		err = errors.New(fmt.Sprintf("Invalid Type: %v", params.Type))
+		err = errors.New(fmt.Sprintf("Invalid Type: %+v", params.Type))
 	}
 	*reply = id
 	return err
 }
 
 func (g *Gateway) ReportMotion(params *api.ReportMotionParams, _ *struct{}) error {
-	log.Printf("Received motion report with this info: %v", params)
+	log.Printf("Received motion report with this info: %+v", params)
 	var exists bool = g.motionSen.Exists(params.DeviceId)
 	if !exists {
-		return errors.New(fmt.Sprintf("Device with following id not motion sensor or not registered: %v", params.DeviceId))
+		return errors.New(fmt.Sprintf("Device with following id not motion sensor or not registered: %+v", params.DeviceId))
 	}
 	switch g.mode.GetMode() {
 	case api.Home:
@@ -176,10 +185,26 @@ func (g *Gateway) ReportMotion(params *api.ReportMotionParams, _ *struct{}) erro
 		}
 		break
 	case api.Away:
-		//TODO g.sendText()
+		g.sendText()
 		break
 	}
 	return nil
+}
+
+func (g *Gateway) sendText() {
+	if !g.user.Exists() {
+		return
+	}
+	var client *rpc.Client
+	var err error
+	var regUserParams api.RegisterUserParams = g.user.Get()
+	var msg string = "There's something moving in your house!"
+	var empty struct{}
+	client, err = rpc.Dial("tcp", regUserParams.Address+":"+regUserParams.Port)
+	if err != nil {
+		log.Printf("dialing error: %+v", err)
+	}
+	client.Go("User.TextMessage", &msg, empty, nil)
 }
 
 func (g *Gateway) turnBulbsOn() {
@@ -198,39 +223,60 @@ func (g *Gateway) changeBulbStates(s api.State) {
 		var err error
 		client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
 		if err != nil {
-			log.Printf("dialing error: %v", err)
+			log.Printf("dialing error: %+v", err)
 		}
 		client.Go("SmartBulb.ChangeState", api.ChangeStateParams{bulbId, s}, empty, nil)
 	}
 }
 
-func (g *Gateway) ChangeMode(params *api.ChangeModeParams, _ *struct{}) error {
-	log.Printf("Received change mode request with this info: %v", params)
+func (g *Gateway) ChangeMode(params *api.Mode, _ *struct{}) error {
+	log.Printf("Received change mode request with this info: %+v", params)
 	var err error = nil
-	switch params.Mode {
+	switch *params {
 	case api.Home:
 		if g.mode.GetMode() == api.Home {
 			break
 		}
-		g.mode.SetMode(params.Mode)
-		//TODO implement the following
-		/*
-			var anyMotion bool = g.checkForMotion()
-			if anyMotion {
-				g.turnBulbsOn()
-			}
-		*/
+		g.mode.SetMode(*params)
+		var anyMotion bool = g.checkForMotion()
+		if anyMotion {
+			g.turnBulbsOn()
+		}
 		break
 	case api.Away:
 		if g.mode.GetMode() == api.Away {
 			break
 		}
-		g.mode.SetMode(params.Mode)
+		g.mode.SetMode(*params)
 		g.bulbTimer.Stop()
 		g.turnBulbsOff()
 		break
 	default:
-		err = errors.New(fmt.Sprintf("Invalid Mode: %v", params.Mode))
+		err = errors.New(fmt.Sprintf("Invalid Mode: %+v", *params))
 	}
 	return err
+}
+
+func (g *Gateway) checkForMotion() bool {
+	var motionIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.motionSen.GetInts())
+	if len(motionIdRegParams) != 0 {
+		var queryStateParams api.QueryStateParams
+		for motionId, regParams := range motionIdRegParams {
+			var client *rpc.Client
+			var err error
+			client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+			if err != nil {
+				log.Printf("dialing error: %+v", err)
+			}
+			err = client.Call("MotionSensor.QueryState", &motionId, &queryStateParams)
+			if err != nil {
+				log.Printf("calling error: %+v", err)
+			}
+			log.Printf("Received motion status: %+v", queryStateParams)
+			if queryStateParams.State == api.MotionStart {
+				return true
+			}
+		}
+	}
+	return false
 }

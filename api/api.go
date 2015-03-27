@@ -40,9 +40,10 @@ const (
 )
 
 type GatewayInterface interface {
+	ChangeMode(params *Mode, _ *struct{}) error
 	Register(params *RegisterParams, reply *int) error
+	RegisterUser(params *RegisterUserParams, _ *struct{}) error
 	ReportMotion(params *ReportMotionParams, _ *struct{}) error
-	ChangeMode(params *ChangeModeParams, _ *struct{}) error
 }
 
 type MotionSensorInterface interface {
@@ -58,6 +59,10 @@ type DeviceInterface interface {
 	ChangeState(params *ChangeStateParams, _ *struct{}) error
 }
 
+type UserInterface interface {
+	TextMessage(params *string, _ *struct{}) error
+}
+
 type RegisterParams struct {
 	Type    Type
 	Name    Name
@@ -65,13 +70,14 @@ type RegisterParams struct {
 	Port    string
 }
 
+type RegisterUserParams struct {
+	Address string
+	Port    string
+}
+
 type ReportMotionParams struct {
 	DeviceId int
 	State    State
-}
-
-type ChangeModeParams struct {
-	Mode Mode
 }
 
 type ChangeStateParams struct {

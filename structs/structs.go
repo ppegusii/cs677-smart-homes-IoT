@@ -136,7 +136,7 @@ func NewSyncFloat64(f float64) *SyncFloat64 {
 
 func (s *SyncFloat64) Get() float64 {
 	s.RLock()
-	var r = s.f
+	var r float64 = s.f
 	s.RUnlock()
 	return r
 }
@@ -183,4 +183,38 @@ func NewSyncTimer(d time.Duration, f func()) *SyncTimer {
 	}
 	s.t.Stop()
 	return s
+}
+
+type SyncRegUserParam struct {
+	sync.RWMutex
+	u *api.RegisterUserParams
+}
+
+func NewSyncRegUserParam() *SyncRegUserParam {
+	return &SyncRegUserParam{
+		u: nil,
+	}
+}
+
+func (s *SyncRegUserParam) Get() api.RegisterUserParams {
+	s.RLock()
+	var r api.RegisterUserParams = *s.u
+	s.RUnlock()
+	return r
+}
+
+func (s *SyncRegUserParam) Set(r api.RegisterUserParams) {
+	s.Lock()
+	s.u = &api.RegisterUserParams{
+		Address: r.Address,
+		Port:    r.Port,
+	}
+	s.Unlock()
+}
+
+func (s *SyncRegUserParam) Exists() bool {
+	s.RLock()
+	var e bool = s.u != nil
+	s.RUnlock()
+	return e
 }
