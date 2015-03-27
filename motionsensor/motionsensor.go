@@ -49,6 +49,7 @@ func (m *MotionSensor) start() {
 	if err != nil {
 		log.Printf("calling error: %v", err)
 	}
+	log.Printf("Device id: %d", m.id)
 	//listen on stdin for motion triggers
 	m.getInput()
 }

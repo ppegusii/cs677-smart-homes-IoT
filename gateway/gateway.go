@@ -88,7 +88,9 @@ func (g *Gateway) pollTempSensors() {
 				if err != nil {
 					log.Printf("calling error: %v", err)
 				}
+				log.Printf("Received temp: %f", tempVal)
 			}
+			//update the outlets
 			//just using the last tempVal
 			var s api.State
 			var outletState api.Mode = g.outletMode.getMode()
@@ -125,29 +127,8 @@ func (g *Gateway) pollTempSensors() {
 	}
 }
 
-/*
-//I commented out this function because of compilation issues.
-func (g *Gateway) pollTempSensors() {
-	args := &RegisterParams{0}
-	fmt.Println("Connecting to Sensor")
-	client, err := rpc.Dial("tcp", "127.0.0.1:1234")
-	if err != nil {
-		log.Fatal("dialing:", err)
-	}
-	var reply *StateResponse
-
-//This is the call for registration populate the deviceID field accordingly
-	err = client.Call("temperatureSensor.QueryState", args, &reply)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println("Connection Established with Temperature Sensor...")
-		fmt.Println("Temperarture returned from sensor is:", reply.state, &reply)
-	}
-}
-*/
-
 func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
+	log.Printf("Attempting to register device with this info: %v", params)
 	var err error = nil
 	var id int
 	switch params.Type {
@@ -188,7 +169,7 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 }
 
 func (g *Gateway) ReportMotion(params *api.ReportMotionParams, _ *struct{}) error {
-	//only expecting motion sensor
+	log.Printf("Received motion report with this info: %v", params)
 	var exists bool = g.motionSen.exists(params.DeviceId)
 	if !exists {
 		return errors.New(fmt.Sprintf("Device with following id not motion sensor or not registered: %v", params.DeviceId))
@@ -230,6 +211,7 @@ func (g *Gateway) changeBulbStates(s api.State) {
 }
 
 func (g *Gateway) ChangeMode(params *api.ChangeModeParams, _ *struct{}) error {
+	log.Printf("Received change mode request with this info: %v", params)
 	var err error = nil
 	switch params.Mode {
 	case api.Home:
