@@ -53,6 +53,7 @@ func (t *TemperatureSensor) start() {
 		log.Fatal("calling error: %+v", err)
 	}
 	log.Printf("Device id: %d", t.id)
+	logCurrentTemp(t.temperature.Get())
 	//listen on stdin for temperature triggers
 	t.getInput()
 }
@@ -69,9 +70,11 @@ func (t *TemperatureSensor) getInput() {
 		switch text {
 		case "0\n":
 			t.temperature.Change(-1.0)
+			logCurrentTemp(t.temperature.Get())
 			break
 		case "1\n":
 			t.temperature.Change(1.0)
+			logCurrentTemp(t.temperature.Get())
 			break
 		default:
 			fmt.Println("Invalid Input, Enter either 1 or 0")
@@ -84,4 +87,8 @@ func (t *TemperatureSensor) QueryState(params *int, reply *api.QueryTemperatureP
 	reply.DeviceId = t.id
 	reply.Temperature = t.temperature.Get()
 	return nil
+}
+
+func logCurrentTemp(t float64) {
+	log.Printf("Current temp: %f", t)
 }

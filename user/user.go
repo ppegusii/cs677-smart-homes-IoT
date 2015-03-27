@@ -77,6 +77,7 @@ func (u *User) getInput() {
 		client, err = rpc.Dial("tcp", u.gatewayIp+":"+u.gatewayPort)
 		if err != nil {
 			log.Printf("dialing error: %+v", err)
+			continue
 		}
 		client.Go("Gateway.ChangeMode", &mode, empty, nil)
 	}

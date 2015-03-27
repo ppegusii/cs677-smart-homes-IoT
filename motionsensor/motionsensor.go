@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
+	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
 	"net"
 	"net/rpc"
@@ -53,6 +54,7 @@ func (m *MotionSensor) start() {
 		log.Fatal("calling error: %+v", err)
 	}
 	log.Printf("Device id: %d", m.id)
+	util.LogCurrentState(m.state.GetState())
 	//listen on stdin for motion triggers
 	m.getInput()
 }
@@ -71,6 +73,7 @@ func (m *MotionSensor) getInput() {
 				continue
 			}
 			m.state.SetState(api.MotionStop)
+			util.LogCurrentState(m.state.GetState())
 			break
 		case "1\n":
 			if m.state.GetState() == api.MotionStart {
@@ -78,6 +81,7 @@ func (m *MotionSensor) getInput() {
 				continue
 			}
 			m.state.SetState(api.MotionStart)
+			util.LogCurrentState(m.state.GetState())
 			break
 		default:
 			fmt.Println("Invalid input")
@@ -88,6 +92,7 @@ func (m *MotionSensor) getInput() {
 		client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
 		if err != nil {
 			log.Printf("dialing error: %+v", err)
+			continue
 		}
 		client.Go("Gateway.ReportMotion", api.ReportMotionParams{m.id, m.state.GetState()}, &empty, nil)
 	}

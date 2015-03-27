@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
+	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
 	"net"
 	"net/rpc"
@@ -50,6 +51,7 @@ func (s *SmartOutlet) start() {
 	if err != nil {
 		log.Fatal("net.Listen error: %s\n", err)
 	}
+	util.LogCurrentState(s.state.GetState())
 	rpc.Accept(listener)
 }
 
@@ -63,5 +65,6 @@ func (s *SmartOutlet) QueryState(params *int, reply *api.QueryStateParams) error
 func (s *SmartOutlet) ChangeState(params *api.ChangeStateParams, _ *struct{}) error {
 	log.Printf("Received change state request with info: %+v", params)
 	s.state.SetState(params.State)
+	util.LogCurrentState(s.state.GetState())
 	return nil
 }

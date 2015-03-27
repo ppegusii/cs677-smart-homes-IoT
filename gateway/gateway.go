@@ -54,6 +54,7 @@ func (g *Gateway) start() {
 	if err != nil {
 		log.Fatal("net.Listen error: %s\n", err)
 	}
+	logCurrentMode(g.mode.GetMode())
 	go rpc.Accept(listener)
 	g.pollTempSensors()
 }
@@ -72,6 +73,7 @@ func (g *Gateway) pollTempSensors() {
 				client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
 				if err != nil {
 					log.Printf("dialing error: %+v", err)
+					continue
 				}
 				err = client.Call("TemperatureSensor.QueryState", &tempId, &tempReply)
 				if err != nil {
@@ -109,6 +111,7 @@ func (g *Gateway) pollTempSensors() {
 					client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
 					if err != nil {
 						log.Printf("dialing error: %+v", err)
+						continue
 					}
 					client.Go("SmartOutlet.ChangeState", api.ChangeStateParams{outletId, s}, &empty, nil)
 				}
@@ -185,7 +188,9 @@ func (g *Gateway) ReportMotion(params *api.ReportMotionParams, _ *struct{}) erro
 		}
 		break
 	case api.Away:
-		g.sendText()
+		if params.State == api.MotionStart {
+			g.sendText()
+		}
 		break
 	}
 	return nil
@@ -203,6 +208,7 @@ func (g *Gateway) sendText() {
 	client, err = rpc.Dial("tcp", regUserParams.Address+":"+regUserParams.Port)
 	if err != nil {
 		log.Printf("dialing error: %+v", err)
+		return
 	}
 	client.Go("User.TextMessage", &msg, &empty, nil)
 }
@@ -224,6 +230,7 @@ func (g *Gateway) changeBulbStates(s api.State) {
 		client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
 		if err != nil {
 			log.Printf("dialing error: %+v", err)
+			continue
 		}
 		client.Go("SmartBulb.ChangeState", api.ChangeStateParams{bulbId, s}, &empty, nil)
 	}
@@ -238,6 +245,7 @@ func (g *Gateway) ChangeMode(params *api.Mode, _ *struct{}) error {
 			break
 		}
 		g.mode.SetMode(*params)
+		logCurrentMode(g.mode.GetMode())
 		var anyMotion bool = g.checkForMotion()
 		if anyMotion {
 			g.turnBulbsOn()
@@ -248,6 +256,7 @@ func (g *Gateway) ChangeMode(params *api.Mode, _ *struct{}) error {
 			break
 		}
 		g.mode.SetMode(*params)
+		logCurrentMode(g.mode.GetMode())
 		g.bulbTimer.Stop()
 		g.turnBulbsOff()
 		break
@@ -255,6 +264,22 @@ func (g *Gateway) ChangeMode(params *api.Mode, _ *struct{}) error {
 		err = errors.New(fmt.Sprintf("Invalid Mode: %+v", *params))
 	}
 	return err
+}
+
+func logCurrentMode(m api.Mode) {
+	var text string
+	switch m {
+	case api.Home:
+		text = "Home"
+		break
+	case api.Away:
+		text = "Away"
+		break
+	default:
+		text = "Invalid mode"
+		break
+	}
+	log.Printf("Current mode: %s", text)
 }
 
 func (g *Gateway) checkForMotion() bool {
@@ -267,6 +292,7 @@ func (g *Gateway) checkForMotion() bool {
 			client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
 			if err != nil {
 				log.Printf("dialing error: %+v", err)
+				continue
 			}
 			err = client.Call("MotionSensor.QueryState", &motionId, &queryStateParams)
 			if err != nil {
