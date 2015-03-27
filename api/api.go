@@ -5,38 +5,38 @@ import ()
 type Type int
 
 const (
-	Sensor Type = iota
-	Device Type = iota
+	Sensor Type = iota //0
+	Device Type = iota //1
 )
 
 type Name int
 
 const (
-	Temperature Name = iota
-	Motion      Name = iota
-	Bulb        Name = iota
-	Outlet      Name = iota
+	Temperature Name = iota //0
+	Motion      Name = iota //1
+	Bulb        Name = iota //2
+	Outlet      Name = iota //3
 )
 
 type State int
 
 const (
-	On          State = iota
-	Off         State = iota
-	MotionStart State = iota
-	MotionStop  State = iota
+	On          State = iota //0
+	Off         State = iota //1
+	MotionStart State = iota //2
+	MotionStop  State = iota //3
 )
 
 type Mode int
 
 const (
-	Home Mode = iota
-	Away Mode = iota
+	Home Mode = iota //0
+	Away Mode = iota //1
 	//These states indicate whether the
 	//gateway believes smart outlets are
 	//on or off.
-	OutletsOn  Mode = iota
-	OutletsOff Mode = iota
+	OutletsOn  Mode = iota //2
+	OutletsOff Mode = iota //3
 )
 
 type GatewayInterface interface {
