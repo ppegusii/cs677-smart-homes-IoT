@@ -46,11 +46,11 @@ func (m *MotionSensor) start() {
 	var client *rpc.Client
 	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
 	if err != nil {
-		log.Printf("dialing error: %+v", err)
+		log.Fatal("dialing error: %+v", err)
 	}
 	err = client.Call("Gateway.Register", &api.RegisterParams{api.Sensor, api.Motion, m.selfIp, m.selfPort}, &m.id)
 	if err != nil {
-		log.Printf("calling error: %+v", err)
+		log.Fatal("calling error: %+v", err)
 	}
 	log.Printf("Device id: %d", m.id)
 	//listen on stdin for motion triggers
@@ -89,7 +89,7 @@ func (m *MotionSensor) getInput() {
 		if err != nil {
 			log.Printf("dialing error: %+v", err)
 		}
-		client.Go("Gateway.ReportMotion", api.ReportMotionParams{m.id, m.state.GetState()}, empty, nil)
+		client.Go("Gateway.ReportMotion", api.ReportMotionParams{m.id, m.state.GetState()}, &empty, nil)
 	}
 }
 

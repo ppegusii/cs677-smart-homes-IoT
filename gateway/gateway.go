@@ -110,7 +110,7 @@ func (g *Gateway) pollTempSensors() {
 					if err != nil {
 						log.Printf("dialing error: %+v", err)
 					}
-					client.Go("SmartOutlet.ChangeState", api.ChangeStateParams{outletId, s}, empty, nil)
+					client.Go("SmartOutlet.ChangeState", api.ChangeStateParams{outletId, s}, &empty, nil)
 				}
 			}
 		}
@@ -204,7 +204,7 @@ func (g *Gateway) sendText() {
 	if err != nil {
 		log.Printf("dialing error: %+v", err)
 	}
-	client.Go("User.TextMessage", &msg, empty, nil)
+	client.Go("User.TextMessage", &msg, &empty, nil)
 }
 
 func (g *Gateway) turnBulbsOn() {
@@ -225,12 +225,12 @@ func (g *Gateway) changeBulbStates(s api.State) {
 		if err != nil {
 			log.Printf("dialing error: %+v", err)
 		}
-		client.Go("SmartBulb.ChangeState", api.ChangeStateParams{bulbId, s}, empty, nil)
+		client.Go("SmartBulb.ChangeState", api.ChangeStateParams{bulbId, s}, &empty, nil)
 	}
 }
 
 func (g *Gateway) ChangeMode(params *api.Mode, _ *struct{}) error {
-	log.Printf("Received change mode request with this info: %+v", params)
+	log.Printf("Received change mode request with this mode: %+v", *params)
 	var err error = nil
 	switch *params {
 	case api.Home:

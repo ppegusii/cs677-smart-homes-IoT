@@ -42,12 +42,12 @@ func (u *User) start() {
 	var client *rpc.Client
 	client, err = rpc.Dial("tcp", u.gatewayIp+":"+u.gatewayPort)
 	if err != nil {
-		log.Printf("dialing error: %+v", err)
+		log.Fatal("dialing error: %+v", err)
 	}
 	var empty struct{}
-	err = client.Call("Gateway.RegisterUser", api.RegisterUserParams{u.selfIp, u.selfPort}, empty)
+	err = client.Call("Gateway.RegisterUser", &api.RegisterUserParams{u.selfIp, u.selfPort}, &empty)
 	if err != nil {
-		log.Printf("calling error: %+v", err)
+		log.Fatal("calling error: %+v", err)
 	}
 	//listen on stdin for user input
 	u.getInput()

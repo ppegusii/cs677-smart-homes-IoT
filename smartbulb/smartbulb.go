@@ -33,11 +33,11 @@ func (s *SmartBulb) start() {
 	var err error
 	client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
 	if err != nil {
-		log.Printf("dialing error: %+v", err)
+		log.Fatal("dialing error: %+v", err)
 	}
 	err = client.Call("Gateway.Register", &api.RegisterParams{api.Device, api.Bulb, s.selfIp, s.selfPort}, &s.id)
 	if err != nil {
-		log.Printf("calling error: %+v", err)
+		log.Fatal("calling error: %+v", err)
 	}
 	log.Printf("Device id: %d", s.id)
 	//RPC server
