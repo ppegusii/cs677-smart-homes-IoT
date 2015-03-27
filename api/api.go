@@ -42,8 +42,13 @@ type GatewayInterface interface {
 	ChangeMode(params *ChangeModeParams, _ *struct{}) error
 }
 
-type SensorInterface interface {
+type MotionSensorInterface interface {
 	QueryState(params *int, reply *QueryStateParams) error
+}
+
+type DeviceInterface interface {
+	QueryState(params *int, reply *QueryStateParams) error
+	ChangeState(params *ChangeStateParams, _ *struct{}) error
 }
 
 type RegisterParams struct {

@@ -11,11 +11,11 @@ import (
 )
 
 type MotionSensor struct {
+	id          int
 	gatewayIp   string
 	gatewayPort string
 	selfIp      string
 	selfPort    string
-	id          int
 }
 
 func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPort string) *MotionSensor {
@@ -29,7 +29,7 @@ func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPo
 
 func (m *MotionSensor) start() {
 	//RPC server
-	var err error = rpc.Register(api.SensorInterface(m))
+	var err error = rpc.Register(api.MotionSensorInterface(m))
 	if err != nil {
 		log.Fatal("rpc.Register error: %s\n", err)
 	}
@@ -75,7 +75,7 @@ func (m *MotionSensor) QueryState(params *int, reply *api.QueryStateParams) erro
 	//MotionSensor is stateless in that it does
 	//not store the current motion state.
 	//It will return no motion by default.
-	reply.DeviceId = *params
+	reply.DeviceId = m.id
 	reply.State = api.MotionStop
 	return nil
 }

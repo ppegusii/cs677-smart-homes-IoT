@@ -99,6 +99,30 @@ func (s *SyncMode) SetMode(mode api.Mode) {
 	s.Unlock()
 }
 
+type SyncState struct {
+	sync.RWMutex
+	s api.State
+}
+
+func NewSyncState(state api.State) *SyncState {
+	return &SyncState{
+		s: state,
+	}
+}
+
+func (s *SyncState) GetState() api.State {
+	s.RLock()
+	var state api.State = s.s
+	s.RUnlock()
+	return state
+}
+
+func (s *SyncState) SetState(state api.State) {
+	s.Lock()
+	s.s = state
+	s.Unlock()
+}
+
 type SyncTimer struct {
 	d time.Duration
 	f func()
