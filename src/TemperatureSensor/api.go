@@ -1,42 +1,6 @@
-package main
- 
-type State int
+package api
 
-const (
-	On          State = iota
-	Off         State = iota
-	MotionStart State = iota
-	MotionStop  State = iota
-)
-
-type TemperatureSensor struct {
-	Type Type
-	Name Name
-	Temp float64
-	Deviceid int
-	Address string
-	Port    string
-}
-
-type SmartAppliance struct {
-	Deviceid int
-	State State
-}
-
-type StateTemperature struct {
-	Deviceid int
-	CurrentTemp float64
-}
-
-type RegisterParams struct {
-	Type Type
-	Name Name
-	//Cannot get caller IP from rpc library.
-	//Might as well send listening port too.
-	Address string
-	Port string
-//	ListenSocket net.TCPAddr
-}
+import ()
 
 type Type int
 
@@ -54,13 +18,69 @@ const (
 	Outlet      Name = iota
 )
 
-type Interface interface {
-	Querystate(args *int, reply *SmartAppliance) error // args is the deviceid
-	Changestate(args *SmartAppliance, reply *int) error // Possible values of reply and its indication are as below:
-	/* Value Meaning
-		-1 -> The DeviceID in the args send by the gateway was incorrect so no state change has been done
-		 0 -> Device ID is correct but the device is already in the state requested by gateway eg: Changestate to Motionstart
-		 for a motion device in start state
-		 1 -> Device ID is correct and state toggle by new state change
-	*/
+type State int
+
+const (
+	On          State = iota
+	Off         State = iota
+	MotionStart State = iota
+	MotionStop  State = iota
+)
+
+type Mode int
+
+const (
+	Home       Mode = iota
+	Away       Mode = iota
+	OutletsOn  Mode = iota
+	OutletsOff Mode = iota
+)
+
+type GatewayInterface interface {
+	Register(params *RegisterParams, reply *int) error
+	ReportMotion(params *ReportMotionParams, _ *struct{}) error
+	ChangeMode(params *ChangeModeParams, _ *struct{}) error
+}
+
+type SensorInterface interface {
+	QueryState(params *int, reply *QueryStateParams) error
+}
+
+type MotionSensorInterface interface {
+	QueryState(params *int, reply *QueryStateParams) error
+}
+
+type TemperatureSensorInterface interface {
+QueryState(params *int, reply *QueryTemperatureParams) error
+}
+
+type RegisterParams struct {
+	Type    Type
+	Name    Name
+	Address string
+	Port    string
+}
+
+type ReportMotionParams struct {
+	DeviceId int
+	State    State
+}
+
+type ChangeModeParams struct {
+	Mode Mode
+}
+
+type ChangeStateParams struct {
+	DeviceId int
+	State    State
+}
+
+type QueryStateParams struct {
+	DeviceId int
+	State    State
+}
+
+type QueryTemperatureParams struct {
+	DeviceId int
+	Temperature float64
 }
