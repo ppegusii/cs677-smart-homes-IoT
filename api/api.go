@@ -1,8 +1,6 @@
 package api
 
-import (
-//"net"
-)
+import ()
 
 type Type int
 
@@ -49,13 +47,10 @@ type SensorInterface interface {
 }
 
 type RegisterParams struct {
-	Type Type
-	Name Name
-	//Cannot get caller IP from rpc library.
-	//Might as well send listening port too.
+	Type    Type
+	Name    Name
 	Address string
 	Port    string
-	//	ListenSocket net.TCPAddr
 }
 
 type ReportMotionParams struct {
