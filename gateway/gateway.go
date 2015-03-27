@@ -205,6 +205,7 @@ func (g *Gateway) changeBulbStates(s api.State) {
 }
 
 func (g *Gateway) ChangeMode(params *api.ChangeModeParams, _ *struct{}) error {
+	//TODO this needs work such as turning on/off lights and starting/stopping timer
 	log.Printf("Received change mode request with this info: %v", params)
 	var err error = nil
 	switch params.Mode {
