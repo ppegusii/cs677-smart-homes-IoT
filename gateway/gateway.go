@@ -205,13 +205,29 @@ func (g *Gateway) changeBulbStates(s api.State) {
 }
 
 func (g *Gateway) ChangeMode(params *api.ChangeModeParams, _ *struct{}) error {
-	//TODO this needs work such as turning on/off lights and starting/stopping timer
 	log.Printf("Received change mode request with this info: %v", params)
 	var err error = nil
 	switch params.Mode {
 	case api.Home:
-	case api.Away:
+		if g.mode.GetMode() == api.Home {
+			break
+		}
 		g.mode.SetMode(params.Mode)
+		//TODO implement the following
+		/*
+			var anyMotion bool = g.checkForMotion()
+			if anyMotion {
+				g.turnBulbsOn()
+			}
+		*/
+		break
+	case api.Away:
+		if g.mode.GetMode() == api.Away {
+			break
+		}
+		g.mode.SetMode(params.Mode)
+		g.bulbTimer.Stop()
+		g.turnBulbsOff()
 		break
 	default:
 		err = errors.New(fmt.Sprintf("Invalid Mode: %v", params.Mode))
