@@ -49,6 +49,10 @@ type MotionSensorInterface interface {
 	QueryState(params *int, reply *QueryStateParams) error
 }
 
+type TemperatureSensorInterface interface {
+	QueryState(params *int, reply *QueryTemperatureParams) error
+}
+
 type DeviceInterface interface {
 	QueryState(params *int, reply *QueryStateParams) error
 	ChangeState(params *ChangeStateParams, _ *struct{}) error
@@ -78,4 +82,9 @@ type ChangeStateParams struct {
 type QueryStateParams struct {
 	DeviceId int
 	State    State
+}
+
+type QueryTemperatureParams struct {
+	DeviceId    int
+	Temperature float64
 }

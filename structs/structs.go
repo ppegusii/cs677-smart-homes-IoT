@@ -123,6 +123,36 @@ func (s *SyncState) SetState(state api.State) {
 	s.Unlock()
 }
 
+type SyncFloat64 struct {
+	sync.RWMutex
+	f float64
+}
+
+func NewSyncFloat64(f float64) *SyncFloat64 {
+	return &SyncFloat64{
+		f: f,
+	}
+}
+
+func (s *SyncFloat64) Get() float64 {
+	s.RLock()
+	var r = s.f
+	s.RUnlock()
+	return r
+}
+
+func (s *SyncFloat64) Set(r float64) {
+	s.Lock()
+	s.f = r
+	s.Unlock()
+}
+
+func (s *SyncFloat64) Change(delta float64) {
+	s.Lock()
+	s.f += delta
+	s.Unlock()
+}
+
 type SyncTimer struct {
 	d time.Duration
 	f func()
