@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"log"
 	"net"
 	"net/rpc"
@@ -16,6 +17,7 @@ type MotionSensor struct {
 	gatewayPort string
 	selfIp      string
 	selfPort    string
+	state       structs.SyncState
 }
 
 func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPort string) *MotionSensor {
@@ -24,6 +26,7 @@ func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPo
 		gatewayPort: gatewayPort,
 		selfIp:      selfIp,
 		selfPort:    selfPort,
+		state:       *structs.NewSyncState(api.MotionStop),
 	}
 }
 
@@ -59,23 +62,39 @@ func (m *MotionSensor) getInput() {
 	reader := bufio.NewReader(os.Stdin)
 	var empty struct{}
 	for {
-		fmt.Print("Hit enter to trigger motion sensor")
-		reader.ReadString('\n')
+		fmt.Print("Enter (0/1) to signal (nomotion/motion): ")
+		input, _ := reader.ReadString('\n')
+		switch input {
+		case "0\n":
+			if m.state.GetState() == api.MotionStop {
+				fmt.Println("No change")
+				continue
+			}
+			m.state.SetState(api.MotionStop)
+			break
+		case "1\n":
+			if m.state.GetState() == api.MotionStart {
+				fmt.Println("No change")
+				continue
+			}
+			m.state.SetState(api.MotionStart)
+			break
+		default:
+			fmt.Println("Invalid input")
+			continue
+		}
 		var client *rpc.Client
 		var err error
 		client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
 		if err != nil {
 			log.Printf("dialing error: %v", err)
 		}
-		client.Go("Gateway.ReportMotion", api.ReportMotionParams{m.id, api.MotionStart}, empty, nil)
+		client.Go("Gateway.ReportMotion", api.ReportMotionParams{m.id, m.state.GetState()}, empty, nil)
 	}
 }
 
 func (m *MotionSensor) QueryState(params *int, reply *api.QueryStateParams) error {
-	//MotionSensor is stateless in that it does
-	//not store the current motion state.
-	//It will return no motion by default.
 	reply.DeviceId = m.id
-	reply.State = api.MotionStop
+	reply.State = m.state.GetState()
 	return nil
 }

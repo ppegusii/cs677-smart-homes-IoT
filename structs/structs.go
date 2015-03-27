@@ -138,6 +138,13 @@ func (s *SyncTimer) Reset() bool {
 	return active
 }
 
+func (s *SyncTimer) Stop() bool {
+	s.Lock()
+	var active bool = s.t.Stop()
+	s.Unlock()
+	return active
+}
+
 func NewSyncTimer(d time.Duration, f func()) *SyncTimer {
 	var s *SyncTimer = &SyncTimer{
 		d: d,

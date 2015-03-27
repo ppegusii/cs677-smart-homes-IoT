@@ -163,7 +163,17 @@ func (g *Gateway) ReportMotion(params *api.ReportMotionParams, _ *struct{}) erro
 	}
 	switch g.mode.GetMode() {
 	case api.Home:
-		g.turnBulbsOn()
+		switch params.State {
+		case api.MotionStart:
+			var timerActive bool = g.bulbTimer.Stop()
+			if !timerActive {
+				g.turnBulbsOn()
+			}
+			break
+		case api.MotionStop:
+			g.bulbTimer.Reset()
+			break
+		}
 		break
 	case api.Away:
 		//TODO g.sendText()
@@ -173,10 +183,7 @@ func (g *Gateway) ReportMotion(params *api.ReportMotionParams, _ *struct{}) erro
 }
 
 func (g *Gateway) turnBulbsOn() {
-	var timerActive bool = g.bulbTimer.Reset()
-	if !timerActive {
-		g.changeBulbStates(api.On)
-	}
+	g.changeBulbStates(api.On)
 }
 
 func (g *Gateway) turnBulbsOff() {
