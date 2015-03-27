@@ -30,8 +30,11 @@ const (
 type Mode int
 
 const (
-	Home       Mode = iota
-	Away       Mode = iota
+	Home Mode = iota
+	Away Mode = iota
+	//These states indicate whether the
+	//gateway believes smart outlets are
+	//on or off.
 	OutletsOn  Mode = iota
 	OutletsOff Mode = iota
 )
