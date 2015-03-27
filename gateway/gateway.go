@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"log"
 	"net"
 	"net/rpc"
@@ -11,47 +12,33 @@ import (
 )
 
 type Gateway struct {
-	bulbDev         syncMapIntBool
-	bulbTimer       syncTimer
+	bulbDev         structs.SyncMapIntBool
+	bulbTimer       structs.SyncTimer
 	ip              string
-	mode            syncMode
-	motionSen       syncMapIntBool
-	outletDev       syncMapIntBool
-	outletMode      syncMode
+	mode            structs.SyncMode
+	motionSen       structs.SyncMapIntBool
+	outletDev       structs.SyncMapIntBool
+	outletMode      structs.SyncMode
 	pollingInterval int
 	port            string
-	senAndDev       syncMapIntRegParam
-	tempSen         syncMapIntBool
+	senAndDev       structs.SyncMapIntRegParam
+	tempSen         structs.SyncMapIntBool
 }
 
 func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gateway {
 	var g *Gateway = &Gateway{
-		bulbDev: syncMapIntBool{
-			m: make(map[int]bool),
-		},
-		ip: ip,
-		mode: syncMode{
-			m: mode,
-		},
-		motionSen: syncMapIntBool{
-			m: make(map[int]bool),
-		},
-		outletDev: syncMapIntBool{
-			m: make(map[int]bool),
-		},
-		outletMode: syncMode{
-			m: api.OutletsOff,
-		},
+		bulbDev:         *structs.NewSyncMapIntBool(),
+		ip:              ip,
+		mode:            *structs.NewSyncMode(mode),
+		motionSen:       *structs.NewSyncMapIntBool(),
+		outletDev:       *structs.NewSyncMapIntBool(),
+		outletMode:      *structs.NewSyncMode(api.OutletsOff),
 		pollingInterval: pollingInterval,
 		port:            port,
-		senAndDev: syncMapIntRegParam{
-			m: make(map[int]*api.RegisterParams),
-		},
-		tempSen: syncMapIntBool{
-			m: make(map[int]bool),
-		},
+		senAndDev:       *structs.NewSyncMapIntRegParam(),
+		tempSen:         *structs.NewSyncMapIntBool(),
 	}
-	g.bulbTimer = *newSyncTimer(5*time.Minute, g.turnBulbsOff)
+	g.bulbTimer = *structs.NewSyncTimer(5*time.Minute, g.turnBulbsOff)
 	return g
 }
 
@@ -74,7 +61,7 @@ func (g *Gateway) pollTempSensors() {
 	//many temperature sensors
 	var ticker *time.Ticker = time.NewTicker(time.Duration(g.pollingInterval) * time.Second)
 	for range ticker.C {
-		var tempIdRegParams map[int]*api.RegisterParams = *g.senAndDev.getRegParams(g.tempSen.getInts())
+		var tempIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.tempSen.GetInts())
 		if len(tempIdRegParams) != 0 {
 			var tempVal float64 = 0
 			for tempId, regParams := range tempIdRegParams {
@@ -93,13 +80,13 @@ func (g *Gateway) pollTempSensors() {
 			//update the outlets
 			//just using the last tempVal
 			var s api.State
-			var outletState api.Mode = g.outletMode.getMode()
+			var outletState api.Mode = g.outletMode.GetMode()
 			if tempVal < 1 && outletState == api.OutletsOff {
 				s = api.On
-				g.outletMode.setMode(api.OutletsOn)
+				g.outletMode.SetMode(api.OutletsOn)
 			} else if tempVal > 2 && outletState == api.OutletsOn {
 				s = api.Off
-				g.outletMode.setMode(api.OutletsOff)
+				g.outletMode.SetMode(api.OutletsOff)
 			} else {
 				switch outletState {
 				case api.OutletsOff:
@@ -110,7 +97,7 @@ func (g *Gateway) pollTempSensors() {
 					break
 				}
 			}
-			var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.getRegParams(g.outletDev.getInts())
+			var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.outletDev.GetInts())
 			if len(outletIdRegParams) != 0 {
 				var empty struct{}
 				for outletId, regParams := range outletIdRegParams {
@@ -135,12 +122,12 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	case api.Sensor:
 		switch params.Name {
 		case api.Motion:
-			id = g.senAndDev.addRegParam(params)
-			g.motionSen.addInt(id)
+			id = g.senAndDev.AddRegParam(params)
+			g.motionSen.AddInt(id)
 			break
 		case api.Temperature:
-			id = g.senAndDev.addRegParam(params)
-			g.tempSen.addInt(id)
+			id = g.senAndDev.AddRegParam(params)
+			g.tempSen.AddInt(id)
 			break
 		default:
 			err = errors.New(fmt.Sprintf("Invalid Sensor Name: %v", params.Name))
@@ -150,12 +137,12 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	case api.Device:
 		switch params.Name {
 		case api.Bulb:
-			id = g.senAndDev.addRegParam(params)
-			g.bulbDev.addInt(id)
+			id = g.senAndDev.AddRegParam(params)
+			g.bulbDev.AddInt(id)
 			break
 		case api.Outlet:
-			id = g.senAndDev.addRegParam(params)
-			g.outletDev.addInt(id)
+			id = g.senAndDev.AddRegParam(params)
+			g.outletDev.AddInt(id)
 			break
 		default:
 			err = errors.New(fmt.Sprintf("Invalid Device Name: %v", params.Name))
@@ -170,11 +157,11 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 
 func (g *Gateway) ReportMotion(params *api.ReportMotionParams, _ *struct{}) error {
 	log.Printf("Received motion report with this info: %v", params)
-	var exists bool = g.motionSen.exists(params.DeviceId)
+	var exists bool = g.motionSen.Exists(params.DeviceId)
 	if !exists {
 		return errors.New(fmt.Sprintf("Device with following id not motion sensor or not registered: %v", params.DeviceId))
 	}
-	switch g.mode.getMode() {
+	switch g.mode.GetMode() {
 	case api.Home:
 		g.turnBulbsOn()
 		break
@@ -186,7 +173,7 @@ func (g *Gateway) ReportMotion(params *api.ReportMotionParams, _ *struct{}) erro
 }
 
 func (g *Gateway) turnBulbsOn() {
-	var timerActive bool = g.bulbTimer.reset()
+	var timerActive bool = g.bulbTimer.Reset()
 	if !timerActive {
 		g.changeBulbStates(api.On)
 	}
@@ -197,7 +184,7 @@ func (g *Gateway) turnBulbsOff() {
 }
 
 func (g *Gateway) changeBulbStates(s api.State) {
-	var bulbIdRegParams map[int]*api.RegisterParams = *g.senAndDev.getRegParams(g.bulbDev.getInts())
+	var bulbIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.bulbDev.GetInts())
 	var empty struct{}
 	for bulbId, regParams := range bulbIdRegParams {
 		var client *rpc.Client
@@ -216,7 +203,7 @@ func (g *Gateway) ChangeMode(params *api.ChangeModeParams, _ *struct{}) error {
 	switch params.Mode {
 	case api.Home:
 	case api.Away:
-		g.mode.setMode(params.Mode)
+		g.mode.SetMode(params.Mode)
 		break
 	default:
 		err = errors.New(fmt.Sprintf("Invalid Mode: %v", params.Mode))
