@@ -1,0 +1,913 @@
+This example shows poll only based sensors operating heating equipment may need small polling intervals to prevent dangerous situations.
+
+1. Launch all 6 processes starting with the gateway. Note the initial temperature given by the temperature sensor is 0 and the gateway polls the temperature sensor every minute.
+2. After polling the temperature sensor, the gateway turns on the outlet.
+3. Increase the temperature sensor rapidly to 217 to simulate fire.
+8. After polling the temperature sensor, the gateway turns off the outlet.
+
+Output of gateway:
+2015/03/27 23:45:23 Current mode: Home
+2015/03/27 23:45:26 Attempting to register device with this info: &{Type:1 Name:2 Address: Port:6772}
+2015/03/27 23:45:29 Attempting to register device with this info: &{Type:1 Name:3 Address:127.0.0.1 Port:6774}
+2015/03/27 23:45:32 Registering user with info: &{Address: Port:6775}
+2015/03/27 23:45:34 Attempting to register device with this info: &{Type:0 Name:0 Address: Port:6773}
+2015/03/27 23:45:37 Attempting to register device with this info: &{Type:0 Name:1 Address: Port:6771}
+2015/03/27 23:46:23 Received temp: 0.000000
+2015/03/27 23:47:23 Received temp: 217.000000
+
+Output of outlet:
+2015/03/27 23:45:29 Device id: 1
+2015/03/27 23:45:29 Current state: Off
+2015/03/27 23:46:23 Received change state request with info: &{DeviceId:1 State:0}
+2015/03/27 23:46:23 Current state: On
+2015/03/27 23:47:23 Received change state request with info: &{DeviceId:1 State:1}
+2015/03/27 23:47:23 Current state: Off
+
+Output of temperature sensor:
+2015/03/27 23:45:34 Device id: 2
+2015/03/27 23:45:35 Current temp: 0.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:25 Current temp: 1.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:25 Current temp: 2.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:26 Current temp: 3.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:26 Current temp: 4.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:26 Current temp: 5.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:26 Current temp: 6.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:27 Current temp: 7.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:27 Current temp: 8.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:27 Current temp: 9.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:27 Current temp: 10.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:27 Current temp: 11.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:28 Current temp: 12.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:28 Current temp: 13.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:28 Current temp: 14.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:28 Current temp: 15.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:28 Current temp: 16.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:29 Current temp: 17.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:29 Current temp: 18.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:29 Current temp: 19.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:29 Current temp: 20.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:29 Current temp: 21.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:30 Current temp: 22.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:30 Current temp: 23.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	
+1
+
+Invalid Input, Enter either 1 or 0
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+11
+
+Invalid Input, Enter either 1 or 0
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:30 Current temp: 24.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:31 Current temp: 25.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	
+1
+
+Invalid Input, Enter either 1 or 0
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	
+11
+
+2015/03/27 23:46:31 Current temp: 26.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+11
+
+Invalid Input, Enter either 1 or 0
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:32 Current temp: 27.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:32 Current temp: 28.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:32 Current temp: 29.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:32 Current temp: 30.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:33 Current temp: 31.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:33 Current temp: 32.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:33 Current temp: 33.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:33 Current temp: 34.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:34 Current temp: 35.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:34 Current temp: 36.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:34 Current temp: 37.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:35 Current temp: 38.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:35 Current temp: 39.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:35 Current temp: 40.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:35 Current temp: 41.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:36 Current temp: 42.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:36 Current temp: 43.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:36 Current temp: 44.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:36 Current temp: 45.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:37 Current temp: 46.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:37 Current temp: 47.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:37 Current temp: 48.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:37 Current temp: 49.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:37 Current temp: 50.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:38 Current temp: 51.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:38 Current temp: 52.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:38 Current temp: 53.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:38 Current temp: 54.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:39 Current temp: 55.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:39 Current temp: 56.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:39 Current temp: 57.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:39 Current temp: 58.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:40 Current temp: 59.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:40 Current temp: 60.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:40 Current temp: 61.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:40 Current temp: 62.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:41 Current temp: 63.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:41 Current temp: 64.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:41 Current temp: 65.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:41 Current temp: 66.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:41 Current temp: 67.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:42 Current temp: 68.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:42 Current temp: 69.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:42 Current temp: 70.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:42 Current temp: 71.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:43 Current temp: 72.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:43 Current temp: 73.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:43 Current temp: 74.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:43 Current temp: 75.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:44 Current temp: 76.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:44 Current temp: 77.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:44 Current temp: 78.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:44 Current temp: 79.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:45 Current temp: 80.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:45 Current temp: 81.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:45 Current temp: 82.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:45 Current temp: 83.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:46 Current temp: 84.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:46 Current temp: 85.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:46 Current temp: 86.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:46 Current temp: 87.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:47 Current temp: 88.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:47 Current temp: 89.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:47 Current temp: 90.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:48 Current temp: 91.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:48 Current temp: 92.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:48 Current temp: 93.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:48 Current temp: 94.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:49 Current temp: 95.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:49 Current temp: 96.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:49 Current temp: 97.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:49 Current temp: 98.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:50 Current temp: 99.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:50 Current temp: 100.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:50 Current temp: 101.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:50 Current temp: 102.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:51 Current temp: 103.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:51 Current temp: 104.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:51 Current temp: 105.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:52 Current temp: 106.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:52 Current temp: 107.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:52 Current temp: 108.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:53 Current temp: 109.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:53 Current temp: 110.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:53 Current temp: 111.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:53 Current temp: 112.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:54 Current temp: 113.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:54 Current temp: 114.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:54 Current temp: 115.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:54 Current temp: 116.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:55 Current temp: 117.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:55 Current temp: 118.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:55 Current temp: 119.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:56 Current temp: 120.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:56 Current temp: 121.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:56 Current temp: 122.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:56 Current temp: 123.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:57 Current temp: 124.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:57 Current temp: 125.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:57 Current temp: 126.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:58 Current temp: 127.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:58 Current temp: 128.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:58 Current temp: 129.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:58 Current temp: 130.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:59 Current temp: 131.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:59 Current temp: 132.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:59 Current temp: 133.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:46:59 Current temp: 134.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:00 Current temp: 135.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:00 Current temp: 136.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:00 Current temp: 137.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:01 Current temp: 138.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:01 Current temp: 139.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:01 Current temp: 140.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:01 Current temp: 141.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:02 Current temp: 142.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:02 Current temp: 143.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:02 Current temp: 144.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:03 Current temp: 145.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:03 Current temp: 146.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:03 Current temp: 147.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:03 Current temp: 148.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:04 Current temp: 149.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:04 Current temp: 150.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:04 Current temp: 151.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:05 Current temp: 152.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:05 Current temp: 153.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:05 Current temp: 154.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:05 Current temp: 155.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:06 Current temp: 156.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:06 Current temp: 157.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:06 Current temp: 158.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:06 Current temp: 159.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:07 Current temp: 160.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:07 Current temp: 161.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:07 Current temp: 162.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:08 Current temp: 163.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:08 Current temp: 164.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:08 Current temp: 165.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:08 Current temp: 166.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:09 Current temp: 167.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:09 Current temp: 168.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:09 Current temp: 169.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:10 Current temp: 170.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:10 Current temp: 171.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:10 Current temp: 172.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:10 Current temp: 173.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:11 Current temp: 174.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:11 Current temp: 175.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:11 Current temp: 176.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:12 Current temp: 177.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:12 Current temp: 178.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:12 Current temp: 179.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:12 Current temp: 180.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:13 Current temp: 181.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:13 Current temp: 182.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:13 Current temp: 183.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:14 Current temp: 184.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:14 Current temp: 185.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:14 Current temp: 186.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:14 Current temp: 187.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:15 Current temp: 188.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:15 Current temp: 189.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:15 Current temp: 190.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:16 Current temp: 191.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:16 Current temp: 192.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:16 Current temp: 193.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:16 Current temp: 194.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:17 Current temp: 195.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:17 Current temp: 196.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:17 Current temp: 197.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:18 Current temp: 198.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:18 Current temp: 199.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:18 Current temp: 200.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:18 Current temp: 201.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:19 Current temp: 202.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:19 Current temp: 203.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:19 Current temp: 204.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:20 Current temp: 205.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:20 Current temp: 206.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:20 Current temp: 207.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:20 Current temp: 208.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:21 Current temp: 209.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:21 Current temp: 210.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:21 Current temp: 211.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:22 Current temp: 212.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:22 Current temp: 213.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:22 Current temp: 214.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:22 Current temp: 215.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:23 Current temp: 216.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 23:47:23 Current temp: 217.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature :
