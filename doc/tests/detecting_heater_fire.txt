@@ -1,3 +1,6 @@
+In a nutshell, the only latency difference between push and pull methods is the time difference between event occurrence and the end of the polling interval in pull based sensors.
+As the polling interval decreases, the average difference must also decrease, but this also increases the polling traffic.
+
 This example shows poll only based sensors operating heating equipment may need small polling intervals to prevent dangerous situations.
 
 1. Launch all 6 processes starting with the gateway. Note the initial temperature given by the temperature sensor is 0 and the gateway polls the temperature sensor every minute.
