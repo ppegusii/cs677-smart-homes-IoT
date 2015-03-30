@@ -94,11 +94,11 @@ func (m *MotionSensor) getInput() {
 			log.Printf("dialing error: %+v", err)
 			continue
 		}
-		client.Go("Gateway.ReportMotion", api.ReportStateParams{m.id, m.state.GetState()}, &empty, nil)
+		client.Go("Gateway.ReportMotion", api.StateInfo{DeviceId: m.id, State: m.state.GetState()}, &empty, nil)
 	}
 }
 
-func (m *MotionSensor) QueryState(params *int, reply *api.QueryStateParams) error {
+func (m *MotionSensor) QueryState(params *int, reply *api.StateInfo) error {
 	reply.DeviceId = m.id
 	reply.State = m.state.GetState()
 	return nil

@@ -43,31 +43,27 @@ const (
 )
 
 type DatabaseInterface interface {
-	AddDeviceOrSensor(params *int, reply *QueryStateParams) error
-	GetState(params *int, reply *CurrentState) error
-	AddState(params *CurrentState, _ *struct{}) error
-	AddEvent(params *CurrentState, _ *struct{}) error
+	AddDeviceOrSensor(params *int, reply *RegisterParams) error
+	GetState(params *int, reply *StateInfo) error
+	AddState(params *StateInfo, _ *struct{}) error
+	AddEvent(params *StateInfo, _ *struct{}) error
 }
 
 type DeviceInterface interface {
-	QueryState(params *int, reply *QueryStateParams) error
-	ChangeState(params *ChangeStateParams, _ *struct{}) error
+	QueryState(params *int, reply *StateInfo) error
+	ChangeState(params *StateInfo, _ *struct{}) error
 }
 
 type GatewayInterface interface {
 	ChangeMode(params *Mode, _ *struct{}) error
 	Register(params *RegisterParams, reply *int) error
 	RegisterUser(params *RegisterUserParams, _ *struct{}) error
-	ReportMotion(params *ReportStateParams, _ *struct{}) error
-	ReportDoorState(params *ReportStateParams, _ *struct{}) error
+	ReportMotion(params *StateInfo, _ *struct{}) error
+	ReportDoorState(params *StateInfo, _ *struct{}) error
 }
 
 type SensorInterface interface {
-	QueryState(params *int, reply *QueryStateParams) error
-}
-
-type TemperatureSensorInterface interface {
-	QueryState(params *int, reply *QueryTemperatureParams) error
+	QueryState(params *int, reply *StateInfo) error
 }
 
 type UserInterface interface {
@@ -86,33 +82,9 @@ type RegisterUserParams struct {
 	Port    string
 }
 
-type CurrentState struct {
+type StateInfo struct {
 	//TODO add clock
 	DeviceId int
 	State    State
 	UnixTime int64
-}
-
-//To be replaced by CurrentState
-type ReportStateParams struct {
-	DeviceId int
-	State    State
-}
-
-//To be replaced by CurrentState
-type ChangeStateParams struct {
-	DeviceId int
-	State    State
-}
-
-//To be replaced by CurrentState
-type QueryStateParams struct {
-	DeviceId int
-	State    State
-}
-
-//Maybe be replaced by CurrentState
-type QueryTemperatureParams struct {
-	DeviceId    int
-	Temperature float64
 }

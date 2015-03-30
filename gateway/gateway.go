@@ -68,7 +68,7 @@ func (g *Gateway) pollTempSensors() {
 	for range ticker.C {
 		var tempIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.tempSen.GetInts())
 		if len(tempIdRegParams) != 0 {
-			var tempReply api.QueryTemperatureParams
+			var tempReply api.StateInfo
 			for tempId, regParams := range tempIdRegParams {
 				var client *rpc.Client
 				var err error
@@ -81,11 +81,11 @@ func (g *Gateway) pollTempSensors() {
 				if err != nil {
 					log.Printf("calling error: %+v", err)
 				}
-				log.Printf("Received temp: %f", tempReply.Temperature)
+				log.Printf("Received temp: %d", tempReply.State)
 			}
 			//update the outlets
 			//just using the last tempVal
-			var tempVal float64 = tempReply.Temperature
+			var tempVal api.State = tempReply.State
 			var s api.State
 			var outletState api.Mode = g.outletMode.GetMode()
 			if tempVal < 1 && outletState == api.OutletsOff {
@@ -115,7 +115,7 @@ func (g *Gateway) pollTempSensors() {
 						log.Printf("dialing error: %+v", err)
 						continue
 					}
-					client.Go("SmartOutlet.ChangeState", api.ChangeStateParams{outletId, s}, &empty, nil)
+					client.Go("SmartOutlet.ChangeState", api.StateInfo{DeviceId: outletId, State: s}, &empty, nil)
 				}
 			}
 		}
@@ -173,7 +173,7 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	return err
 }
 
-func (g *Gateway) ReportMotion(params *api.ReportStateParams, _ *struct{}) error {
+func (g *Gateway) ReportMotion(params *api.StateInfo, _ *struct{}) error {
 	log.Printf("Received motion report with this info: %+v", params)
 	var exists bool = g.motionSen.Exists(params.DeviceId)
 	if !exists {
@@ -238,7 +238,7 @@ func (g *Gateway) changeBulbStates(s api.State) {
 			log.Printf("dialing error: %+v", err)
 			continue
 		}
-		client.Go("SmartBulb.ChangeState", api.ChangeStateParams{bulbId, s}, &empty, nil)
+		client.Go("SmartBulb.ChangeState", api.StateInfo{DeviceId: bulbId, State: s}, &empty, nil)
 	}
 }
 
@@ -291,7 +291,7 @@ func logCurrentMode(m api.Mode) {
 func (g *Gateway) checkForMotion() bool {
 	var motionIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.motionSen.GetInts())
 	if len(motionIdRegParams) != 0 {
-		var queryStateParams api.QueryStateParams
+		var queryStateParams api.StateInfo
 		for motionId, regParams := range motionIdRegParams {
 			var client *rpc.Client
 			var err error
@@ -316,7 +316,7 @@ func (g *Gateway) checkForMotion() bool {
 //Receives state changes from door sensors.
 //Analyzes the happens before relationship between indoor motion sensing and door opening to infer occupancy.
 //Based on the occupancy state, it changes the mode of the gateway to Home or Away.
-func (g *Gateway) ReportDoorState(params *api.ReportStateParams, _ *struct{}) error {
+func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	//TODO write to database, do interesting happens before analysis to change mode to Home/Away
 	return nil
 }

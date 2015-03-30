@@ -55,14 +55,14 @@ func (s *SmartOutlet) start() {
 	rpc.Accept(listener)
 }
 
-func (s *SmartOutlet) QueryState(params *int, reply *api.QueryStateParams) error {
+func (s *SmartOutlet) QueryState(params *int, reply *api.StateInfo) error {
 	//this will not be called in practice
 	reply.DeviceId = s.id
 	reply.State = s.state.GetState()
 	return nil
 }
 
-func (s *SmartOutlet) ChangeState(params *api.ChangeStateParams, _ *struct{}) error {
+func (s *SmartOutlet) ChangeState(params *api.StateInfo, _ *struct{}) error {
 	log.Printf("Received change state request with info: %+v", params)
 	s.state.SetState(params.State)
 	util.LogCurrentState(s.state.GetState())

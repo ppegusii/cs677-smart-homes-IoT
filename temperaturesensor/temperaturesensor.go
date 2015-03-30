@@ -17,22 +17,22 @@ type TemperatureSensor struct {
 	gatewayPort string
 	selfIp      string
 	selfPort    string
-	temperature structs.SyncFloat64
+	temperature structs.SyncState
 }
 
-func newTemperatureSensor(temperature float64, gatewayIp string, gatewayPort string, selfIp string, selfPort string) *TemperatureSensor {
+func newTemperatureSensor(temperature api.State, gatewayIp string, gatewayPort string, selfIp string, selfPort string) *TemperatureSensor {
 	return &TemperatureSensor{
 		gatewayIp:   gatewayIp,
 		gatewayPort: gatewayPort,
 		selfIp:      selfIp,
 		selfPort:    selfPort,
-		temperature: *structs.NewSyncFloat64(temperature),
+		temperature: *structs.NewSyncState(temperature),
 	}
 }
 
 func (t *TemperatureSensor) start() {
 	//RPC server
-	var err error = rpc.Register(api.TemperatureSensorInterface(t))
+	var err error = rpc.Register(api.SensorInterface(t))
 	if err != nil {
 		log.Fatal("rpc.Register error: %s\n", err)
 	}
@@ -53,7 +53,7 @@ func (t *TemperatureSensor) start() {
 		log.Fatal("calling error: %+v", err)
 	}
 	log.Printf("Device id: %d", t.id)
-	logCurrentTemp(t.temperature.Get())
+	logCurrentTemp(t.temperature.GetState())
 	//listen on stdin for temperature triggers
 	t.getInput()
 }
@@ -61,6 +61,7 @@ func (t *TemperatureSensor) start() {
 func (t *TemperatureSensor) getInput() {
 	//http://stackoverflow.com/questions/20895552/how-to-read-input-from-console-line
 	reader := bufio.NewReader(os.Stdin)
+	var temp api.State
 	for {
 		fmt.Print("Enter 1 to increase the temperature , Enter 0 to decrease the temperature : \t")
 		text, _ := reader.ReadString('\n')
@@ -69,12 +70,14 @@ func (t *TemperatureSensor) getInput() {
 		// Based on the user input simulate the increase or decrease of temperature
 		switch text {
 		case "0\n":
-			t.temperature.Change(-1.0)
-			logCurrentTemp(t.temperature.Get())
+			temp = t.temperature.GetState()
+			t.temperature.SetState(temp - 1)
+			logCurrentTemp(t.temperature.GetState())
 			break
 		case "1\n":
-			t.temperature.Change(1.0)
-			logCurrentTemp(t.temperature.Get())
+			temp = t.temperature.GetState()
+			t.temperature.SetState(temp + 1)
+			logCurrentTemp(t.temperature.GetState())
 			break
 		default:
 			fmt.Println("Invalid Input, Enter either 1 or 0")
@@ -83,12 +86,12 @@ func (t *TemperatureSensor) getInput() {
 	}
 }
 
-func (t *TemperatureSensor) QueryState(params *int, reply *api.QueryTemperatureParams) error {
+func (t *TemperatureSensor) QueryState(params *int, reply *api.StateInfo) error {
 	reply.DeviceId = t.id
-	reply.Temperature = t.temperature.Get()
+	reply.State = t.temperature.GetState()
 	return nil
 }
 
-func logCurrentTemp(t float64) {
-	log.Printf("Current temp: %f", t)
+func logCurrentTemp(t api.State) {
+	log.Printf("Current temp: %d", t)
 }
