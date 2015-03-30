@@ -14,6 +14,7 @@ import (
 type Gateway struct {
 	bulbDev         structs.SyncMapIntBool
 	bulbTimer       structs.SyncTimer
+	doorSen         structs.SyncMapIntBool
 	ip              string
 	mode            structs.SyncMode
 	motionSen       structs.SyncMapIntBool
@@ -29,6 +30,7 @@ type Gateway struct {
 func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gateway {
 	var g *Gateway = &Gateway{
 		bulbDev:         *structs.NewSyncMapIntBool(),
+		doorSen:         *structs.NewSyncMapIntBool(),
 		ip:              ip,
 		mode:            *structs.NewSyncMode(mode),
 		motionSen:       *structs.NewSyncMapIntBool(),
@@ -133,6 +135,10 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	switch params.Type {
 	case api.Sensor:
 		switch params.Name {
+		case api.Door:
+			id = g.senAndDev.AddRegParam(params)
+			g.doorSen.AddInt(id)
+			break
 		case api.Motion:
 			id = g.senAndDev.AddRegParam(params)
 			g.motionSen.AddInt(id)
@@ -167,7 +173,7 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	return err
 }
 
-func (g *Gateway) ReportMotion(params *api.ReportMotionParams, _ *struct{}) error {
+func (g *Gateway) ReportMotion(params *api.ReportStateParams, _ *struct{}) error {
 	log.Printf("Received motion report with this info: %+v", params)
 	var exists bool = g.motionSen.Exists(params.DeviceId)
 	if !exists {
@@ -305,4 +311,12 @@ func (g *Gateway) checkForMotion() bool {
 		}
 	}
 	return false
+}
+
+//Receives state changes from door sensors.
+//Analyzes the happens before relationship between indoor motion sensing and door opening to infer occupancy.
+//Based on the occupancy state, it changes the mode of the gateway to Home or Away.
+func (g *Gateway) ReportDoorState(params *api.ReportStateParams, _ *struct{}) error {
+	//TODO write to database, do interesting happens before analysis to change mode to Home/Away
+	return nil
 }

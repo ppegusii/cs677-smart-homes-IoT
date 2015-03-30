@@ -5,58 +5,62 @@ import ()
 type Type int
 
 const (
-	Sensor Type = iota //0
-	Device Type = iota //1
+	Sensor Type = iota
+	Device Type = iota
 )
 
 type Name int
 
 const (
-	Temperature Name = iota //0
-	Motion      Name = iota //1
-	Bulb        Name = iota //2
-	Outlet      Name = iota //3
+	Bulb        Name = iota
+	Door        Name = iota
+	Motion      Name = iota
+	Outlet      Name = iota
+	Temperature Name = iota
 )
 
 type State int
 
 const (
-	On          State = iota //0
-	Off         State = iota //1
-	MotionStart State = iota //2
-	MotionStop  State = iota //3
+	Closed      State = iota
+	MotionStart State = iota
+	MotionStop  State = iota
+	Off         State = iota
+	On          State = iota
+	Open        State = iota
 )
 
 type Mode int
 
 const (
-	Home Mode = iota //0
-	Away Mode = iota //1
+	Home Mode = iota
+	Away Mode = iota
 	//These states indicate whether the
 	//gateway believes smart outlets are
 	//on or off.
-	OutletsOn  Mode = iota //2
-	OutletsOff Mode = iota //3
+	OutletsOn  Mode = iota
+	OutletsOff Mode = iota
 )
 
 type GatewayInterface interface {
 	ChangeMode(params *Mode, _ *struct{}) error
 	Register(params *RegisterParams, reply *int) error
 	RegisterUser(params *RegisterUserParams, _ *struct{}) error
-	ReportMotion(params *ReportMotionParams, _ *struct{}) error
-}
-
-type MotionSensorInterface interface {
-	QueryState(params *int, reply *QueryStateParams) error
-}
-
-type TemperatureSensorInterface interface {
-	QueryState(params *int, reply *QueryTemperatureParams) error
+	ReportMotion(params *ReportStateParams, _ *struct{}) error
+	ReportDoorState(params *ReportStateParams, _ *struct{}) error
 }
 
 type DeviceInterface interface {
 	QueryState(params *int, reply *QueryStateParams) error
 	ChangeState(params *ChangeStateParams, _ *struct{}) error
+}
+
+type SensorInterface interface {
+	QueryState(params *int, reply *QueryStateParams) error
+}
+
+type TemperatureSensorInterface interface {
+	QueryState(params *int, reply *QueryTemperatureParams) error
 }
 
 type UserInterface interface {
@@ -75,7 +79,7 @@ type RegisterUserParams struct {
 	Port    string
 }
 
-type ReportMotionParams struct {
+type ReportStateParams struct {
 	DeviceId int
 	State    State
 }
