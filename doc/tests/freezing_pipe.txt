@@ -1,0 +1,91 @@
+1. Launch all 6 processes starting with the gateway. Note the initial temperature given by the temperature sensor is 0 and the gateway polls the temperature sensor every minute.
+2. After polling the temperature sensor, the gateway turns on the outlet.
+3. Increase the temperature sensor to 1.
+4. After polling the temperature sensor, the gateway does not change the state of the outlet.
+5. Increase the temperature sensor to 2.
+6. After polling the temperature sensor, the gateway does not change the state of the outlet.
+7. Increase the temperature sensor to 3.
+8. After polling the temperature sensor, the gateway turns off the outlet.
+9. Decrease the temperature sensor to 2.
+10. After polling the temperature sensor, the gateway does not change the state of the outlet.
+11. Decrease the temperature sensor to 1.
+12. After polling the temperature sensor, the gateway does not change the state of the outlet.
+13. Decrease the temperature sensor to 0.
+14. After polling the temperature sensor, the gateway turns on the outlet.
+
+Output of gateway:
+2015/03/27 22:01:29 Current mode: Home
+2015/03/27 22:01:34 Attempting to register device with this info: &{Type:1 Name:2 Address: Port:6772}
+2015/03/27 22:01:42 Attempting to register device with this info: &{Type:1 Name:3 Address:127.0.0.1 Port:6774}
+2015/03/27 22:01:46 Attempting to register device with this info: &{Type:0 Name:1 Address: Port:6771}
+2015/03/27 22:01:50 Attempting to register device with this info: &{Type:0 Name:0 Address: Port:6773}
+2015/03/27 22:01:56 Registering user with info: &{Address: Port:6775}
+2015/03/27 22:02:29 Received temp: 0.000000
+2015/03/27 22:03:29 Received temp: 0.000000
+2015/03/27 22:04:29 Received temp: 0.000000
+2015/03/27 22:05:29 Received temp: 0.000000
+2015/03/27 22:06:29 Received temp: 0.000000
+2015/03/27 22:07:29 Received temp: 0.000000
+2015/03/27 22:08:29 Received temp: 1.000000
+2015/03/27 22:09:29 Received temp: 2.000000
+2015/03/27 22:10:29 Received temp: 3.000000
+2015/03/27 22:11:29 Received temp: 2.000000
+2015/03/27 22:12:29 Received temp: 1.000000
+2015/03/27 22:13:29 Received temp: 0.000000
+
+Output of outlet:
+2015/03/27 22:01:42 Device id: 1
+2015/03/27 22:01:42 Current state: Off
+2015/03/27 22:02:29 Received change state request with info: &{DeviceId:1 State:0}
+2015/03/27 22:02:29 Current state: On
+2015/03/27 22:03:29 Received change state request with info: &{DeviceId:1 State:0}
+2015/03/27 22:03:29 Current state: On
+2015/03/27 22:04:29 Received change state request with info: &{DeviceId:1 State:0}
+2015/03/27 22:04:29 Current state: On
+2015/03/27 22:05:29 Received change state request with info: &{DeviceId:1 State:0}
+2015/03/27 22:05:29 Current state: On
+2015/03/27 22:06:29 Received change state request with info: &{DeviceId:1 State:0}
+2015/03/27 22:06:29 Current state: On
+2015/03/27 22:07:29 Received change state request with info: &{DeviceId:1 State:0}
+2015/03/27 22:07:29 Current state: On
+2015/03/27 22:08:29 Received change state request with info: &{DeviceId:1 State:0}
+2015/03/27 22:08:29 Current state: On
+2015/03/27 22:09:29 Received change state request with info: &{DeviceId:1 State:0}
+2015/03/27 22:09:29 Current state: On
+2015/03/27 22:10:29 Received change state request with info: &{DeviceId:1 State:1}
+2015/03/27 22:10:29 Current state: Off
+2015/03/27 22:11:29 Received change state request with info: &{DeviceId:1 State:1}
+2015/03/27 22:11:29 Current state: Off
+2015/03/27 22:12:29 Received change state request with info: &{DeviceId:1 State:1}
+2015/03/27 22:12:29 Current state: Off
+2015/03/27 22:13:29 Received change state request with info: &{DeviceId:1 State:0}
+2015/03/27 22:13:29 Current state: On
+
+Output of temperature sensor:
+2015/03/27 22:01:50 Device id: 3
+2015/03/27 22:01:50 Current temp: 0.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 22:07:40 Current temp: 1.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 22:08:35 Current temp: 2.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	1
+1
+
+2015/03/27 22:09:35 Current temp: 3.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	0
+0
+
+2015/03/27 22:10:37 Current temp: 2.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	0
+0
+
+2015/03/27 22:11:50 Current temp: 1.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature : 	0
+0
+
+2015/03/27 22:12:35 Current temp: 0.000000
+Enter 1 to increase the temperature , Enter 0 to decrease the temperature :

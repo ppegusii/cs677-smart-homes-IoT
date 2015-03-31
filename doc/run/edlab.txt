@@ -1,0 +1,31 @@
+Running the programs from edlab machines
+
+First:
+
+source /nfs/elsrv4/users3/grad/ppegus/cs677/lab1/env.sh
+
+This puts all 6 executables (gateway, user, smartbulb, smartoutlet, temperaturesensor, motionsensor) in your path.
+It also sets up the required Go environment in case you want to compile the project.
+Which you can do with:
+
+/nfs/elsrv4/users3/grad/ppegus/cs677/lab1/compile_all.sh
+
+The processes user, temperaturesensor, and motionsensor are interactive.
+In general, it is best to run each in it's own terminal or screen whether on the same machine or distributed.
+To run all processes on the same machine, enter the executable name. Nothing else is needed.
+For example:
+
+gateway
+
+To run the processes across multiple machines, you must specify the local non-loopback IP address for the gateway, as well as the IP address of the gateway for other processes.
+For example to run the gateway on 128.119.243.147 and the user on 128.119.243.164:
+
+gateway -i 128.119.243.147
+user -i 128.119.243.147 -I 128.119.243.164
+
+All executables respond to the -h flag to document their options.
+For example:
+
+gateway -h
+
+All interactive processes will display a prompt that requests and describes the interaction.
