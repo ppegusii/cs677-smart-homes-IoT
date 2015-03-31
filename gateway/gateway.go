@@ -24,7 +24,7 @@ type Gateway struct {
 	port            string
 	senAndDev       structs.SyncMapIntRegParam
 	tempSen         structs.SyncMapIntBool
-	user            structs.SyncRegUserParam
+	user            structs.SyncRegGatewayUserParam
 }
 
 func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gateway {
@@ -40,7 +40,7 @@ func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gat
 		port:            port,
 		senAndDev:       *structs.NewSyncMapIntRegParam(),
 		tempSen:         *structs.NewSyncMapIntBool(),
-		user:            *structs.NewSyncRegUserParam(),
+		user:            *structs.NewSyncRegGatewayUserParam(),
 	}
 	g.bulbTimer = *structs.NewSyncTimer(5*time.Minute, g.turnBulbsOff)
 	return g
@@ -122,7 +122,7 @@ func (g *Gateway) pollTempSensors() {
 	}
 }
 
-func (g *Gateway) RegisterUser(params *api.RegisterUserParams, _ *struct{}) error {
+func (g *Gateway) RegisterUser(params *api.RegisterGatewayUserParams, _ *struct{}) error {
 	log.Printf("Registering user with info: %+v", params)
 	g.user.Set(*params)
 	return nil
@@ -208,7 +208,7 @@ func (g *Gateway) sendText() {
 	}
 	var client *rpc.Client
 	var err error
-	var regUserParams api.RegisterUserParams = g.user.Get()
+	var regUserParams api.RegisterGatewayUserParams = g.user.Get()
 	var msg string = "There's something moving in your house!"
 	var empty struct{}
 	client, err = rpc.Dial("tcp", regUserParams.Address+":"+regUserParams.Port)

@@ -2,6 +2,7 @@ package structs
 
 import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"os"
 	"sync"
 	"time"
 )
@@ -155,36 +156,110 @@ func NewSyncTimer(d time.Duration, f func()) *SyncTimer {
 	return s
 }
 
-type SyncRegUserParam struct {
+type SyncRegGatewayUserParam struct {
 	sync.RWMutex
-	u *api.RegisterUserParams
+	u *api.RegisterGatewayUserParams
 }
 
-func NewSyncRegUserParam() *SyncRegUserParam {
-	return &SyncRegUserParam{
+func NewSyncRegGatewayUserParam() *SyncRegGatewayUserParam {
+	return &SyncRegGatewayUserParam{
 		u: nil,
 	}
 }
 
-func (s *SyncRegUserParam) Get() api.RegisterUserParams {
+func (s *SyncRegGatewayUserParam) Get() api.RegisterGatewayUserParams {
 	s.RLock()
-	var r api.RegisterUserParams = *s.u
+	var r api.RegisterGatewayUserParams = *s.u
 	s.RUnlock()
 	return r
 }
 
-func (s *SyncRegUserParam) Set(r api.RegisterUserParams) {
+func (s *SyncRegGatewayUserParam) Set(r api.RegisterGatewayUserParams) {
 	s.Lock()
-	s.u = &api.RegisterUserParams{
+	s.u = &api.RegisterGatewayUserParams{
 		Address: r.Address,
 		Port:    r.Port,
 	}
 	s.Unlock()
 }
 
-func (s *SyncRegUserParam) Exists() bool {
+func (s *SyncRegGatewayUserParam) Exists() bool {
 	s.RLock()
 	var e bool = s.u != nil
 	s.RUnlock()
 	return e
+}
+
+type SyncMapIntSyncFile struct {
+	sync.RWMutex
+	m map[int]*SyncFile
+}
+
+func NewSyncMapIntSyncFile() *SyncMapIntSyncFile {
+	return &SyncMapIntSyncFile{
+		m: make(map[int]*SyncFile),
+	}
+}
+
+func (s *SyncMapIntSyncFile) Get(i int) (*SyncFile, bool) {
+	s.RLock()
+	f, ok := s.m[i]
+	s.RUnlock()
+	return f, ok
+}
+
+func (s *SyncMapIntSyncFile) Set(i int, f *SyncFile) {
+	s.Lock()
+	s.m[i] = f
+	s.Unlock()
+}
+
+type SyncFile struct {
+	sync.Mutex
+	f *os.File
+}
+
+func NewSyncFile(name string) (*SyncFile, error) {
+	var f *os.File
+	var err error
+	f, err = os.Create(name)
+	if err != nil {
+		return nil, err
+	}
+	return &SyncFile{
+		f: f,
+	}, nil
+}
+
+func (s *SyncFile) WriteString(str string) (int, error) {
+	var n int
+	var err error
+	s.Lock()
+	n, err = s.f.WriteString(str)
+	s.Unlock()
+	return n, err
+}
+
+type SyncMapIntState struct {
+	sync.RWMutex
+	m map[int]api.State
+}
+
+func NewSyncMapIntState() *SyncMapIntState {
+	return &SyncMapIntState{
+		m: make(map[int]api.State),
+	}
+}
+
+func (s *SyncMapIntState) Get(i int) (api.State, bool) {
+	s.RLock()
+	state, ok := s.m[i]
+	s.RUnlock()
+	return state, ok
+}
+
+func (s *SyncMapIntState) Set(i int, state api.State) {
+	s.Lock()
+	s.m[i] = state
+	s.Unlock()
 }

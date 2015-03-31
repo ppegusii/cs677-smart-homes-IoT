@@ -45,7 +45,7 @@ func (u *User) start() {
 		log.Fatal("dialing error: %+v", err)
 	}
 	var empty struct{}
-	err = client.Call("Gateway.RegisterUser", &api.RegisterUserParams{u.selfIp, u.selfPort}, &empty)
+	err = client.Call("Gateway.RegisterUser", &api.RegisterGatewayUserParams{Address: u.selfIp, Port: u.selfPort}, &empty)
 	if err != nil {
 		log.Fatal("calling error: %+v", err)
 	}

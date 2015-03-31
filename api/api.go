@@ -44,9 +44,10 @@ const (
 
 type DatabaseInterface interface {
 	AddDeviceOrSensor(params *int, reply *RegisterParams) error
-	GetState(params *int, reply *StateInfo) error
-	AddState(params *StateInfo, _ *struct{}) error
 	AddEvent(params *StateInfo, _ *struct{}) error
+	AddState(params *StateInfo, _ *struct{}) error
+	GetState(params *int, reply *StateInfo) error
+	RegisterGateway(params *RegisterGatewayUserParams, _ *struct{}) error
 }
 
 type DeviceInterface interface {
@@ -57,7 +58,7 @@ type DeviceInterface interface {
 type GatewayInterface interface {
 	ChangeMode(params *Mode, _ *struct{}) error
 	Register(params *RegisterParams, reply *int) error
-	RegisterUser(params *RegisterUserParams, _ *struct{}) error
+	RegisterUser(params *RegisterGatewayUserParams, _ *struct{}) error
 	ReportMotion(params *StateInfo, _ *struct{}) error
 	ReportDoorState(params *StateInfo, _ *struct{}) error
 }
@@ -77,7 +78,7 @@ type RegisterParams struct {
 	Port    string
 }
 
-type RegisterUserParams struct {
+type RegisterGatewayUserParams struct {
 	Address string
 	Port    string
 }
