@@ -317,6 +317,7 @@ func (g *Gateway) checkForMotion() bool {
 //Analyzes the happens before relationship between indoor motion sensing and door opening to infer occupancy.
 //Based on the occupancy state, it changes the mode of the gateway to Home or Away.
 func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
+	log.Printf("Received door state info: %+v", params)
 	//TODO write to database, do interesting happens before analysis to change mode to Home/Away
 	return nil
 }
