@@ -43,7 +43,7 @@ const (
 )
 
 type DatabaseInterface interface {
-	AddDeviceOrSensor(params *int, reply *RegisterParams) error
+	AddDeviceOrSensor(params *RegisterParams, _ *struct{}) error
 	AddEvent(params *StateInfo, _ *struct{}) error
 	AddState(params *StateInfo, _ *struct{}) error
 	GetState(params *int, reply *StateInfo) error
@@ -72,10 +72,11 @@ type UserInterface interface {
 }
 
 type RegisterParams struct {
-	Type    Type
-	Name    Name
-	Address string
-	Port    string
+	DeviceId int
+	Type     Type
+	Name     Name
+	Address  string
+	Port     string
 }
 
 type RegisterGatewayUserParams struct {

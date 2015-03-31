@@ -41,7 +41,7 @@ func (g *Database) start() {
 	rpc.Accept(listener)
 }
 
-func (g *Database) AddDeviceOrSensor(params *int, reply *api.RegisterParams) error {
+func (g *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) error {
 	return nil
 }
 

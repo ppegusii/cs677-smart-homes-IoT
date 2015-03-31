@@ -49,7 +49,7 @@ func (d *DoorSensor) start() {
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	err = client.Call("Gateway.Register", &api.RegisterParams{api.Sensor, api.Motion, d.selfIp, d.selfPort}, &d.id)
+	err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Door, Address: d.selfIp, Port: d.selfPort}, &d.id)
 	if err != nil {
 		log.Fatal("calling error: %+v", err)
 	}
