@@ -49,7 +49,7 @@ func (d *DoorSensor) start() {
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	err = client.Call("Gateway.Register", &api.RegisterParams{api.Sensor, api.Motion, d.selfIp, d.selfPort}, &d.id)
+	err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Door, Address: d.selfIp, Port: d.selfPort}, &d.id)
 	if err != nil {
 		log.Fatal("calling error: %+v", err)
 	}
@@ -94,11 +94,11 @@ func (d *DoorSensor) getInput() {
 			log.Printf("dialing error: %+v", err)
 			continue
 		}
-		client.Go("Gateway.ReportDoorState", api.ReportStateParams{d.id, d.state.GetState()}, &empty, nil)
+		client.Go("Gateway.ReportDoorState", api.StateInfo{DeviceId: d.id, State: d.state.GetState()}, &empty, nil)
 	}
 }
 
-func (d *DoorSensor) QueryState(params *int, reply *api.QueryStateParams) error {
+func (d *DoorSensor) QueryState(params *int, reply *api.StateInfo) error {
 	reply.DeviceId = d.id
 	reply.State = d.state.GetState()
 	return nil

@@ -33,17 +33,19 @@ const (
 type Mode int
 
 const (
-	Home Mode = iota
-	Away Mode = iota
+	Away    Mode = iota
+	Home    Mode = iota
+	Logical Mode = iota
 	//These states indicate whether the
 	//gateway believes smart outlets are
 	//on or off.
 	OutletsOn  Mode = iota
 	OutletsOff Mode = iota
+	Time       Mode = iota
 )
 
 type DatabaseInterface interface {
-	AddDeviceOrSensor(params *int, reply *RegisterParams) error
+	AddDeviceOrSensor(params *RegisterParams, _ *struct{}) error
 	AddEvent(params *StateInfo, _ *struct{}) error
 	AddState(params *StateInfo, _ *struct{}) error
 	GetState(params *int, reply *StateInfo) error
@@ -72,10 +74,12 @@ type UserInterface interface {
 }
 
 type RegisterParams struct {
-	Type    Type
-	Name    Name
-	Address string
-	Port    string
+	Address  string
+	DeviceId int
+	Name     Name
+	Port     string
+	State    State
+	Type     Type
 }
 
 type RegisterGatewayUserParams struct {
