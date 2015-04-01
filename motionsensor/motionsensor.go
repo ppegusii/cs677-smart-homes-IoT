@@ -49,7 +49,7 @@ func (m *MotionSensor) start() {
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &m.id)
+	err = client.Call("Gateway.Register", &api.RegisterParams{api.Sensor, api.Motion, m.selfIp, m.selfPort}, &m.id)
 	if err != nil {
 		log.Fatal("calling error: %+v", err)
 	}

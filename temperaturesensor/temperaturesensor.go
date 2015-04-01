@@ -48,7 +48,7 @@ func (t *TemperatureSensor) start() {
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Temperature, Address: t.selfIp, Port: t.selfPort}, &t.id)
+	err = client.Call("Gateway.Register", &api.RegisterParams{api.Sensor, api.Temperature, t.selfIp, t.selfPort}, &t.id)
 	if err != nil {
 		log.Fatal("calling error: %+v", err)
 	}
