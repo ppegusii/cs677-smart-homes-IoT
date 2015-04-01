@@ -33,13 +33,15 @@ const (
 type Mode int
 
 const (
-	Home Mode = iota
-	Away Mode = iota
+	Away    Mode = iota
+	Home    Mode = iota
+	Logical Mode = iota
 	//These states indicate whether the
 	//gateway believes smart outlets are
 	//on or off.
 	OutletsOn  Mode = iota
 	OutletsOff Mode = iota
+	Time       Mode = iota
 )
 
 type DatabaseInterface interface {
@@ -72,11 +74,12 @@ type UserInterface interface {
 }
 
 type RegisterParams struct {
-	DeviceId int
-	Type     Type
-	Name     Name
 	Address  string
+	DeviceId int
+	Name     Name
 	Port     string
+	State    State
+	Type     Type
 }
 
 type RegisterGatewayUserParams struct {

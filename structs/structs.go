@@ -240,25 +240,25 @@ func (s *SyncFile) WriteString(str string) (int, error) {
 	return n, err
 }
 
-type SyncMapIntState struct {
+type SyncMapIntStateInfo struct {
 	sync.RWMutex
-	m map[int]api.State
+	m map[int]*api.StateInfo
 }
 
-func NewSyncMapIntState() *SyncMapIntState {
-	return &SyncMapIntState{
-		m: make(map[int]api.State),
+func NewSyncMapIntStateInfo() *SyncMapIntStateInfo {
+	return &SyncMapIntStateInfo{
+		m: make(map[int]*api.StateInfo),
 	}
 }
 
-func (s *SyncMapIntState) Get(i int) (api.State, bool) {
+func (s *SyncMapIntStateInfo) Get(i int) (*api.StateInfo, bool) {
 	s.RLock()
 	state, ok := s.m[i]
 	s.RUnlock()
 	return state, ok
 }
 
-func (s *SyncMapIntState) Set(i int, state api.State) {
+func (s *SyncMapIntStateInfo) Set(i int, state *api.StateInfo) {
 	s.Lock()
 	s.m[i] = state
 	s.Unlock()
