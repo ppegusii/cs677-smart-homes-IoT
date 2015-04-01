@@ -1,0 +1,92 @@
+#+OPTIONS: toc:nil        (no default TOC at all)
+#+TITLE: Lab 1 Submission Instructions
+
+
+* Test input
+
+| Time | Temperature |   Motion | Gateway           | Output  |
+|------+-------------+----------+-------------------+---------|
+|    0 |    Register | Register |                   | 0:0,0   |
+|    1 |           0 |        0 | Q(Temp)           | 1:0,0   |
+|    2 |           1 |        0 | Q(Temp);Q(Motion) | 2.1:1,0 |
+|    3 |           1 |        0 |                   | 3:1,0   |
+|  3.2 |           1 |        1 |                   | 3.2:1,1 |
+|    5 |           2 |        0 | Q(Temp)           | 5:2,0   |
+|    6 |           2 |        0 |                   |         |
+|    7 |           2 |        0 | Q(Motion)         |         |
+|    8 |           1 |        0 |                   |         |
+|    9 |           1 |        0 |                   |         |
+|   10 |           1 |        0 | Q(Temp)           |         |
+|   11 |           1 |        1 |                   |         |
+|   12 |           1 |        0 | Q(Motion)         |         |
+|   13 |           1 |        1 |                   |         |
+|   14 |           2 |        1 | Q(Temp)           |         |
+|   15 |           2 |        1 | Q(Temp)           |         |
+
+
+* Test case
+A test case csv file has been provided to you. It is a timestamped log
+of events. Initially, the temperature and motion sensors register
+themselves to the gateway.  The temperature column reports the actual
+temperature seen by the sensor. The Motion sensor reports a 0 if no
+motion is detected, and 1 otherwise. Remember that the temperature
+sensor is pull based, while motion sensor is both pull and push
+based. It is assumed that the motion sensor *will* push changes in its
+state (from transitions between 0 to 1). The Gateway column contains
+the commands that the gateway executes. Q(Temp) means that temperature
+sensor is queried. Q(Motion) means motion sensor is queried.
+
+
+Each row is a sequence of events that occur at the particular time (in
+seconds). At time 0, sensors are registered. At 1 second, the sensors
+see the reported values, and gateway executes the queries, if any. You
+must feed in the values from this test file into the sensors and the
+gateway and print the output. The *output* of this simulation is *what
+the gateway sees*. So if the temp sensor reports a temperature of 0
+and motion sensor pushes a ``1'' to the gateway, the gateway outputs a
+tuple timestamped tuple: (time:0,1). If a motion sensor fired at 3.2
+seconds, the gateway must report it in the output at 3.2+epsilon
+seconds. You can use gettimeofday or any other function which gives
+you a timestamp and then subtract it from the start-time to get a
+reasonably accurate 
+
+* Code Submission Instructions
+In addition to the submission instructions in the original lab
+description, your submission must include these files:
+
+1) The output file after running the test-case. You must call it
+   =test-output-cached.txt=
+
+2) A script which runs your complete program. It must be named
+   =run-all.sh= and must have execute permissions set for everybody.
+
+3) A script called run-test-case.sh which runs the test case and
+   outputs it into =test-output.txt=
+
+
+The execution script is important. If it is missing, you will lose
+25% of your points. A sample output (in the above format) also goes a
+long way to prove program correctness.
+
+
+
+
+| Time | Temperature |   Motion | Gateway           |
+|------+-------------+----------+-------------------|
+|    0 |    Register | Register |                   |
+|    1 |           0 |        0 | Q(Temp)           |
+|    2 |           1 |        0 | Q(Temp);Q(Motion) |
+|    3 |           1 |        0 |                   |
+|  3.2 |           1 |        1 |                   |
+|    5 |           2 |        0 | Q(Temp)           |
+|    6 |           2 |        0 |                   |
+|    7 |           2 |        0 | Q(Motion)         |
+|    8 |           1 |        0 |                   |
+|    9 |           1 |        0 |                   |
+|   10 |           1 |        0 | Q(Temp)           |
+|   11 |           1 |        1 |                   |
+|   12 |           1 |        0 | Q(Motion)         |
+|   13 |           1 |        1 |                   |
+|   14 |           2 |        1 | Q(Temp)           |
+|   15 |           2 |        1 | Q(Temp)           |
+

@@ -36,7 +36,11 @@ func (s *SmartOutlet) start() {
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
+<<<<<<< HEAD
 	err = client.Call("Gateway.Register", &api.RegisterParams{api.Device, api.Outlet, s.selfIp, s.selfPort}, &s.id)
+=======
+	err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Device, Name: api.Outlet, Address: s.selfIp, Port: s.selfPort}, &s.id)
+>>>>>>> 9055a109108b4e68213c1efbed068d64bb994c34
 	if err != nil {
 		log.Fatal("calling error: %+v", err)
 	}

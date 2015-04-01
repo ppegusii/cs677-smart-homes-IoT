@@ -1,0 +1,35 @@
+1. Launch all 6 processes starting with the gateway. Note the initial mode of the gateway is Home and the initial states of the bulb and motion sensor are Off and NoMotion, respectively.
+2. From the user, set the gateway mode to Away, which causes the gateway to try and turn the bulb Off.
+2. Set the motion sensor to YesMotion, which is pushed to the gateway, which sends a text to the user.
+3. Set the motion sensor to NoMotion, which is pushed to the gateway, which turns the bulb Off after 5 minutes.
+
+Output of gateway:
+2015/03/27 22:35:31 Current mode: Home
+2015/03/27 22:35:35 Attempting to register device with this info: &{Type:1 Name:2 Address: Port:6772}
+2015/03/27 22:35:37 Attempting to register device with this info: &{Type:1 Name:3 Address:127.0.0.1 Port:6774}
+2015/03/27 22:35:40 Attempting to register device with this info: &{Type:0 Name:1 Address: Port:6771}
+2015/03/27 22:35:42 Attempting to register device with this info: &{Type:0 Name:0 Address: Port:6773}
+2015/03/27 22:35:45 Registering user with info: &{Address: Port:6775}
+2015/03/27 22:36:31 Received change mode request with this mode: 1
+2015/03/27 22:36:31 Current mode: Away
+2015/03/27 22:36:31 Received temp: 0.000000
+2015/03/27 22:37:31 Received temp: 0.000000
+2015/03/27 22:38:07 Received motion report with this info: &{DeviceId:2 State:2}
+2015/03/27 22:38:31 Received temp: 0.000000
+
+Output of bulb:
+2015/03/27 22:35:35 Device id: 0
+2015/03/27 22:35:35 Current state: Off
+2015/03/27 22:36:31 Received change state request with info: &{DeviceId:0 State:1}
+2015/03/27 22:36:31 Current state: Off
+
+Output of motion sensor:
+2015/03/27 22:35:40 Device id: 2
+2015/03/27 22:35:40 Current state: No Motion
+Enter (0/1) to signal (nomotion/motion): 1
+2015/03/27 22:38:07 Current state: Motion
+Enter (0/1) to signal (nomotion/motion):
+
+Output of user:
+Enter (0/1) to change gateway mode (Home/Away): 1
+Enter (0/1) to change gateway mode (Home/Away): 2015/03/27 22:38:07 Received text: There's something moving in your house!

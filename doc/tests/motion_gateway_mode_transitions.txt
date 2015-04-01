@@ -1,0 +1,47 @@
+1. Launch all 6 processes starting with the gateway. Note the initial mode of the gateway is Home and the initial states of the bulb and motion sensor are Off and NoMotion, respectively.
+2. Set the motion sensor to YesMotion, which is pushed to the gateway, which turns the bulb On.
+3. From the user, set the gateway mode to Away, which then turns the bulb Off.
+3. From the user, set the gateway mode to Home, which then queries the motion sensor. Since motion is still detected, the gateway turns the bulb On.
+
+Output from the gateway:
+2015/03/27 23:33:29 Current mode: Home
+2015/03/27 23:33:32 Attempting to register device with this info: &{Type:1 Name:2 Address: Port:6772}
+2015/03/27 23:33:35 Attempting to register device with this info: &{Type:1 Name:3 Address:127.0.0.1 Port:6774}
+2015/03/27 23:33:40 Registering user with info: &{Address: Port:6775}
+2015/03/27 23:33:45 Attempting to register device with this info: &{Type:0 Name:0 Address: Port:6773}
+2015/03/27 23:33:50 Attempting to register device with this info: &{Type:0 Name:1 Address: Port:6771}
+2015/03/27 23:34:29 Received temp: 0.000000
+2015/03/27 23:35:29 Received temp: 0.000000
+2015/03/27 23:35:45 Received motion report with this info: &{DeviceId:3 State:2}
+2015/03/27 23:36:29 Received temp: 0.000000
+2015/03/27 23:37:00 Received change mode request with this mode: 1
+2015/03/27 23:37:00 Current mode: Away
+2015/03/27 23:37:29 Received temp: 0.000000
+2015/03/27 23:38:29 Received temp: 0.000000
+2015/03/27 23:39:03 Received change mode request with this mode: 0
+2015/03/27 23:39:03 Current mode: Home
+2015/03/27 23:39:03 Received motion status: {DeviceId:3 State:2}
+2015/03/27 23:39:29 Received temp: 0.000000
+2015/03/27 23:40:29 Received temp: 0.000000
+
+Output from the bulb:
+2015/03/27 23:33:32 Device id: 0
+2015/03/27 23:33:32 Current state: Off
+2015/03/27 23:35:45 Received change state request with info: &{DeviceId:0 State:0}
+2015/03/27 23:35:45 Current state: On
+2015/03/27 23:37:00 Received change state request with info: &{DeviceId:0 State:1}
+2015/03/27 23:37:00 Current state: Off
+2015/03/27 23:39:03 Received change state request with info: &{DeviceId:0 State:0}
+2015/03/27 23:39:03 Current state: On
+
+Output from the motion sensor:
+2015/03/27 23:33:50 Device id: 3
+2015/03/27 23:33:50 Current state: No Motion
+Enter (0/1) to signal (nomotion/motion): 1
+2015/03/27 23:35:45 Current state: Motion
+Enter (0/1) to signal (nomotion/motion):
+
+Output from the user:
+Enter (0/1) to change gateway mode (Home/Away): 1
+Enter (0/1) to change gateway mode (Home/Away): 0
+Enter (0/1) to change gateway mode (Home/Away):
