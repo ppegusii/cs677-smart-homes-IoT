@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
@@ -83,14 +84,20 @@ func (d *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) er
 
 //Write event to table
 func (d *Database) AddEvent(params *api.StateInfo, _ *struct{}) error {
-	f, _ := d.events.Get(params.DeviceId)
+	f, ok := d.events.Get(params.DeviceId)
+	if !ok {
+		return errors.New(fmt.Sprintf("Invalid device ID: %d", params.DeviceId))
+	}
 	_, err := d.writeStateInfo(params, f)
 	return err
 }
 
 //Write state to table
 func (d *Database) AddState(params *api.StateInfo, _ *struct{}) error {
-	f, _ := d.states.Get(params.DeviceId)
+	f, ok := d.states.Get(params.DeviceId)
+	if !ok {
+		return errors.New(fmt.Sprintf("Invalid device ID: %d", params.DeviceId))
+	}
 	_, err := d.writeStateInfo(params, f)
 	d.stateCache.Set(params.DeviceId, params)
 	return err

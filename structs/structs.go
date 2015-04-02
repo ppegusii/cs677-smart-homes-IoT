@@ -2,6 +2,7 @@ package structs
 
 import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -224,6 +225,7 @@ func NewSyncFile(name string) (*SyncFile, error) {
 	var err error
 	f, err = os.Create(name)
 	if err != nil {
+		log.Printf("Error creating file: %+v", err)
 		return nil, err
 	}
 	return &SyncFile{

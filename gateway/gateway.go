@@ -14,6 +14,7 @@ import (
 type Gateway struct {
 	bulbDev         structs.SyncMapIntBool
 	bulbTimer       structs.SyncTimer
+	database        structs.SyncRegGatewayUserParam
 	doorSen         structs.SyncMapIntBool
 	ip              string
 	mode            structs.SyncMode
@@ -27,9 +28,10 @@ type Gateway struct {
 	user            structs.SyncRegGatewayUserParam
 }
 
-func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gateway {
+func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInterval int, port string) *Gateway {
 	var g *Gateway = &Gateway{
 		bulbDev:         *structs.NewSyncMapIntBool(),
+		database:        *structs.NewSyncRegGatewayUserParam(),
 		doorSen:         *structs.NewSyncMapIntBool(),
 		ip:              ip,
 		mode:            *structs.NewSyncMode(mode),
@@ -42,11 +44,13 @@ func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gat
 		tempSen:         *structs.NewSyncMapIntBool(),
 		user:            *structs.NewSyncRegGatewayUserParam(),
 	}
+	g.database.Set(api.RegisterGatewayUserParams{Address: dbIP, Port: dbPort})
 	g.bulbTimer = *structs.NewSyncTimer(5*time.Minute, g.turnBulbsOff)
 	return g
 }
 
 func (g *Gateway) start() {
+	//start RPC server
 	var err error = rpc.Register(api.GatewayInterface(g))
 	if err != nil {
 		log.Fatal("rpc.Register error: %s\n", err)
@@ -58,6 +62,19 @@ func (g *Gateway) start() {
 	}
 	logCurrentMode(g.mode.GetMode())
 	go rpc.Accept(listener)
+	//register with database
+	var client *rpc.Client
+	var db api.RegisterGatewayUserParams = g.database.Get()
+	var empty struct{}
+	client, err = rpc.Dial("tcp", db.Address+":"+db.Port)
+	if err != nil {
+		log.Fatal("error dialing gateway: %+v", err)
+	}
+	err = client.Call("Database.RegisterGateway", &api.RegisterGatewayUserParams{Address: g.ip, Port: g.port}, &empty)
+	if err != nil {
+		log.Fatal("error registering with gateway: %+v", err)
+	}
+	//start polling temperature sensors
 	g.pollTempSensors()
 }
 
@@ -70,6 +87,7 @@ func (g *Gateway) pollTempSensors() {
 		if len(tempIdRegParams) != 0 {
 			var tempReply api.StateInfo
 			for tempId, regParams := range tempIdRegParams {
+				//Query temperature sensor
 				var client *rpc.Client
 				var err error
 				client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
@@ -82,6 +100,8 @@ func (g *Gateway) pollTempSensors() {
 					log.Printf("calling error: %+v", err)
 				}
 				log.Printf("Received temp: %d", tempReply.State)
+				//Write temperature sensor state to database
+				g.writeStateInfo("Database.AddState", &tempReply)
 			}
 			//update the outlets
 			//just using the last tempVal
@@ -320,4 +340,21 @@ func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	log.Printf("Received door state info: %+v", params)
 	//TODO write to database, do interesting happens before analysis to change mode to Home/Away
 	return nil
+}
+
+//Send state info to the specified rpc on the database
+func (g *Gateway) writeStateInfo(rpcName string, stateInfo *api.StateInfo) {
+	var client *rpc.Client
+	var empty struct{}
+	var err error
+	var db api.RegisterGatewayUserParams = g.database.Get()
+	client, err = rpc.Dial("tcp", db.Address+":"+db.Port)
+	if err != nil {
+		log.Printf("Error dialing database: %+v", err)
+		return
+	}
+	err = client.Call(rpcName, stateInfo, &empty)
+	if err != nil {
+		log.Printf("Error calling database: %+v", err)
+	}
 }
