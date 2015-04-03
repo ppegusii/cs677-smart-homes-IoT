@@ -23,7 +23,7 @@ func main() {
 	//	fmt.Println("Gateway IP is ", *ip)
 
 	var ip *string = flag.String("i", "127.0.0.1", "IP address")
-	var mode api.Mode = api.Mode(*(flag.Int("m", 0, "home=0,away=1")))
+	var mode api.Mode = api.Mode(*(flag.Int("m", 1, "home=1,away=0")))
 	var pollingInterval int = *flag.Int("s", 60, "polling interval in seconds")
 	var port *string = flag.String("p", "6770", "port")
 	var dbIP *string = flag.String("I", "127.0.0.1", "database IP address")

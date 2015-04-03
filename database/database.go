@@ -58,7 +58,7 @@ func (d *Database) start() {
 func (d *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) error {
 	var err error
 	//Writes object information to table.
-	_, err = d.devSen.WriteString(fmt.Sprintf("%d,%d,%d,%s,%s",
+	_, err = d.devSen.WriteString(fmt.Sprintf("%d,%d,%d,%s,%s\n",
 		params.DeviceId,
 		params.Type,
 		params.Name,
@@ -120,7 +120,7 @@ func (d *Database) writeStateInfo(stateInfo *api.StateInfo, f *structs.SyncFile)
 	var err error
 	switch d.ordering {
 	case api.Time:
-		line = fmt.Sprintf("%d,%d", stateInfo.UnixTime, stateInfo.State)
+		line = fmt.Sprintf("%d,%d\n", stateInfo.UnixTime, stateInfo.State)
 		i, err = f.WriteString(line)
 		break
 	case api.Logical:

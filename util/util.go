@@ -23,6 +23,12 @@ func LogCurrentState(s api.State) {
 	case api.MotionStop:
 		text = "No Motion"
 		break
+	case api.Open:
+		text = "Open"
+		break
+	case api.Closed:
+		text = "Closed"
+		break
 	default:
 		text = "Invalid state"
 		break

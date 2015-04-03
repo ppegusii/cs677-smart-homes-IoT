@@ -54,7 +54,7 @@ type DatabaseInterface interface {
 
 type DeviceInterface interface {
 	QueryState(params *int, reply *StateInfo) error
-	ChangeState(params *StateInfo, _ *struct{}) error
+	ChangeState(params *StateInfo, reply *StateInfo) error
 }
 
 type GatewayInterface interface {
@@ -65,12 +65,24 @@ type GatewayInterface interface {
 	ReportDoorState(params *StateInfo, _ *struct{}) error
 }
 
+type OrderingInterface interface {
+	NewNodeNotify(params *OrderingNode, _ *struct{}) error
+	EventNotify(_ *struct{}, _ *struct{}) error
+	StampStateInfo(params *StateInfo, reply *StateInfo) error
+}
+
 type SensorInterface interface {
 	QueryState(params *int, reply *StateInfo) error
 }
 
 type UserInterface interface {
 	TextMessage(params *string, _ *struct{}) error
+}
+
+type OrderingNode struct {
+	Address string
+	ID      int
+	Port    string
 }
 
 type RegisterParams struct {

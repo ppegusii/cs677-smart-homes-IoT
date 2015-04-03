@@ -126,7 +126,6 @@ func (g *Gateway) pollTempSensors() {
 			}
 			var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.outletDev.GetInts())
 			if len(outletIdRegParams) != 0 {
-				var empty struct{}
 				for outletId, regParams := range outletIdRegParams {
 					var client *rpc.Client
 					var err error
@@ -135,7 +134,18 @@ func (g *Gateway) pollTempSensors() {
 						log.Printf("dialing error: %+v", err)
 						continue
 					}
-					client.Go("SmartOutlet.ChangeState", api.StateInfo{DeviceId: outletId, State: s}, &empty, nil)
+					var stateInfo api.StateInfo = api.StateInfo{
+						DeviceId: outletId,
+						State:    s,
+					}
+					g.writeStateInfo("Database.AddEvent", &stateInfo)
+					var reply api.StateInfo
+					err = client.Call("SmartOutlet.ChangeState", stateInfo, &reply)
+					if err != nil {
+						log.Printf("Error changing smart outlet state: %+v", err)
+						continue
+					}
+					g.writeStateInfo("Database.AddState", &reply)
 				}
 			}
 		}
@@ -158,14 +168,20 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 		case api.Door:
 			id = g.senAndDev.AddRegParam(params)
 			g.doorSen.AddInt(id)
+			params.DeviceId = id
+			g.writeRegInfo(params)
 			break
 		case api.Motion:
 			id = g.senAndDev.AddRegParam(params)
 			g.motionSen.AddInt(id)
+			params.DeviceId = id
+			g.writeRegInfo(params)
 			break
 		case api.Temperature:
 			id = g.senAndDev.AddRegParam(params)
 			g.tempSen.AddInt(id)
+			params.DeviceId = id
+			g.writeRegInfo(params)
 			break
 		default:
 			err = errors.New(fmt.Sprintf("Invalid Sensor Name: %+v", params.Name))
@@ -177,10 +193,14 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 		case api.Bulb:
 			id = g.senAndDev.AddRegParam(params)
 			g.bulbDev.AddInt(id)
+			params.DeviceId = id
+			g.writeRegInfo(params)
 			break
 		case api.Outlet:
 			id = g.senAndDev.AddRegParam(params)
 			g.outletDev.AddInt(id)
+			params.DeviceId = id
+			g.writeRegInfo(params)
 			break
 		default:
 			err = errors.New(fmt.Sprintf("Invalid Device Name: %+v", params.Name))
@@ -199,6 +219,7 @@ func (g *Gateway) ReportMotion(params *api.StateInfo, _ *struct{}) error {
 	if !exists {
 		return errors.New(fmt.Sprintf("Device with following id not motion sensor or not registered: %+v", params.DeviceId))
 	}
+	g.writeStateInfo("Database.AddState", params)
 	switch g.mode.GetMode() {
 	case api.Home:
 		switch params.State {
@@ -249,16 +270,26 @@ func (g *Gateway) turnBulbsOff() {
 
 func (g *Gateway) changeBulbStates(s api.State) {
 	var bulbIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.bulbDev.GetInts())
-	var empty struct{}
 	for bulbId, regParams := range bulbIdRegParams {
 		var client *rpc.Client
 		var err error
+		var stateInfo api.StateInfo = api.StateInfo{
+			DeviceId: bulbId,
+			State:    s,
+		}
+		g.writeStateInfo("Database.AddEvent", &stateInfo)
 		client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
 		if err != nil {
 			log.Printf("dialing error: %+v", err)
 			continue
 		}
-		client.Go("SmartBulb.ChangeState", api.StateInfo{DeviceId: bulbId, State: s}, &empty, nil)
+		var reply api.StateInfo
+		err = client.Call("SmartBulb.ChangeState", stateInfo, &reply)
+		if err != nil {
+			log.Printf("Error changing smart bulb state: %+v", err)
+			continue
+		}
+		g.writeStateInfo("Database.AddState", &stateInfo)
 	}
 }
 
@@ -325,6 +356,7 @@ func (g *Gateway) checkForMotion() bool {
 				log.Printf("calling error: %+v", err)
 			}
 			log.Printf("Received motion status: %+v", queryStateParams)
+			g.writeStateInfo("Database.AddState", &queryStateParams)
 			if queryStateParams.State == api.MotionStart {
 				return true
 			}
@@ -339,6 +371,7 @@ func (g *Gateway) checkForMotion() bool {
 func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	log.Printf("Received door state info: %+v", params)
 	//TODO write to database, do interesting happens before analysis to change mode to Home/Away
+	g.writeStateInfo("Database.AddState", params)
 	return nil
 }
 
@@ -354,6 +387,23 @@ func (g *Gateway) writeStateInfo(rpcName string, stateInfo *api.StateInfo) {
 		return
 	}
 	err = client.Call(rpcName, stateInfo, &empty)
+	if err != nil {
+		log.Printf("Error calling database: %+v", err)
+	}
+}
+
+//Send registration info to the database
+func (g *Gateway) writeRegInfo(regInfo *api.RegisterParams) {
+	var client *rpc.Client
+	var empty struct{}
+	var err error
+	var db api.RegisterGatewayUserParams = g.database.Get()
+	client, err = rpc.Dial("tcp", db.Address+":"+db.Port)
+	if err != nil {
+		log.Printf("Error dialing database: %+v", err)
+		return
+	}
+	err = client.Call("Database.AddDeviceOrSensor", regInfo, &empty)
 	if err != nil {
 		log.Printf("Error calling database: %+v", err)
 	}
