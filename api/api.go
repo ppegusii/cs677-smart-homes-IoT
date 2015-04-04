@@ -44,6 +44,8 @@ const (
 	Time       Mode = iota
 )
 
+type ReportState func(*StateInfo, *struct{}) error
+
 type DatabaseInterface interface {
 	AddDeviceOrSensor(params *RegisterParams, _ *struct{}) error
 	AddEvent(params *StateInfo, _ *struct{}) error
@@ -65,10 +67,29 @@ type GatewayInterface interface {
 	ReportDoorState(params *StateInfo, _ *struct{}) error
 }
 
-type OrderingInterface interface {
-	NewNodeNotify(params *OrderingNode, _ *struct{}) error
-	EventNotify(_ *struct{}, _ *struct{}) error
-	StampStateInfo(params *StateInfo, reply *StateInfo) error
+type OrderingMiddlewareInterface interface {
+	//Multicasts new node notification to all other nodes.
+	//Called only by the gateway front-end application.
+	SendNewNodeNotify(o *OrderingNode) error
+	//Accepts new node notifications
+	//Called only by other ordering implementations.
+	ReceiveNewNodeNotify(params *OrderingNode, _ *struct{}) error
+	//**Ordinary unicast for clock sync.
+	//Logical clocks:
+	//Multicasts event notification to all other nodes.
+	//Called by applications instead of reporting state directly to another process.
+	SendState(s *StateInfo, destAddr string, destPort string) error
+	//**Simple delivery of state info to registered report state functions for clock sync.
+	//Logical clocks:
+	//Multicasts acknowledgement of event to all other nodes.
+	//Maintains a queue of messages delivering the one with the least clock value once
+	//all acknowledgments have been received. Therefore, there is a total ordering
+	//on messages delivered to the application. Those messages are delivered to
+	//registered report state functions.
+	//Called only by other ordering implementations.
+	ReceiveEvent(params *Event, _ *struct{}) error
+	//Register functions that handle the states received inside events.
+	RegisterReportStates(funcs map[Name]ReportState)
 }
 
 type SensorInterface interface {
@@ -77,6 +98,14 @@ type SensorInterface interface {
 
 type UserInterface interface {
 	TextMessage(params *string, _ *struct{}) error
+}
+
+type Event struct {
+	IsAck      bool
+	SrcAddress string
+	SrcId      int
+	SrcPort    string
+	State      StateInfo
 }
 
 type OrderingNode struct {
@@ -100,8 +129,8 @@ type RegisterGatewayUserParams struct {
 }
 
 type StateInfo struct {
-	//TODO add clock
-	DeviceId int
-	State    State
-	UnixTime int64
+	Clock      int
+	DeviceId   int
+	DeviceName Name
+	State      State
 }

@@ -51,6 +51,8 @@ func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInt
 
 func (g *Gateway) start() {
 	//start RPC server
+	//The interface cast only checks that the implementation satisfies
+	//the interface. Only implementations can be registered.
 	var err error = rpc.Register(api.GatewayInterface(g))
 	if err != nil {
 		log.Fatal("rpc.Register error: %s\n", err)

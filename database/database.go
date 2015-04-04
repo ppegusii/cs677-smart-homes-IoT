@@ -120,7 +120,7 @@ func (d *Database) writeStateInfo(stateInfo *api.StateInfo, f *structs.SyncFile)
 	var err error
 	switch d.ordering {
 	case api.Time:
-		line = fmt.Sprintf("%d,%d\n", stateInfo.UnixTime, stateInfo.State)
+		line = fmt.Sprintf("%d,%d\n", stateInfo.Clock, stateInfo.State)
 		i, err = f.WriteString(line)
 		break
 	case api.Logical:
