@@ -26,6 +26,7 @@ type Gateway struct {
 	tempSen         structs.SyncMapIntBool
 	user            structs.SyncRegGatewayUserParam
 	peers           structs.PeerTable // To keep a track of all peers
+	alivepeers 		structs.PeerTable // To keep a track of all peers
 }
 
 func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gateway {
@@ -45,8 +46,8 @@ func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gat
 		peers:           *structs.NewPeerTable(),
 	}
 	g.bulbTimer = *structs.NewSyncTimer(5*time.Minute, g.turnBulbsOff)
-	g.peers.AddPeer(100000, ip+":"+port) //Add the Gateway;DeviceID 10000 is assigned to Gateway
-	g.peers.ShowPeer()                   // Testing: Remove later
+	g.peers.AddPeer(api.GatewayID, ip+":"+port) //Add the Gateway;DeviceID 10000 is assigned to Gateway
+	g.peers.ShowPeer()                          // Testing: Remove later
 	return g
 }
 
@@ -179,7 +180,6 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 
 	g.peers.AddPeer(id, params.Address+":"+params.Port)
 	g.peers.ShowPeer()
-
 
 	return err
 }
@@ -333,6 +333,98 @@ func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	return nil
 }
 
+// When a new resource joins the network and has registered ; gateway broadcasts
+// its details to other peers
+
+func (g *Gateway) BroadcastPeer(token int, id int, address string) {
+	var empty struct{}
+
+	// Update Temperature Sensor
+	var tempIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.tempSen.GetInts())
+	if len(tempIdRegParams) != 0 {
+		for tempId, regParams := range tempIdRegParams {
+			if(tempId != id) {
+			var client *rpc.Client
+			var err error
+			client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+			if err != nil {
+				log.Printf("dialing error: %+v", err)
+				continue
+			}
+			client.Go("TemperatureSensor.UpdatePeerTable", api.PeerInfo{Token:token, DeviceId: id, Address: address}, &empty, nil)
+		}
+	}
+	}
+
+	// Update SmartOutlet
+	var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.outletDev.GetInts())
+	if len(outletIdRegParams) != 0 {
+		for tempId, regParams := range outletIdRegParams {
+			if(tempId != id) {
+			var client *rpc.Client
+			var err error
+			client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+			if err != nil {
+				log.Printf("dialing error: %+v", err)
+				continue
+			}
+			client.Go("SmartOutlet.UpdatePeerTable", api.PeerInfo{Token:token, DeviceId: id, Address: address}, &empty, nil)
+		}
+	}
+	}
+
+	//Update Motion Sensor
+	var motionIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.motionSen.GetInts())
+	if len(motionIdRegParams) != 0 {
+		for tempId, regParams := range motionIdRegParams {
+			if(tempId != id) {
+			var client *rpc.Client
+			var err error
+			client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+			if err != nil {
+				log.Printf("dialing error: %+v", err)
+				continue
+			}
+			fmt.Println("Executing update motionsensor call")
+			client.Go("MotionSensor.UpdatePeerTable", api.PeerInfo{Token:token, DeviceId: id, Address: address}, &empty, nil)
+		}
+	}
+	}
+
+	//Update SmartBulb
+	var bulbIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.bulbDev.GetInts())
+	if len(bulbIdRegParams) != 0 {
+		for tempId, regParams := range bulbIdRegParams {
+			if(tempId != id) {
+			var client *rpc.Client
+			var err error
+			client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+			if err != nil {
+				log.Printf("dialing error: %+v", err)
+				continue
+			}
+			client.Go("SmartBulb.UpdatePeerTable", api.PeerInfo{Token:token, DeviceId: id, Address: address}, &empty, nil)
+		}
+	}
+	}
+
+	/* Door Sensor
+		if len(tempIdRegParams) != 0 {
+		for tempId, regParams := range tempIdRegParams {
+			var client *rpc.Client
+			var err error
+			client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+			if err != nil {
+				log.Printf("dialing error: %+v", err)
+				continue
+			}
+			client.Go("Door.UpdatePeerTable", api.PeerInfo{Token:token, DeviceId: id, Address: address}, &empty, nil)
+		}
+	}
+	*/
+
+}
+
 func (g *Gateway) SendPeerTable(id int, peers *api.PMAP) error {
 	var i int
 	log.Printf("Sending the peer table to deviceID", id)
@@ -347,5 +439,9 @@ func (g *Gateway) SendPeerTable(id int, peers *api.PMAP) error {
 		fmt.Println(k, v)
 	}
 	//code for checking the peer table value ends here
+
+	// Broadcast to all peers the new device id
+	// Set token to 0, since, peer tables should add the peer
+	g.BroadcastPeer(0,id,g.peers.FindPeerAddress(id))
 	return nil
 }

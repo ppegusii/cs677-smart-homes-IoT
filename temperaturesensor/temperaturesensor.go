@@ -18,6 +18,7 @@ type TemperatureSensor struct {
 	selfIp      string
 	selfPort    string
 	temperature structs.SyncState
+	peers		map[int]string// To keep a track of all peers
 }
 
 func newTemperatureSensor(temperature api.State, gatewayIp string, gatewayPort string, selfIp string, selfPort string) *TemperatureSensor {
@@ -27,6 +28,7 @@ func newTemperatureSensor(temperature api.State, gatewayIp string, gatewayPort s
 		selfIp:      selfIp,
 		selfPort:    selfPort,
 		temperature: *structs.NewSyncState(temperature),
+		peers:       make(map[int]string),
 	}
 }
 
@@ -53,6 +55,7 @@ func (t *TemperatureSensor) start() {
 		log.Fatal("calling error: %+v", err)
 	}
 	log.Printf("Device id: %d", t.id)
+	t.getPeerTable()
 	logCurrentTemp(t.temperature.GetState())
 	//listen on stdin for temperature triggers
 	t.getInput()
@@ -94,4 +97,44 @@ func (t *TemperatureSensor) QueryState(params *int, reply *api.StateInfo) error 
 
 func logCurrentTemp(t api.State) {
 	log.Printf("Current temp: %d", t)
+}
+
+// This is an asynchronous call to fetch the PeerTable from the Gateway
+func (t *TemperatureSensor) getPeerTable() {
+	var client *rpc.Client
+	var err error
+	client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
+	if err != nil {
+		log.Printf("dialing error: %+v", err)
+	}
+	replycall := client.Go("Gateway.SendPeerTable", t.id, &t.peers, nil)
+	pt :=  <-replycall.Done
+	if(pt != nil) {
+		log.Println("Fetching PeerTable from the gateway")
+	} else {
+		log.Println("SendPeerTable RPC call return value: ",pt)
+	}
+
+	// Add the gateway to the peertable
+	t.peers[api.GatewayID] = t.gatewayIp+":"+t.gatewayPort
+
+	// Testing to check if the entire peertable has been received
+	fmt.Println("Received the peer table from Gateway as below:")
+	for k, v := range t.peers {
+		fmt.Println(k, v)
+	}
+}
+
+func (t *TemperatureSensor) UpdatePeerTable(params *api.PeerInfo, _ *struct{}) error {
+	switch params.Token {
+	case 0:
+		//Add new peer
+		t.peers[params.DeviceId] = params.Address
+	case 1:
+		//Delete the old peer that got disconnected from the system
+		delete(t.peers,params.DeviceId)
+	default:
+		log.Println("Unexpected Token")
+	}
+	return nil
 }

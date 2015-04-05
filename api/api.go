@@ -6,6 +6,8 @@ type Type int
 
 type PMAP map[int]string
 
+const GatewayID int = 100000
+
 const (
 	Sensor Type = iota
 	Device Type = iota
@@ -95,6 +97,13 @@ type StateInfo struct {
 	DeviceId int
 	State    State
 	UnixTime int64
+}
+
+// Used when gateway sends an update to the other peers about a newly registered device
+type PeerInfo struct {
+	Token int // Token value 0 means add the new peer , token value 1 means delete the old peer
+	DeviceId int
+	Address string
 }
 
 /*

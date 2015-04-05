@@ -19,6 +19,7 @@ type MotionSensor struct {
 	selfIp      string
 	selfPort    string
 	state       structs.SyncState
+	peers		map[int]string// To keep a track of all peers
 }
 
 func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPort string) *MotionSensor {
@@ -28,22 +29,32 @@ func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPo
 		selfIp:      selfIp,
 		selfPort:    selfPort,
 		state:       *structs.NewSyncState(api.MotionStop),
+		peers:       make(map[int]string),
 	}
 }
 
+// This is an asynchronous call to fetch the PeerTable from the Gateway
 func (m *MotionSensor) getPeerTable() {
 	var client *rpc.Client
 	var err error
-	var peers = make(map[int]string)
 	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
 	if err != nil {
 		log.Printf("dialing error: %+v", err)
 	}
-	client.Go("Gateway.SendPeerTable", m.id, &peers, nil)
+	replycall := client.Go("Gateway.SendPeerTable", m.id, &m.peers, nil)
+	pt :=  <-replycall.Done
+	if(pt != nil) {
+		log.Println("Fetching PeerTable from the gateway")
+	} else {
+		log.Println("SendPeerTable RPC call return value: ",pt)
+	}
+
+	// Add the gateway to the peertable
+	m.peers[api.GatewayID] = m.gatewayIp+":"+m.gatewayPort
+
 	// Testing to check if the entire peertable has been received
-	fmt.Println("Received the peer information from Gateway as")
-	fmt.Println("Address of device 2 is ", peers[2])
-	for k, v := range peers {
+	fmt.Println("Received the peer table from Gateway as below:")
+	for k, v := range m.peers {
 		fmt.Println(k, v)
 	}
 }
@@ -120,5 +131,19 @@ func (m *MotionSensor) getInput() {
 func (m *MotionSensor) QueryState(params *int, reply *api.StateInfo) error {
 	reply.DeviceId = m.id
 	reply.State = m.state.GetState()
+	return nil
+}
+
+func (m *MotionSensor) UpdatePeerTable(params *api.PeerInfo, _ *struct{}) error {
+	switch params.Token {
+	case 0:
+		//Add new peer
+		m.peers[params.DeviceId] = params.Address
+	case 1:
+		//Delete the old peer that got disconnected from the system
+		delete(m.peers,params.DeviceId)
+	default:
+		log.Println("Unexpected Token")
+	}
 	return nil
 }
