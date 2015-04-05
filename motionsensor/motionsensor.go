@@ -31,6 +31,23 @@ func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPo
 	}
 }
 
+func (m *MotionSensor) getPeerTable() {
+	var client *rpc.Client
+	var err error
+	var peers = make(map[int]string)
+	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
+	if err != nil {
+		log.Printf("dialing error: %+v", err)
+	}
+	client.Go("Gateway.SendPeerTable", m.id, &peers, nil)
+	// Testing to check if the entire peertable has been received
+	fmt.Println("Received the peer information from Gateway as")
+	fmt.Println("Address of device 2 is ", peers[2])
+	for k, v := range peers {
+		fmt.Println(k, v)
+	}
+}
+
 func (m *MotionSensor) start() {
 	//RPC server
 	var err error = rpc.Register(api.SensorInterface(m))
@@ -49,12 +66,14 @@ func (m *MotionSensor) start() {
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	err = client.Call("Gateway.Register", &api.RegisterParams{api.Sensor, api.Motion, m.selfIp, m.selfPort}, &m.id)
+	err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &m.id)
 	if err != nil {
 		log.Fatal("calling error: %+v", err)
 	}
 	log.Printf("Device id: %d", m.id)
 	util.LogCurrentState(m.state.GetState())
+
+	m.getPeerTable()
 	//listen on stdin for motion triggers
 	m.getInput()
 }

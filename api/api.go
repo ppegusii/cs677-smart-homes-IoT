@@ -4,6 +4,8 @@ import ()
 
 type Type int
 
+type PMAP map[int]string
+
 const (
 	Sensor Type = iota
 	Device Type = iota
@@ -63,6 +65,7 @@ type GatewayInterface interface {
 	RegisterUser(params *RegisterGatewayUserParams, _ *struct{}) error
 	ReportMotion(params *StateInfo, _ *struct{}) error
 	ReportDoorState(params *StateInfo, _ *struct{}) error
+	SendPeerTable(id int, peers *PMAP) error
 }
 
 type SensorInterface interface {
@@ -93,3 +96,12 @@ type StateInfo struct {
 	State    State
 	UnixTime int64
 }
+
+/*
+type AliveInterface interface {
+	IAmAliveBroadcast(DeviceId int, Clock Value) error
+	Election() error
+	Coordinator() error
+}
+*/
+

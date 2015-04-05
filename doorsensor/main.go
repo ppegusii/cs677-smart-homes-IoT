@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"os"
-	"github.com/ppegusii/cs677-smart-homes-IoT/lib"
 )
 
 func main() {
@@ -14,10 +14,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	gatewayIp:= &os.Args[1]
-	/*If different components are running on different IP's then get own IP from 
+	gatewayIp := &os.Args[1]
+	/*If different components are running on different IP's then get own IP from
 	loopback and non-loop back IP's. */
-	ownIP := lib.GetOwnIP()
+	ownIP := util.GetOwnIP()
 	var selfIp *string = &ownIP
 
 	//	var gatewayIp *string = flag.String("i", "127.0.0.1", "gateway IP address")

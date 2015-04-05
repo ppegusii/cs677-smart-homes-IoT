@@ -25,6 +25,7 @@ type Gateway struct {
 	senAndDev       structs.SyncMapIntRegParam
 	tempSen         structs.SyncMapIntBool
 	user            structs.SyncRegGatewayUserParam
+	peers           structs.PeerTable // To keep a track of all peers
 }
 
 func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gateway {
@@ -41,8 +42,11 @@ func newGateway(ip string, mode api.Mode, pollingInterval int, port string) *Gat
 		senAndDev:       *structs.NewSyncMapIntRegParam(),
 		tempSen:         *structs.NewSyncMapIntBool(),
 		user:            *structs.NewSyncRegGatewayUserParam(),
+		peers:           *structs.NewPeerTable(),
 	}
 	g.bulbTimer = *structs.NewSyncTimer(5*time.Minute, g.turnBulbsOff)
+	g.peers.AddPeer(100000, ip+":"+port) //Add the Gateway;DeviceID 10000 is assigned to Gateway
+	g.peers.ShowPeer()                   // Testing: Remove later
 	return g
 }
 
@@ -170,6 +174,13 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 		err = errors.New(fmt.Sprintf("Invalid Type: %+v", params.Type))
 	}
 	*reply = id
+	params.DeviceId = id
+	fmt.Println(params.DeviceId)
+
+	g.peers.AddPeer(id, params.Address+":"+params.Port)
+	g.peers.ShowPeer()
+
+
 	return err
 }
 
@@ -319,5 +330,22 @@ func (g *Gateway) checkForMotion() bool {
 func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	log.Printf("Received door state info: %+v", params)
 	//TODO write to database, do interesting happens before analysis to change mode to Home/Away
+	return nil
+}
+
+func (g *Gateway) SendPeerTable(id int, peers *api.PMAP) error {
+	var i int
+	log.Printf("Sending the peer table to deviceID", id)
+	len := g.peers.PeerTableLength()
+	*peers = make(map[int]string)
+	for i = 0; i < len-1; i++ {
+		(*peers)[i] = g.peers.FindPeerAddress(i)
+	}
+	// Only for checking the values : Remove at the end
+	for k, v := range *peers {
+		fmt.Println("I am in Send Peer Table")
+		fmt.Println(k, v)
+	}
+	//code for checking the peer table value ends here
 	return nil
 }

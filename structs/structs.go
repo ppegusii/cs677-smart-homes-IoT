@@ -5,7 +5,53 @@ import (
 	"os"
 	"sync"
 	"time"
+	"fmt"
 )
+
+//PeerTable struct keeps a track of all peers(deviceID and address:port) in the system.
+type PeerTable struct {
+	p api.PMAP  // peers map[DeviceId] address:port
+	sync.RWMutex
+}
+
+//NewPeerTable() is called whenever a new gateway is created 
+func NewPeerTable() *PeerTable {
+	return &PeerTable{
+		p: make(map[int]string),
+	}
+}
+
+//AddPeer(): When a new Peer registers with the gateway and obtains a new Device ID.
+//The DeviceID and Address:Port are added to the PeerTable
+func (s *PeerTable) AddPeer(i int, address string) {
+	s.Lock()
+	s.p[i] = address
+	s.Unlock()
+}
+
+// ShowPeer() is mainly used for testing if the peertable is updated correctly
+func (s *PeerTable) ShowPeer() {
+	s.RLock()
+	for key, value := range s.p {
+		fmt.Println(s.p[key], key, value)
+	}
+	s.RUnlock()
+}
+
+//FindPeer() returns the value of the map
+func (s *PeerTable) FindPeerAddress(i int) string {
+	s.RLock()
+	address := s.p[i]
+	s.RUnlock()
+	return address
+}
+
+func (s *PeerTable) PeerTableLength() int {
+	s.RLock()
+	length := len(s.p)
+	s.RUnlock()
+	return length
+}
 
 type SyncMapIntBool struct {
 	sync.RWMutex
