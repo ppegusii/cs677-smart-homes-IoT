@@ -89,7 +89,7 @@ type OrderingMiddlewareInterface interface {
 	//Called only by other ordering implementations.
 	ReceiveEvent(params *Event, _ *struct{}) error
 	//Register functions that handle the states received inside events.
-	RegisterReportStates(funcs map[Name]ReportState)
+	RegisterReportState(name Name, reportState ReportState)
 }
 
 type SensorInterface interface {
@@ -105,7 +105,7 @@ type Event struct {
 	SrcAddress string
 	SrcId      int
 	SrcPort    string
-	State      StateInfo
+	StateInfo  StateInfo
 }
 
 type OrderingNode struct {

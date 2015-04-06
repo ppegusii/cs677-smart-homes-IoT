@@ -265,3 +265,59 @@ func (s *SyncMapIntStateInfo) Set(i int, state *api.StateInfo) {
 	s.m[i] = state
 	s.Unlock()
 }
+
+type SyncMapIntOrderingNode struct {
+	sync.RWMutex
+	m map[int]*api.OrderingNode
+}
+
+func NewSyncMapIntOrderingNode() *SyncMapIntOrderingNode {
+	return &SyncMapIntOrderingNode{
+		m: make(map[int]*api.OrderingNode),
+	}
+}
+
+func (s *SyncMapIntOrderingNode) Get(i int) (*api.OrderingNode, bool) {
+	s.RLock()
+	node, ok := s.m[i]
+	s.RUnlock()
+	return node, ok
+}
+
+func (s *SyncMapIntOrderingNode) Set(i int, node *api.OrderingNode) {
+	s.Lock()
+	s.m[i] = node
+	s.Unlock()
+}
+
+func (s *SyncMapIntOrderingNode) GetMap() map[int]*api.OrderingNode {
+	s.RLock()
+	//shallow copy
+	n := s.m
+	s.RUnlock()
+	return n
+}
+
+type SyncMapNameReportState struct {
+	sync.RWMutex
+	m map[api.Name]*api.ReportState
+}
+
+func NewSyncMapNameReportState() *SyncMapNameReportState {
+	return &SyncMapNameReportState{
+		m: make(map[api.Name]*api.ReportState),
+	}
+}
+
+func (s *SyncMapNameReportState) Get(n api.Name) (*api.ReportState, bool) {
+	s.RLock()
+	rs, ok := s.m[n]
+	s.RUnlock()
+	return rs, ok
+}
+
+func (s *SyncMapNameReportState) Set(n api.Name, rs *api.ReportState) {
+	s.Lock()
+	s.m[n] = rs
+	s.Unlock()
+}
