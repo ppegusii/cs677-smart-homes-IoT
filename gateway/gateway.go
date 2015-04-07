@@ -54,7 +54,11 @@ func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInt
 
 func (g *Gateway) start() {
 	//register funcs with middleware
+	g.orderMW.RegisterReportState(api.Bulb, g.ReportBulbState)
+	g.orderMW.RegisterReportState(api.Door, g.ReportDoorState)
 	g.orderMW.RegisterReportState(api.Motion, g.ReportMotion)
+	g.orderMW.RegisterReportState(api.Outlet, g.ReportOutletState)
+	g.orderMW.RegisterReportState(api.Temperature, g.ReportTemperature)
 	//start RPC server
 	//The interface cast only checks that the implementation satisfies
 	//the interface. Only implementations can be registered.
@@ -106,57 +110,123 @@ func (g *Gateway) pollTempSensors() {
 				if err != nil {
 					log.Printf("calling error: %+v", err)
 				}
-				log.Printf("Received temp: %d", tempReply.State)
-				//Write temperature sensor state to database
-				g.writeStateInfo("Database.AddState", &tempReply)
+				/*
+					log.Printf("Received temp: %d", tempReply.State)
+					//Write temperature sensor state to database
+					g.writeStateInfo("Database.AddState", &tempReply)
+				*/
 			}
-			//update the outlets
-			//just using the last tempVal
-			var tempVal api.State = tempReply.State
-			var s api.State
-			var outletState api.Mode = g.outletMode.GetMode()
-			if tempVal < 1 && outletState == api.OutletsOff {
-				s = api.On
-				g.outletMode.SetMode(api.OutletsOn)
-			} else if tempVal > 2 && outletState == api.OutletsOn {
-				s = api.Off
-				g.outletMode.SetMode(api.OutletsOff)
-			} else {
-				switch outletState {
-				case api.OutletsOff:
-					s = api.Off
-					break
-				case api.OutletsOn:
+			/*
+				//update the outlets
+				//just using the last tempVal
+				var tempVal api.State = tempReply.State
+				var s api.State
+				var outletState api.Mode = g.outletMode.GetMode()
+				if tempVal < 1 && outletState == api.OutletsOff {
 					s = api.On
-					break
+					g.outletMode.SetMode(api.OutletsOn)
+				} else if tempVal > 2 && outletState == api.OutletsOn {
+					s = api.Off
+					g.outletMode.SetMode(api.OutletsOff)
+				} else {
+					switch outletState {
+					case api.OutletsOff:
+						s = api.Off
+						break
+					case api.OutletsOn:
+						s = api.On
+						break
+					}
 				}
+				var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.outletDev.GetInts())
+				if len(outletIdRegParams) != 0 {
+					for outletId, regParams := range outletIdRegParams {
+						var client *rpc.Client
+						var err error
+						client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+						if err != nil {
+							log.Printf("dialing error: %+v", err)
+							continue
+						}
+						var stateInfo api.StateInfo = api.StateInfo{
+							DeviceId: outletId,
+							State:    s,
+						}
+						g.writeStateInfo("Database.AddEvent", &stateInfo)
+						var reply api.StateInfo
+						err = client.Call("SmartOutlet.ChangeState", stateInfo, &reply)
+						if err != nil {
+							log.Printf("Error changing smart outlet state: %+v", err)
+							continue
+						}
+						g.writeStateInfo("Database.AddState", &reply)
+					}
+				}
+			*/
+		}
+	}
+}
+
+func (g *Gateway) ReportTemperature(params *api.StateInfo, _ *struct{}) error {
+	log.Printf("Received temp: %d", params.State)
+	//Write temperature sensor state to database
+	g.writeStateInfo("Database.AddState", params)
+	go g.updateOutlets(params.State)
+	return nil
+}
+
+func (g *Gateway) updateOutlets(tempVal api.State) {
+	var s api.State
+	var outletState api.Mode = g.outletMode.GetMode()
+	if tempVal < 1 && outletState == api.OutletsOff {
+		s = api.On
+		g.outletMode.SetMode(api.OutletsOn)
+	} else if tempVal > 2 && outletState == api.OutletsOn {
+		s = api.Off
+		g.outletMode.SetMode(api.OutletsOff)
+	} else {
+		switch outletState {
+		case api.OutletsOff:
+			s = api.Off
+			break
+		case api.OutletsOn:
+			s = api.On
+			break
+		}
+	}
+	var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.outletDev.GetInts())
+	if len(outletIdRegParams) != 0 {
+		for outletId, regParams := range outletIdRegParams {
+			var client *rpc.Client
+			var err error
+			client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+			if err != nil {
+				log.Printf("dialing error: %+v", err)
+				continue
 			}
-			var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.outletDev.GetInts())
-			if len(outletIdRegParams) != 0 {
-				for outletId, regParams := range outletIdRegParams {
-					var client *rpc.Client
-					var err error
-					client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
-					if err != nil {
-						log.Printf("dialing error: %+v", err)
-						continue
-					}
-					var stateInfo api.StateInfo = api.StateInfo{
-						DeviceId: outletId,
-						State:    s,
-					}
-					g.writeStateInfo("Database.AddEvent", &stateInfo)
-					var reply api.StateInfo
-					err = client.Call("SmartOutlet.ChangeState", stateInfo, &reply)
-					if err != nil {
-						log.Printf("Error changing smart outlet state: %+v", err)
-						continue
-					}
-					g.writeStateInfo("Database.AddState", &reply)
-				}
+			var stateInfo api.StateInfo = api.StateInfo{
+				DeviceId: outletId,
+				State:    s,
+			}
+			g.writeStateInfo("Database.AddEvent", &stateInfo)
+			var reply api.StateInfo
+			err = client.Call("SmartOutlet.ChangeState", stateInfo, &reply)
+			if err != nil {
+				log.Printf("Error changing smart outlet state: %+v", err)
+				continue
 			}
 		}
 	}
+}
+
+func (g *Gateway) ReportOutletState(params *api.StateInfo, _ *struct{}) error {
+	g.writeStateInfo("Database.AddState", params)
+	return nil
+}
+
+func (g *Gateway) ReportBulbState(params *api.StateInfo, _ *struct{}) error {
+	g.writeStateInfo("Database.AddState", params)
+	return nil
 }
 
 func (g *Gateway) RegisterUser(params *api.RegisterGatewayUserParams, _ *struct{}) error {
@@ -310,7 +380,7 @@ func (g *Gateway) changeBulbStates(s api.State) {
 			log.Printf("Error changing smart bulb state: %+v", err)
 			continue
 		}
-		g.writeStateInfo("Database.AddState", &stateInfo)
+		//g.writeStateInfo("Database.AddState", &stateInfo)
 	}
 }
 

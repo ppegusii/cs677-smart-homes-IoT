@@ -104,16 +104,20 @@ func (m *MotionSensor) getInput() {
 			}
 			client.Go("Gateway.ReportMotion", api.StateInfo{DeviceId: m.id, State: m.state.GetState()}, &empty, nil)
 		*/
-		var err error = m.orderMW.SendState(api.StateInfo{DeviceId: m.id, DeviceName: api.Motion, State: m.state.GetState()}, m.gatewayIp, m.gatewayPort)
-		if err != nil {
-			log.Printf("Error sending state: %+v", err)
-			continue
-		}
+		m.sendState()
 	}
 }
 
 func (m *MotionSensor) QueryState(params *int, reply *api.StateInfo) error {
 	reply.DeviceId = m.id
 	reply.State = m.state.GetState()
+	go m.sendState()
 	return nil
+}
+
+func (m *MotionSensor) sendState() {
+	var err error = m.orderMW.SendState(api.StateInfo{DeviceId: m.id, DeviceName: api.Motion, State: m.state.GetState()}, m.gatewayIp, m.gatewayPort)
+	if err != nil {
+		log.Printf("Error sending state: %+v", err)
+	}
 }

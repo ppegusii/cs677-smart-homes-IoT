@@ -71,8 +71,11 @@ type GatewayInterface interface {
 	ChangeMode(params *Mode, _ *struct{}) error
 	Register(params *RegisterParams, reply *int) error
 	RegisterUser(params *RegisterGatewayUserParams, _ *struct{}) error
-	ReportMotion(params *StateInfo, _ *struct{}) error
+	ReportBulbState(params *StateInfo, _ *struct{}) error
 	ReportDoorState(params *StateInfo, _ *struct{}) error
+	ReportMotion(params *StateInfo, _ *struct{}) error
+	ReportOutletState(params *StateInfo, _ *struct{}) error
+	ReportTemperature(params *StateInfo, _ *struct{}) error
 }
 
 type OrderingMiddlewareInterface interface {

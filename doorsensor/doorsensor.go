@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
@@ -16,15 +17,18 @@ type DoorSensor struct {
 	id          int
 	gatewayIp   string
 	gatewayPort string
+	ordering    api.Ordering
+	orderMW     api.OrderingMiddlewareInterface
 	selfIp      string
 	selfPort    string
 	state       structs.SyncState
 }
 
-func newDoorSensor(gatewayIp string, gatewayPort string, selfIp string, selfPort string) *DoorSensor {
+func newDoorSensor(gatewayIp string, gatewayPort string, selfIp string, selfPort string, ordering api.Ordering) *DoorSensor {
 	return &DoorSensor{
 		gatewayIp:   gatewayIp,
 		gatewayPort: gatewayPort,
+		ordering:    ordering,
 		selfIp:      selfIp,
 		selfPort:    selfPort,
 		state:       *structs.NewSyncState(api.Closed),
@@ -32,19 +36,9 @@ func newDoorSensor(gatewayIp string, gatewayPort string, selfIp string, selfPort
 }
 
 func (d *DoorSensor) start() {
-	//RPC server
-	var err error = rpc.Register(api.SensorInterface(d))
-	if err != nil {
-		log.Fatal("rpc.Register error: %s\n", err)
-	}
-	var listener net.Listener
-	listener, err = net.Listen("tcp", d.selfIp+":"+d.selfPort)
-	if err != nil {
-		log.Fatal("net.Listen error: %s\n", err)
-	}
-	go rpc.Accept(listener)
 	//register with gateway
 	var client *rpc.Client
+	var err error
 	client, err = rpc.Dial("tcp", d.gatewayIp+":"+d.gatewayPort)
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
@@ -55,6 +49,19 @@ func (d *DoorSensor) start() {
 	}
 	log.Printf("Device id: %d", d.id)
 	util.LogCurrentState(d.state.GetState())
+	//initialize middleware
+	d.orderMW = ordermw.GetOrderingMiddleware(d.ordering, d.id, d.selfIp, d.selfPort)
+	//start RPC server
+	err = rpc.Register(api.SensorInterface(d))
+	if err != nil {
+		log.Fatal("rpc.Register error: %s\n", err)
+	}
+	var listener net.Listener
+	listener, err = net.Listen("tcp", d.selfIp+":"+d.selfPort)
+	if err != nil {
+		log.Fatal("net.Listen error: %s\n", err)
+	}
+	go rpc.Accept(listener)
 	//listen on stdin for door triggers
 	d.getInput()
 }
@@ -62,7 +69,7 @@ func (d *DoorSensor) start() {
 func (d *DoorSensor) getInput() {
 	//http://stackoverflow.com/questions/20895552/how-to-read-input-from-console-line
 	reader := bufio.NewReader(os.Stdin)
-	var empty struct{}
+	//var empty struct{}
 	for {
 		fmt.Print("Enter (0/1) to signal (open/closed): ")
 		input, _ := reader.ReadString('\n')
@@ -87,19 +94,30 @@ func (d *DoorSensor) getInput() {
 			fmt.Println("Invalid input")
 			continue
 		}
-		var client *rpc.Client
-		var err error
-		client, err = rpc.Dial("tcp", d.gatewayIp+":"+d.gatewayPort)
-		if err != nil {
-			log.Printf("dialing error: %+v", err)
-			continue
-		}
-		client.Go("Gateway.ReportDoorState", api.StateInfo{DeviceId: d.id, State: d.state.GetState()}, &empty, nil)
+		/*
+			var client *rpc.Client
+			var err error
+			client, err = rpc.Dial("tcp", d.gatewayIp+":"+d.gatewayPort)
+			if err != nil {
+				log.Printf("dialing error: %+v", err)
+				continue
+			}
+			client.Go("Gateway.ReportDoorState", api.StateInfo{DeviceId: d.id, State: d.state.GetState()}, &empty, nil)
+		*/
+		d.sendState()
 	}
 }
 
 func (d *DoorSensor) QueryState(params *int, reply *api.StateInfo) error {
 	reply.DeviceId = d.id
 	reply.State = d.state.GetState()
+	go d.sendState()
 	return nil
+}
+
+func (d *DoorSensor) sendState() {
+	var err error = d.orderMW.SendState(api.StateInfo{DeviceId: d.id, DeviceName: api.Door, State: d.state.GetState()}, d.gatewayIp, d.gatewayPort)
+	if err != nil {
+		log.Printf("Error sending state: %+v", err)
+	}
 }

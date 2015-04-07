@@ -2,11 +2,9 @@ package main
 
 import (
 	"flag"
-	//	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
-	//	"os"
 )
 
 func main() {
@@ -26,8 +24,8 @@ func main() {
 	var gatewayPort *string = flag.String("p", "6770", "gateway TCP port")
 	var selfIp *string = flag.String("I", "127.0.0.1", "IP address")
 	var selfPort *string = flag.String("P", "6771", "TCP port")
-	flag.Parse()
 	var order *string = flag.String("o", "n", "none=n,clock sync=c,logical clocks=l")
+	flag.Parse()
 
 	//start sensor
 	var ordering api.Ordering

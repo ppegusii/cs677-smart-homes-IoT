@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
@@ -13,15 +14,18 @@ type SmartBulb struct {
 	id          int
 	gatewayIp   string
 	gatewayPort string
+	ordering    api.Ordering
+	orderMW     api.OrderingMiddlewareInterface
 	selfIp      string
 	selfPort    string
 	state       structs.SyncState
 }
 
-func newSmartBulb(gatewayIp string, gatewayPort string, selfIp string, selfPort string) *SmartBulb {
+func newSmartBulb(gatewayIp string, gatewayPort string, selfIp string, selfPort string, ordering api.Ordering) *SmartBulb {
 	return &SmartBulb{
 		gatewayIp:   gatewayIp,
 		gatewayPort: gatewayPort,
+		ordering:    ordering,
 		selfIp:      selfIp,
 		selfPort:    selfPort,
 		state:       *structs.NewSyncState(api.Off),
@@ -41,7 +45,9 @@ func (s *SmartBulb) start() {
 		log.Fatal("calling error: %+v", err)
 	}
 	log.Printf("Device id: %d", s.id)
-	//RPC server
+	//initialize middleware
+	s.orderMW = ordermw.GetOrderingMiddleware(s.ordering, s.id, s.selfIp, s.selfPort)
+	//start RPC server
 	err = rpc.Register(api.DeviceInterface(s))
 	if err != nil {
 		log.Fatal("rpc.Register error: %s\n", err)
@@ -59,6 +65,7 @@ func (s *SmartBulb) QueryState(params *int, reply *api.StateInfo) error {
 	//this will not be called in practice
 	reply.DeviceId = s.id
 	reply.State = s.state.GetState()
+	go s.sendState()
 	return nil
 }
 
@@ -68,5 +75,13 @@ func (s *SmartBulb) ChangeState(params *api.StateInfo, reply *api.StateInfo) err
 	util.LogCurrentState(s.state.GetState())
 	reply.DeviceId = s.id
 	reply.State = params.State
+	go s.sendState()
 	return nil
+}
+
+func (s *SmartBulb) sendState() {
+	var err error = s.orderMW.SendState(api.StateInfo{DeviceId: s.id, DeviceName: api.Outlet, State: s.state.GetState()}, s.gatewayIp, s.gatewayPort)
+	if err != nil {
+		log.Printf("Error sending state: %+v", err)
+	}
 }
