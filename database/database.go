@@ -15,18 +15,16 @@ type Database struct {
 	events     *structs.SyncMapIntSyncFile
 	gateway    *structs.SyncRegGatewayUserParam
 	ip         string
-	ordering   api.Mode
 	port       string
 	stateCache *structs.SyncMapIntStateInfo
 	states     *structs.SyncMapIntSyncFile
 }
 
-func newDatabase(ip string, port string, ordering api.Mode) *Database {
+func newDatabase(ip string, port string, ordering api.Ordering) *Database {
 	return &Database{
 		events:     structs.NewSyncMapIntSyncFile(),
 		gateway:    structs.NewSyncRegGatewayUserParam(),
 		ip:         ip,
-		ordering:   ordering,
 		port:       port,
 		stateCache: structs.NewSyncMapIntStateInfo(),
 		states:     structs.NewSyncMapIntSyncFile(),
@@ -118,14 +116,7 @@ func (d *Database) writeStateInfo(stateInfo *api.StateInfo, f *structs.SyncFile)
 	var line string
 	var i int
 	var err error
-	switch d.ordering {
-	case api.Time:
-		line = fmt.Sprintf("%d,%d\n", stateInfo.Clock, stateInfo.State)
-		i, err = f.WriteString(line)
-		break
-	case api.Logical:
-		//TODO line = fmt.Sprintf("%,%d", ???, stateInfo.State)
-		break
-	}
+	line = fmt.Sprintf("%d,%d\n", stateInfo.Clock, stateInfo.State)
+	i, err = f.WriteString(line)
 	return i, err
 }

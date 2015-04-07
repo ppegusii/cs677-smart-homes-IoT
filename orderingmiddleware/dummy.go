@@ -15,8 +15,9 @@ type Dummy struct {
 	reportStates *structs.SyncMapNameReportState
 }
 
-func NewDummy(ip string, port string) *Dummy {
+func NewDummy(id int, ip string, port string) *Dummy {
 	var d *Dummy = &Dummy{
+		id:           id,
 		ip:           ip,
 		port:         port,
 		reportStates: structs.NewSyncMapNameReportState(),

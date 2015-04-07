@@ -33,15 +33,23 @@ const (
 type Mode int
 
 const (
-	Away    Mode = iota
-	Home    Mode = iota
-	Logical Mode = iota
+	Away Mode = iota
+	Home Mode = iota
+	//Logical Mode = iota
 	//These states indicate whether the
 	//gateway believes smart outlets are
 	//on or off.
 	OutletsOn  Mode = iota
 	OutletsOff Mode = iota
-	Time       Mode = iota
+	//Time       Mode = iota
+)
+
+type Ordering int
+
+const (
+	ClockSync    Ordering = iota
+	LogicalClock Ordering = iota
+	NoOrder      Ordering = iota
 )
 
 type ReportState func(*StateInfo, *struct{}) error
@@ -71,14 +79,19 @@ type OrderingMiddlewareInterface interface {
 	//Multicasts new node notification to all other nodes.
 	//Called only by the gateway front-end application.
 	SendNewNodeNotify(o *OrderingNode) error
-	//Accepts new node notifications
-	//Called only by other ordering implementations.
-	ReceiveNewNodeNotify(params *OrderingNode, _ *struct{}) error
 	//**Ordinary unicast for clock sync.
 	//Logical clocks:
 	//Multicasts event notification to all other nodes.
 	//Called by applications instead of reporting state directly to another process.
 	SendState(s *StateInfo, destAddr string, destPort string) error
+	//Register functions that handle the states received inside events.
+	RegisterReportState(name Name, reportState ReportState)
+}
+
+type OrderingMiddlewareRPCInterface interface {
+	//Accepts new node notifications
+	//Called only by other ordering implementations.
+	ReceiveNewNodeNotify(params *OrderingNode, _ *struct{}) error
 	//**Simple delivery of state info to registered report state functions for clock sync.
 	//Logical clocks:
 	//Multicasts acknowledgement of event to all other nodes.
@@ -88,8 +101,6 @@ type OrderingMiddlewareInterface interface {
 	//registered report state functions.
 	//Called only by other ordering implementations.
 	ReceiveEvent(params *Event, _ *struct{}) error
-	//Register functions that handle the states received inside events.
-	RegisterReportState(name Name, reportState ReportState)
 }
 
 type SensorInterface interface {
