@@ -1,4 +1,4 @@
-package orderingmiddleware
+package ordermw
 
 import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"

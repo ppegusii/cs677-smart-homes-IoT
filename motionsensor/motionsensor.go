@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
@@ -16,15 +17,18 @@ type MotionSensor struct {
 	id          int
 	gatewayIp   string
 	gatewayPort string
+	ordering    api.Ordering
+	orderMW     api.OrderingMiddlewareInterface
 	selfIp      string
 	selfPort    string
 	state       structs.SyncState
 }
 
-func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPort string) *MotionSensor {
+func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPort string, ordering api.Ordering) *MotionSensor {
 	return &MotionSensor{
 		gatewayIp:   gatewayIp,
 		gatewayPort: gatewayPort,
+		ordering:    ordering,
 		selfIp:      selfIp,
 		selfPort:    selfPort,
 		state:       *structs.NewSyncState(api.MotionStop),
@@ -32,19 +36,9 @@ func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPo
 }
 
 func (m *MotionSensor) start() {
-	//RPC server
-	var err error = rpc.Register(api.SensorInterface(m))
-	if err != nil {
-		log.Fatal("rpc.Register error: %s\n", err)
-	}
-	var listener net.Listener
-	listener, err = net.Listen("tcp", m.selfIp+":"+m.selfPort)
-	if err != nil {
-		log.Fatal("net.Listen error: %s\n", err)
-	}
-	go rpc.Accept(listener)
 	//register with gateway
 	var client *rpc.Client
+	var err error
 	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
@@ -55,6 +49,19 @@ func (m *MotionSensor) start() {
 	}
 	log.Printf("Device id: %d", m.id)
 	util.LogCurrentState(m.state.GetState())
+	//initialize middleware
+	m.orderMW = ordermw.GetOrderingMiddleware(m.ordering, m.id, m.selfIp, m.selfPort)
+	//start RPC server
+	err = rpc.Register(api.SensorInterface(m))
+	if err != nil {
+		log.Fatal("rpc.Register error: %s\n", err)
+	}
+	var listener net.Listener
+	listener, err = net.Listen("tcp", m.selfIp+":"+m.selfPort)
+	if err != nil {
+		log.Fatal("net.Listen error: %s\n", err)
+	}
+	go rpc.Accept(listener)
 	//listen on stdin for motion triggers
 	m.getInput()
 }
@@ -62,7 +69,7 @@ func (m *MotionSensor) start() {
 func (m *MotionSensor) getInput() {
 	//http://stackoverflow.com/questions/20895552/how-to-read-input-from-console-line
 	reader := bufio.NewReader(os.Stdin)
-	var empty struct{}
+	//var empty struct{}
 	for {
 		fmt.Print("Enter (0/1) to signal (nomotion/motion): ")
 		input, _ := reader.ReadString('\n')
@@ -87,14 +94,21 @@ func (m *MotionSensor) getInput() {
 			fmt.Println("Invalid input")
 			continue
 		}
-		var client *rpc.Client
-		var err error
-		client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
+		/*
+			var client *rpc.Client
+			var err error
+			client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
+			if err != nil {
+				log.Printf("dialing error: %+v", err)
+				continue
+			}
+			client.Go("Gateway.ReportMotion", api.StateInfo{DeviceId: m.id, State: m.state.GetState()}, &empty, nil)
+		*/
+		var err error = m.orderMW.SendState(api.StateInfo{DeviceId: m.id, DeviceName: api.Motion, State: m.state.GetState()}, m.gatewayIp, m.gatewayPort)
 		if err != nil {
-			log.Printf("dialing error: %+v", err)
+			log.Printf("Error sending state: %+v", err)
 			continue
 		}
-		client.Go("Gateway.ReportMotion", api.StateInfo{DeviceId: m.id, State: m.state.GetState()}, &empty, nil)
 	}
 }
 

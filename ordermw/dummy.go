@@ -1,10 +1,10 @@
-package orderingmiddleware
+package ordermw
 
 import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"log"
-	"net"
+	//"net"
 	"net/rpc"
 )
 
@@ -26,22 +26,24 @@ func NewDummy(id int, ip string, port string) *Dummy {
 	return d
 }
 func (this *Dummy) start() {
-	//RPC server
-	var err error = rpc.Register(api.OrderingMiddlewareInterface(this))
+	//register RPC server
+	var err error = rpc.Register(api.OrderingMiddlewareRPCInterface(this))
 	if err != nil {
 		log.Fatal("rpc.Register error: %s\n", err)
 	}
-	var listener net.Listener
-	listener, err = net.Listen("tcp", this.ip+":"+this.port)
-	if err != nil {
-		log.Fatal("net.Listen error: %s\n", err)
-	}
-	rpc.Accept(listener)
+	/*
+		var listener net.Listener
+		listener, err = net.Listen("tcp", this.ip+":"+this.port)
+		if err != nil {
+			log.Fatal("net.Listen error: %s\n", err)
+		}
+		rpc.Accept(listener)
+	*/
 }
 
 //Multicasts new node notification to all other nodes.
 //Called only by the gateway front-end application.
-func (this *Dummy) SendNewNodeNotify(o *api.OrderingNode) error {
+func (this *Dummy) SendNewNodeNotify(o api.OrderingNode) error {
 	return nil
 }
 
@@ -55,13 +57,13 @@ func (this *Dummy) ReceiveNewNodeNotify(params *api.OrderingNode, _ *struct{}) e
 //Logical clocks:
 //Multicasts event notification to all other nodes.
 //Called by applications instead of reporting state directly to another process.
-func (this *Dummy) SendState(s *api.StateInfo, destAddr string, destPort string) error {
+func (this *Dummy) SendState(s api.StateInfo, destAddr string, destPort string) error {
 	var event api.Event = api.Event{
 		IsAck:      false,
 		SrcAddress: this.ip,
 		SrcId:      s.DeviceId,
 		SrcPort:    this.port,
-		StateInfo:  *s,
+		StateInfo:  s,
 	}
 	var client *rpc.Client
 	var err error

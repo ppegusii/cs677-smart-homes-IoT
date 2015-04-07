@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	//	"fmt"
-	//	"github.com/ppegusii/cs677-smart-homes-IoT/util"
+	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"github.com/ppegusii/cs677-smart-homes-IoT/util"
+	"log"
 	//	"os"
 )
 
@@ -25,8 +27,15 @@ func main() {
 	var selfIp *string = flag.String("I", "127.0.0.1", "IP address")
 	var selfPort *string = flag.String("P", "6771", "TCP port")
 	flag.Parse()
+	var order *string = flag.String("o", "n", "none=n,clock sync=c,logical clocks=l")
 
 	//start sensor
-	var m *MotionSensor = newMotionSensor(*gatewayIp, *gatewayPort, *selfIp, *selfPort)
+	var ordering api.Ordering
+	var err error
+	ordering, err = util.StringToOrdering(*order)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var m *MotionSensor = newMotionSensor(*gatewayIp, *gatewayPort, *selfIp, *selfPort, ordering)
 	m.start()
 }

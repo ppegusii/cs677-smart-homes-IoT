@@ -78,12 +78,12 @@ type GatewayInterface interface {
 type OrderingMiddlewareInterface interface {
 	//Multicasts new node notification to all other nodes.
 	//Called only by the gateway front-end application.
-	SendNewNodeNotify(o *OrderingNode) error
+	SendNewNodeNotify(o OrderingNode) error
 	//**Ordinary unicast for clock sync.
 	//Logical clocks:
 	//Multicasts event notification to all other nodes.
 	//Called by applications instead of reporting state directly to another process.
-	SendState(s *StateInfo, destAddr string, destPort string) error
+	SendState(s StateInfo, destAddr string, destPort string) error
 	//Register functions that handle the states received inside events.
 	RegisterReportState(name Name, reportState ReportState)
 }

@@ -4,7 +4,8 @@ import (
 	"flag"
 	//	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
-	//	"github.com/ppegusii/cs677-smart-homes-IoT/util"
+	"github.com/ppegusii/cs677-smart-homes-IoT/util"
+	"log"
 	//	"os"
 )
 
@@ -29,8 +30,15 @@ func main() {
 	var dbIP *string = flag.String("I", "127.0.0.1", "database IP address")
 	var dbPort *string = flag.String("P", "6777", "database port")
 	flag.Parse()
+	var order *string = flag.String("o", "n", "none=n,clock sync=c,logical clocks=l")
 
 	//start server
-	var g *Gateway = newGateway(*dbIP, *dbPort, *ip, mode, pollingInterval, *port)
+	var ordering api.Ordering
+	var err error
+	ordering, err = util.StringToOrdering(*order)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var g *Gateway = newGateway(*dbIP, *dbPort, *ip, mode, pollingInterval, *port, ordering)
 	g.start()
 }

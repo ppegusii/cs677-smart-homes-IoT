@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"log"
 	"net"
@@ -19,6 +20,7 @@ type Gateway struct {
 	ip              string
 	mode            structs.SyncMode
 	motionSen       structs.SyncMapIntBool
+	orderMW         api.OrderingMiddlewareInterface
 	outletDev       structs.SyncMapIntBool
 	outletMode      structs.SyncMode
 	pollingInterval int
@@ -28,7 +30,7 @@ type Gateway struct {
 	user            structs.SyncRegGatewayUserParam
 }
 
-func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInterval int, port string) *Gateway {
+func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInterval int, port string, ordering api.Ordering) *Gateway {
 	var g *Gateway = &Gateway{
 		bulbDev:         *structs.NewSyncMapIntBool(),
 		database:        *structs.NewSyncRegGatewayUserParam(),
@@ -36,6 +38,7 @@ func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInt
 		ip:              ip,
 		mode:            *structs.NewSyncMode(mode),
 		motionSen:       *structs.NewSyncMapIntBool(),
+		orderMW:         ordermw.GetOrderingMiddleware(ordering, 0, ip, port),
 		outletDev:       *structs.NewSyncMapIntBool(),
 		outletMode:      *structs.NewSyncMode(api.OutletsOff),
 		pollingInterval: pollingInterval,
@@ -50,6 +53,8 @@ func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInt
 }
 
 func (g *Gateway) start() {
+	//register funcs with middleware
+	g.orderMW.RegisterReportState(api.Motion, g.ReportMotion)
 	//start RPC server
 	//The interface cast only checks that the implementation satisfies
 	//the interface. Only implementations can be registered.
@@ -164,6 +169,10 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	log.Printf("Attempting to register device with this info: %+v", params)
 	var err error = nil
 	var id int
+	var oNode api.OrderingNode = api.OrderingNode{
+		Address: params.Address,
+		Port:    params.Port,
+	}
 	switch params.Type {
 	case api.Sensor:
 		switch params.Name {
@@ -172,18 +181,24 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 			g.doorSen.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
+			oNode.ID = id
+			g.orderMW.SendNewNodeNotify(oNode)
 			break
 		case api.Motion:
 			id = g.senAndDev.AddRegParam(params)
 			g.motionSen.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
+			oNode.ID = id
+			g.orderMW.SendNewNodeNotify(oNode)
 			break
 		case api.Temperature:
 			id = g.senAndDev.AddRegParam(params)
 			g.tempSen.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
+			oNode.ID = id
+			g.orderMW.SendNewNodeNotify(oNode)
 			break
 		default:
 			err = errors.New(fmt.Sprintf("Invalid Sensor Name: %+v", params.Name))
@@ -197,12 +212,16 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 			g.bulbDev.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
+			oNode.ID = id
+			g.orderMW.SendNewNodeNotify(oNode)
 			break
 		case api.Outlet:
 			id = g.senAndDev.AddRegParam(params)
 			g.outletDev.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
+			oNode.ID = id
+			g.orderMW.SendNewNodeNotify(oNode)
 			break
 		default:
 			err = errors.New(fmt.Sprintf("Invalid Device Name: %+v", params.Name))
