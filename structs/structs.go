@@ -2,56 +2,12 @@ package structs
 
 import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"log"
 	"os"
 	"sync"
 	"time"
 	"fmt"
 )
-
-//PeerTable struct keeps a track of all peers(deviceID and address:port) in the system.
-type PeerTable struct {
-	p api.PMAP  // peers map[DeviceId] address:port
-	sync.RWMutex
-}
-
-//NewPeerTable() is called whenever a new gateway is created 
-func NewPeerTable() *PeerTable {
-	return &PeerTable{
-		p: make(map[int]string),
-	}
-}
-
-//AddPeer(): When a new Peer registers with the gateway and obtains a new Device ID.
-//The DeviceID and Address:Port are added to the PeerTable
-func (s *PeerTable) AddPeer(i int, address string) {
-	s.Lock()
-	s.p[i] = address
-	s.Unlock()
-}
-
-// ShowPeer() is mainly used for testing if the peertable is updated correctly
-func (s *PeerTable) ShowPeer() {
-	s.RLock()
-	for key, value := range s.p {
-		fmt.Println(s.p[key], key, value)
-	}
-	s.RUnlock()
-}
-
-//FindPeer() returns the value of the map
-func (s *PeerTable) FindPeerAddress(i int) string {
-	s.RLock()
-	address := s.p[i]
-	s.RUnlock()
-	return address
-}
-
-func (s *PeerTable) PeerTableLength() int {
-	s.RLock()
-	length := len(s.p)
-	s.RUnlock()
-	return length
-}
 
 type SyncMapIntBool struct {
 	sync.RWMutex
@@ -270,6 +226,7 @@ func NewSyncFile(name string) (*SyncFile, error) {
 	var err error
 	f, err = os.Create(name)
 	if err != nil {
+		log.Printf("Error creating file: %+v", err)
 		return nil, err
 	}
 	return &SyncFile{
@@ -307,5 +264,112 @@ func (s *SyncMapIntStateInfo) Get(i int) (*api.StateInfo, bool) {
 func (s *SyncMapIntStateInfo) Set(i int, state *api.StateInfo) {
 	s.Lock()
 	s.m[i] = state
+	s.Unlock()
+}
+
+type SyncMapIntOrderingNode struct {
+	sync.RWMutex
+	m map[int]*api.OrderingNode
+}
+
+func NewSyncMapIntOrderingNode() *SyncMapIntOrderingNode {
+	return &SyncMapIntOrderingNode{
+		m: make(map[int]*api.OrderingNode),
+	}
+}
+
+func (s *SyncMapIntOrderingNode) Get(i int) (*api.OrderingNode, bool) {
+	s.RLock()
+	node, ok := s.m[i]
+	s.RUnlock()
+	return node, ok
+}
+
+func (s *SyncMapIntOrderingNode) Set(i int, node *api.OrderingNode) {
+	s.Lock()
+	s.m[i] = node
+	s.Unlock()
+}
+
+func (s *SyncMapIntOrderingNode) GetMap() map[int]*api.OrderingNode {
+	s.RLock()
+	//shallow copy
+	n := s.m
+	s.RUnlock()
+	return n
+}
+
+type SyncMapNameReportState struct {
+	sync.RWMutex
+	m map[api.Name]*api.ReportState
+}
+
+func NewSyncMapNameReportState() *SyncMapNameReportState {
+	return &SyncMapNameReportState{
+		m: make(map[api.Name]*api.ReportState),
+	}
+}
+
+func (s *SyncMapNameReportState) Get(n api.Name) (*api.ReportState, bool) {
+	s.RLock()
+	rs, ok := s.m[n]
+	s.RUnlock()
+	return rs, ok
+}
+
+func (s *SyncMapNameReportState) Set(n api.Name, rs *api.ReportState) {
+	s.Lock()
+	s.m[n] = rs
+	s.Unlock()
+}
+
+//PeerTable struct keeps a track of all peers(deviceID and address:port) in the system.
+type PeerTable struct {
+	p api.PMAP  // peers map[DeviceId] address:port
+	sync.RWMutex
+}
+
+//NewPeerTable() is called whenever a new gateway is created 
+func NewPeerTable() *PeerTable {
+	return &PeerTable{
+		p: make(map[int]string),
+	}
+}
+
+//AddPeer(): When a new Peer registers with the gateway and obtains a new Device ID.
+//The DeviceID and Address:Port are added to the PeerTable
+func (s *PeerTable) AddPeer(i int, address string) {
+	s.Lock()
+	s.p[i] = address
+	s.Unlock()
+}
+
+// ShowPeer() is mainly used for testing if the peertable is updated correctly
+func (s *PeerTable) ShowPeer() {
+	s.RLock()
+	for key, value := range s.p {
+		fmt.Println(s.p[key], key, value)
+	}
+	s.RUnlock()
+}
+
+//FindPeer() returns the value of the map
+func (s *PeerTable) FindPeerAddress(i int) string {
+	s.RLock()
+	address := s.p[i]
+	s.RUnlock()
+	return address
+}
+
+func (s *PeerTable) PeerTableLength() int {
+	s.RLock()
+	length := len(s.p)
+	s.RUnlock()
+	return length
+}
+
+func (s *PeerTable) DeletePeer(i int) {
+	s.Lock()
+	delete(s.p,i)
 	s.Unlock()
 }

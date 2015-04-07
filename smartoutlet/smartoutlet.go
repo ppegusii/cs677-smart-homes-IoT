@@ -66,10 +66,12 @@ func (s *SmartOutlet) QueryState(params *int, reply *api.StateInfo) error {
 	return nil
 }
 
-func (s *SmartOutlet) ChangeState(params *api.StateInfo, _ *struct{}) error {
+func (s *SmartOutlet) ChangeState(params *api.StateInfo, reply *api.StateInfo) error {
 	log.Printf("Received change state request with info: %+v", params)
 	s.state.SetState(params.State)
 	util.LogCurrentState(s.state.GetState())
+	reply.DeviceId = s.id
+	reply.State = params.State
 	return nil
 }
 
@@ -104,6 +106,7 @@ func (s *SmartOutlet) UpdatePeerTable(params *api.PeerInfo, _ *struct{}) error {
 	case 0:
 		//Add new peer
 		s.peers[params.DeviceId] = params.Address
+		log.Println("Received a new peer: DeviceID - ",params.DeviceId," Address - ", s.peers[params.DeviceId])
 	case 1:
 		//Delete the old peer that got disconnected from the system
 		delete(s.peers,params.DeviceId)

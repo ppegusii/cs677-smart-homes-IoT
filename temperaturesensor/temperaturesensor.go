@@ -130,6 +130,7 @@ func (t *TemperatureSensor) UpdatePeerTable(params *api.PeerInfo, _ *struct{}) e
 	case 0:
 		//Add new peer
 		t.peers[params.DeviceId] = params.Address
+		log.Println("Received a new peer: DeviceID - ",params.DeviceId," Address - ", t.peers[params.DeviceId])
 	case 1:
 		//Delete the old peer that got disconnected from the system
 		delete(t.peers,params.DeviceId)

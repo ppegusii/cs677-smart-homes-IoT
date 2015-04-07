@@ -44,7 +44,6 @@ func (s *SmartBulb) start() {
 		log.Fatal("calling error: %+v", err)
 	}
 	log.Printf("Device id: %d", s.id)
-
 	//RPC server
 	err = rpc.Register(api.DeviceInterface(s))
 	if err != nil {
@@ -67,10 +66,12 @@ func (s *SmartBulb) QueryState(params *int, reply *api.StateInfo) error {
 	return nil
 }
 
-func (s *SmartBulb) ChangeState(params *api.StateInfo, _ *struct{}) error {
+func (s *SmartBulb) ChangeState(params *api.StateInfo, reply *api.StateInfo) error {
 	log.Printf("Received change state request with info: %+v", params)
 	s.state.SetState(params.State)
 	util.LogCurrentState(s.state.GetState())
+	reply.DeviceId = s.id
+	reply.State = params.State
 	return nil
 }
 

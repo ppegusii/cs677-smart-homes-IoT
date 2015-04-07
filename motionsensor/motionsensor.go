@@ -19,7 +19,7 @@ type MotionSensor struct {
 	selfIp      string
 	selfPort    string
 	state       structs.SyncState
-	peers		map[int]string// To keep a track of all peers
+	peers		map[int]string // To keep a track of all peers
 }
 
 func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPort string) *MotionSensor {
@@ -30,32 +30,6 @@ func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPo
 		selfPort:    selfPort,
 		state:       *structs.NewSyncState(api.MotionStop),
 		peers:       make(map[int]string),
-	}
-}
-
-// This is an asynchronous call to fetch the PeerTable from the Gateway
-func (m *MotionSensor) getPeerTable() {
-	var client *rpc.Client
-	var err error
-	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
-	if err != nil {
-		log.Printf("dialing error: %+v", err)
-	}
-	replycall := client.Go("Gateway.SendPeerTable", m.id, &m.peers, nil)
-	pt :=  <-replycall.Done
-	if(pt != nil) {
-		log.Println("Fetching PeerTable from the gateway")
-	} else {
-		log.Println("SendPeerTable RPC call return value: ",pt)
-	}
-
-	// Add the gateway to the peertable
-	m.peers[api.GatewayID] = m.gatewayIp+":"+m.gatewayPort
-
-	// Testing to check if the entire peertable has been received
-	fmt.Println("Received the peer table from Gateway as below:")
-	for k, v := range m.peers {
-		fmt.Println(k, v)
 	}
 }
 
@@ -83,7 +57,6 @@ func (m *MotionSensor) start() {
 	}
 	log.Printf("Device id: %d", m.id)
 	util.LogCurrentState(m.state.GetState())
-
 	m.getPeerTable()
 	//listen on stdin for motion triggers
 	m.getInput()
@@ -134,14 +107,54 @@ func (m *MotionSensor) QueryState(params *int, reply *api.StateInfo) error {
 	return nil
 }
 
+// This is an asynchronous call to fetch the PeerTable from the Gateway
+func (m *MotionSensor) getPeerTable() {
+	var client *rpc.Client
+	var err error
+	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
+	if err != nil {
+		log.Printf("dialing error: %+v", err)
+	}
+	replycall := client.Go("Gateway.SendPeerTable", m.id, &m.peers, nil)
+	pt :=  <-replycall.Done
+	if(pt != nil) {
+		log.Println("Fetching PeerTable from the gateway")
+	} else {
+		log.Println("SendPeerTable RPC call return value: ",pt)
+	}
+
+	// Add the gateway to the peertable
+	m.peers[api.GatewayID] = m.gatewayIp+":"+m.gatewayPort
+
+	// Testing to check if the entire peertable has been received
+	fmt.Println("Received the peer table from Gateway as below:")
+	for k, v := range m.peers {
+		fmt.Println(k, v)
+	}
+}
+
 func (m *MotionSensor) UpdatePeerTable(params *api.PeerInfo, _ *struct{}) error {
 	switch params.Token {
 	case 0:
 		//Add new peer
 		m.peers[params.DeviceId] = params.Address
+		log.Println("Received a new peer: DeviceID - ",params.DeviceId," Address - ", m.peers[params.DeviceId])
 	case 1:
 		//Delete the old peer that got disconnected from the system
 		delete(m.peers,params.DeviceId)
+	case 2:
+		//IAmAlive msg from gateway
+	case 3:
+		//Election message
+		//If device id is less then do nothing else Negate the response from the device and
+		// send a request to device with higher id than current device id.
+		if(m.id > params.DeviceId) {
+			//Call Deny RPC and set the electionleader flag to false
+			//For this we need the device type to issue the call
+		}
+	case 4:
+		//Leader is announced
+//		m.leaderid = params.DeviceId
 	default:
 		log.Println("Unexpected Token")
 	}

@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"log"
@@ -23,11 +24,30 @@ func LogCurrentState(s api.State) {
 	case api.MotionStop:
 		text = "No Motion"
 		break
+	case api.Open:
+		text = "Open"
+		break
+	case api.Closed:
+		text = "Closed"
+		break
 	default:
 		text = "Invalid state"
 		break
 	}
 	log.Printf("Current state: %s", text)
+}
+
+func StringToOrdering(s string) (api.Ordering, error) {
+	switch s {
+	case "n":
+		return api.NoOrder, nil
+	case "l":
+		return api.LogicalClock, nil
+	case "c":
+		return api.ClockSync, nil
+	default:
+		return api.NoOrder, errors.New(fmt.Sprintf("Invalid ordering switch: %s", s))
+	}
 }
 
 func GetOwnIP() string {
@@ -47,10 +67,3 @@ func GetOwnIP() string {
 	log.Fatal("Error")
 	return ""
 }
-
-/* Gateway initiates this function and sends the list of all registered resources
-in the system */
-//func GetPeerTable() int {}
-
-//func DeletePeer() int{}
-

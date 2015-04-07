@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
@@ -14,18 +15,16 @@ type Database struct {
 	events     *structs.SyncMapIntSyncFile
 	gateway    *structs.SyncRegGatewayUserParam
 	ip         string
-	ordering   api.Mode
 	port       string
 	stateCache *structs.SyncMapIntStateInfo
 	states     *structs.SyncMapIntSyncFile
 }
 
-func newDatabase(ip string, port string, ordering api.Mode) *Database {
+func newDatabase(ip string, port string, ordering api.Ordering) *Database {
 	return &Database{
 		events:     structs.NewSyncMapIntSyncFile(),
 		gateway:    structs.NewSyncRegGatewayUserParam(),
 		ip:         ip,
-		ordering:   ordering,
 		port:       port,
 		stateCache: structs.NewSyncMapIntStateInfo(),
 		states:     structs.NewSyncMapIntSyncFile(),
@@ -57,7 +56,7 @@ func (d *Database) start() {
 func (d *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) error {
 	var err error
 	//Writes object information to table.
-	_, err = d.devSen.WriteString(fmt.Sprintf("%d,%d,%d,%s,%s",
+	_, err = d.devSen.WriteString(fmt.Sprintf("%d,%d,%d,%s,%s\n",
 		params.DeviceId,
 		params.Type,
 		params.Name,
@@ -83,14 +82,20 @@ func (d *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) er
 
 //Write event to table
 func (d *Database) AddEvent(params *api.StateInfo, _ *struct{}) error {
-	f, _ := d.events.Get(params.DeviceId)
+	f, ok := d.events.Get(params.DeviceId)
+	if !ok {
+		return errors.New(fmt.Sprintf("Invalid device ID: %d", params.DeviceId))
+	}
 	_, err := d.writeStateInfo(params, f)
 	return err
 }
 
 //Write state to table
 func (d *Database) AddState(params *api.StateInfo, _ *struct{}) error {
-	f, _ := d.states.Get(params.DeviceId)
+	f, ok := d.states.Get(params.DeviceId)
+	if !ok {
+		return errors.New(fmt.Sprintf("Invalid device ID: %d", params.DeviceId))
+	}
 	_, err := d.writeStateInfo(params, f)
 	d.stateCache.Set(params.DeviceId, params)
 	return err
@@ -111,14 +116,7 @@ func (d *Database) writeStateInfo(stateInfo *api.StateInfo, f *structs.SyncFile)
 	var line string
 	var i int
 	var err error
-	switch d.ordering {
-	case api.Time:
-		line = fmt.Sprintf("%d,%d", stateInfo.UnixTime, stateInfo.State)
-		i, err = f.WriteString(line)
-		break
-	case api.Logical:
-		//TODO line = fmt.Sprintf("%,%d", ???, stateInfo.State)
-		break
-	}
+	line = fmt.Sprintf("%d,%d\n", stateInfo.Clock, stateInfo.State)
+	i, err = f.WriteString(line)
 	return i, err
 }

@@ -138,6 +138,8 @@ func (d *DoorSensor) UpdatePeerTable(params *api.PeerInfo, _ *struct{}) error {
 	case 0:
 		//Add new peer
 		d.peers[params.DeviceId] = params.Address
+		log.Println("Received a new peer: DeviceID - ",params.DeviceId," Address - ", d.peers[params.DeviceId])
+
 	case 1:
 		//Delete the old peer that got disconnected from the system
 		delete(d.peers,params.DeviceId)
