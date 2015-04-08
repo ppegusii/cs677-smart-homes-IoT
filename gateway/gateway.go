@@ -30,6 +30,7 @@ type Gateway struct {
 	senAndDev       structs.SyncMapIntRegParam
 	tempSen         structs.SyncMapIntBool
 	user            structs.SyncRegGatewayUserParam
+	peers           structs.PeerTable // To keep a track of all peers
 }
 
 // create and initialize the fields of gateway
@@ -49,9 +50,12 @@ func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInt
 		senAndDev:       *structs.NewSyncMapIntRegParam(),
 		tempSen:         *structs.NewSyncMapIntBool(),
 		user:            *structs.NewSyncRegGatewayUserParam(),
+		peers:           *structs.NewPeerTable(),
 	}
 	g.database.Set(api.RegisterGatewayUserParams{Address: dbIP, Port: dbPort})
 	g.bulbTimer = *structs.NewSyncTimer(5*time.Minute, g.turnBulbsOff)
+	g.peers.AddPeer(api.GatewayID, ip+":"+port) //Add the Gateway to the peertable
+	g.peers.ShowPeer()                          // Testing: Remove later
 	return g
 }
 
@@ -316,6 +320,10 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 		err = errors.New(fmt.Sprintf("Invalid Type: %+v", params.Type))
 	}
 	*reply = id
+	params.DeviceId = id
+
+	g.peers.AddPeer(id, params.Address+":"+params.Port)
+	g.peers.ShowPeer()
 	return err
 }
 

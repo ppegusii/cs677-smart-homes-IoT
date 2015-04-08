@@ -4,6 +4,12 @@ import ()
 
 type Type int
 
+//Peer Map Table
+type PMAP map[int]string
+
+//GatewayID
+const GatewayID int = 0
+
 // Device types
 const (
 	Sensor Type = iota
