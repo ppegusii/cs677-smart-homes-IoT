@@ -12,6 +12,9 @@ import (
 	"os"
 )
 
+// This struct contains all the attributes of the temperature sensor and information needed for
+// ordering for clock synchronization, peer table to keep a track of ip of the peers 
+// and reference to its middleware
 type TemperatureSensor struct {
 	id          int
 	gatewayIp   string
@@ -23,6 +26,7 @@ type TemperatureSensor struct {
 	temperature structs.SyncState
 }
 
+// create and initialize a new temperature sensor
 func newTemperatureSensor(temperature api.State, gatewayIp string, gatewayPort string, selfIp string, selfPort string, ordering api.Ordering) *TemperatureSensor {
 	return &TemperatureSensor{
 		gatewayIp:   gatewayIp,
@@ -93,6 +97,7 @@ func (t *TemperatureSensor) getInput() {
 	}
 }
 
+//This is an RPC function that is issued by the gateway to get the state of the Temperature sensor
 func (t *TemperatureSensor) QueryState(params *int, reply *api.StateInfo) error {
 	/*
 		reply.DeviceId = t.id
@@ -102,6 +107,7 @@ func (t *TemperatureSensor) QueryState(params *int, reply *api.StateInfo) error 
 	return nil
 }
 
+// sendState() is used to report state to the middleware
 func (t *TemperatureSensor) sendState() {
 	var err error = t.orderMW.SendState(api.StateInfo{DeviceId: t.id, DeviceName: api.Temperature, State: t.temperature.GetState()}, t.gatewayIp, t.gatewayPort)
 	if err != nil {
@@ -109,6 +115,7 @@ func (t *TemperatureSensor) sendState() {
 	}
 }
 
+//Print current temperature to the console
 func logCurrentTemp(t api.State) {
 	log.Printf("Current temp: %d", t)
 }

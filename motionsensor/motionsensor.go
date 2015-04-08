@@ -13,6 +13,9 @@ import (
 	"os"
 )
 
+// This struct contains all the attributes of the motion sensor and information needed for
+// ordering for clock synchronization, peer table to keep a track of ip of the peers 
+// and reference to its middleware
 type MotionSensor struct {
 	id          int
 	gatewayIp   string
@@ -24,6 +27,7 @@ type MotionSensor struct {
 	state       structs.SyncState
 }
 
+// create and initialize a new motion sensor
 func newMotionSensor(gatewayIp string, gatewayPort string, selfIp string, selfPort string, ordering api.Ordering) *MotionSensor {
 	return &MotionSensor{
 		gatewayIp:   gatewayIp,
@@ -108,6 +112,7 @@ func (m *MotionSensor) getInput() {
 	}
 }
 
+//This is an RPC function that is issued by the gateway to get the state of the motion sensor
 func (m *MotionSensor) QueryState(params *int, reply *api.StateInfo) error {
 	reply.DeviceId = m.id
 	reply.State = m.state.GetState()
@@ -115,6 +120,7 @@ func (m *MotionSensor) QueryState(params *int, reply *api.StateInfo) error {
 	return nil
 }
 
+// The motion sensor is a push based device; sendState() is used to report state to the middleware
 func (m *MotionSensor) sendState() {
 	var err error = m.orderMW.SendState(api.StateInfo{DeviceId: m.id, DeviceName: api.Motion, State: m.state.GetState()}, m.gatewayIp, m.gatewayPort)
 	if err != nil {

@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+// This struct keeps a track of all the attributes of gateway, reference to peertable, middleware,
+// ordering events and types of devices registered in the system
 type Gateway struct {
 	bulbDev         structs.SyncMapIntBool
 	bulbTimer       structs.SyncTimer
@@ -30,6 +32,7 @@ type Gateway struct {
 	user            structs.SyncRegGatewayUserParam
 }
 
+// create and initialize the fields of gateway
 func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInterval int, port string, ordering api.Ordering) *Gateway {
 	var g *Gateway = &Gateway{
 		bulbDev:         *structs.NewSyncMapIntBool(),
@@ -89,6 +92,7 @@ func (g *Gateway) start() {
 	g.pollTempSensors()
 }
 
+// Poll the temperature sensor every n secs, n is determined by the value of pollingInterval
 func (g *Gateway) pollTempSensors() {
 	//this function would need changes if there were
 	//many temperature sensors
@@ -167,6 +171,7 @@ func (g *Gateway) pollTempSensors() {
 	}
 }
 
+// Write to the Database
 func (g *Gateway) ReportTemperature(params *api.StateInfo, _ *struct{}) error {
 	log.Printf("Received temp: %d", params.State)
 	//Write temperature sensor state to database
@@ -175,9 +180,11 @@ func (g *Gateway) ReportTemperature(params *api.StateInfo, _ *struct{}) error {
 	return nil
 }
 
+// Based on the temperature reported by the temperature sensor send a notification to the smartoutlet
 func (g *Gateway) updateOutlets(tempVal api.State) {
 	var s api.State
 	var outletState api.Mode = g.outletMode.GetMode()
+	// Ensure that the outlet is On only if the temperarture is between 1 and 2 else the smartoutlet is Off
 	if tempVal < 1 && outletState == api.OutletsOff {
 		s = api.On
 		g.outletMode.SetMode(api.OutletsOn)
@@ -194,6 +201,7 @@ func (g *Gateway) updateOutlets(tempVal api.State) {
 			break
 		}
 	}
+	// Dial the outlet and send the state
 	var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.outletDev.GetInts())
 	if len(outletIdRegParams) != 0 {
 		for outletId, regParams := range outletIdRegParams {
@@ -208,6 +216,7 @@ func (g *Gateway) updateOutlets(tempVal api.State) {
 				DeviceId: outletId,
 				State:    s,
 			}
+			// Register the event in the database
 			g.writeStateInfo("Database.AddEvent", &stateInfo)
 			var reply api.StateInfo
 			err = client.Call("SmartOutlet.ChangeState", stateInfo, &reply)
@@ -219,22 +228,26 @@ func (g *Gateway) updateOutlets(tempVal api.State) {
 	}
 }
 
+// Register Smartoutlet state to database
 func (g *Gateway) ReportOutletState(params *api.StateInfo, _ *struct{}) error {
 	g.writeStateInfo("Database.AddState", params)
 	return nil
 }
 
+// Register Bulb state to database
 func (g *Gateway) ReportBulbState(params *api.StateInfo, _ *struct{}) error {
 	g.writeStateInfo("Database.AddState", params)
 	return nil
 }
 
+// Register user to the Gateway
 func (g *Gateway) RegisterUser(params *api.RegisterGatewayUserParams, _ *struct{}) error {
 	log.Printf("Registering user with info: %+v", params)
 	g.user.Set(*params)
 	return nil
 }
 
+// Register devices and sensors to the gateway
 func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	log.Printf("Attempting to register device with this info: %+v", params)
 	var err error = nil
@@ -244,6 +257,7 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 		Port:    params.Port,
 	}
 	switch params.Type {
+	//Register Sensors
 	case api.Sensor:
 		switch params.Name {
 		case api.Door:
@@ -276,6 +290,7 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 		}
 		break
 	case api.Device:
+	//Register Device
 		switch params.Name {
 		case api.Bulb:
 			id = g.senAndDev.AddRegParam(params)
@@ -304,6 +319,7 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	return err
 }
 
+//Motion sensor is a push based sensor it reports motion to the gateway by ReportMotion() interface
 func (g *Gateway) ReportMotion(params *api.StateInfo, _ *struct{}) error {
 	log.Printf("Received motion report with this info: %+v", params)
 	var exists bool = g.motionSen.Exists(params.DeviceId)
@@ -334,6 +350,7 @@ func (g *Gateway) ReportMotion(params *api.StateInfo, _ *struct{}) error {
 	return nil
 }
 
+// Function to send text to the user if Mode is set to AWAY and motion detected in the house
 func (g *Gateway) sendText() {
 	if !g.user.Exists() {
 		return
@@ -351,14 +368,17 @@ func (g *Gateway) sendText() {
 	client.Go("User.TextMessage", &msg, &empty, nil)
 }
 
+//Change the bulb state to On
 func (g *Gateway) turnBulbsOn() {
 	g.changeBulbStates(api.On)
 }
 
+//Change the bulb state mainted in gateway struct to Off
 func (g *Gateway) turnBulbsOff() {
 	g.changeBulbStates(api.Off)
 }
 
+//Change the state of smartbulb
 func (g *Gateway) changeBulbStates(s api.State) {
 	var bulbIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.bulbDev.GetInts())
 	for bulbId, regParams := range bulbIdRegParams {
@@ -384,6 +404,7 @@ func (g *Gateway) changeBulbStates(s api.State) {
 	}
 }
 
+// Change the mode of the System to Home or Away
 func (g *Gateway) ChangeMode(params *api.Mode, _ *struct{}) error {
 	log.Printf("Received change mode request with this mode: %+v", *params)
 	var err error = nil
@@ -414,6 +435,7 @@ func (g *Gateway) ChangeMode(params *api.Mode, _ *struct{}) error {
 	return err
 }
 
+//Get the current mode and print it on the console
 func logCurrentMode(m api.Mode) {
 	var text string
 	switch m {
@@ -430,6 +452,7 @@ func logCurrentMode(m api.Mode) {
 	log.Printf("Current mode: %s", text)
 }
 
+//Query motion sensor for current state
 func (g *Gateway) checkForMotion() bool {
 	var motionIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.motionSen.GetInts())
 	if len(motionIdRegParams) != 0 {
@@ -437,6 +460,7 @@ func (g *Gateway) checkForMotion() bool {
 		for motionId, regParams := range motionIdRegParams {
 			var client *rpc.Client
 			var err error
+			//Dial the middleware of the motion sensor
 			client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
 			if err != nil {
 				log.Printf("dialing error: %+v", err)
