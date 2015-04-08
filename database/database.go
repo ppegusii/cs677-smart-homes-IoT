@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"log"
 	"net"
@@ -15,6 +16,7 @@ type Database struct {
 	events     *structs.SyncMapIntSyncFile
 	gateway    *structs.SyncRegGatewayUserParam
 	ip         string
+	orderMW    api.OrderingMiddlewareInterface
 	port       string
 	stateCache *structs.SyncMapIntStateInfo
 	states     *structs.SyncMapIntSyncFile
@@ -25,6 +27,7 @@ func newDatabase(ip string, port string, ordering api.Ordering) *Database {
 		events:     structs.NewSyncMapIntSyncFile(),
 		gateway:    structs.NewSyncRegGatewayUserParam(),
 		ip:         ip,
+		orderMW:    ordermw.GetOrderingMiddleware(ordering, -1, ip, port),
 		port:       port,
 		stateCache: structs.NewSyncMapIntStateInfo(),
 		states:     structs.NewSyncMapIntSyncFile(),

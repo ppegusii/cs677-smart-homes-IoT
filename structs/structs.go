@@ -6,7 +6,6 @@ import (
 	"os"
 	"sync"
 	"time"
-	"fmt"
 )
 
 type SyncMapIntBool struct {
@@ -14,18 +13,21 @@ type SyncMapIntBool struct {
 	m map[int]bool
 }
 
+//create a new map
 func NewSyncMapIntBool() *SyncMapIntBool {
 	return &SyncMapIntBool{
 		m: make(map[int]bool),
 	}
 }
 
+//add to the map
 func (s *SyncMapIntBool) AddInt(i int) {
 	s.Lock()
 	s.m[i] = false
 	s.Unlock()
 }
 
+//get values
 func (s *SyncMapIntBool) GetInts() *map[int]bool {
 	var newM map[int]bool = make(map[int]bool)
 	s.RLock()
@@ -36,6 +38,7 @@ func (s *SyncMapIntBool) GetInts() *map[int]bool {
 	return &newM
 }
 
+//check if present
 func (s *SyncMapIntBool) Exists(i int) bool {
 	s.RLock()
 	_, ok := s.m[i]
@@ -43,18 +46,23 @@ func (s *SyncMapIntBool) Exists(i int) bool {
 	return ok
 }
 
+// A map for the Sensors and Device registered in the system. 
+//The int i keeps a track of last deviceid assigned to the most recent registered device in the system
 type SyncMapIntRegParam struct {
 	sync.RWMutex
 	m map[int]*api.RegisterParams
 	i int
 }
 
+//create a new SyncMapIntRegParam
 func NewSyncMapIntRegParam() *SyncMapIntRegParam {
 	return &SyncMapIntRegParam{
 		m: make(map[int]*api.RegisterParams),
+		i: 1,
 	}
 }
 
+//Add a new device/sensor
 func (s *SyncMapIntRegParam) AddRegParam(regParam *api.RegisterParams) int {
 	var i int
 	s.Lock()
@@ -65,6 +73,7 @@ func (s *SyncMapIntRegParam) AddRegParam(regParam *api.RegisterParams) int {
 	return i
 }
 
+//Fetch the values from the map
 func (s *SyncMapIntRegParam) GetRegParams(is *map[int]bool) *map[int]*api.RegisterParams {
 	var newM map[int]*api.RegisterParams = make(map[int]*api.RegisterParams)
 	s.RLock()
@@ -78,17 +87,20 @@ func (s *SyncMapIntRegParam) GetRegParams(is *map[int]bool) *map[int]*api.Regist
 	return &newM
 }
 
+// Defines the Mode of the system : Home or Away
 type SyncMode struct {
 	sync.RWMutex
 	m api.Mode
 }
 
+//create new SyncMode
 func NewSyncMode(mode api.Mode) *SyncMode {
 	return &SyncMode{
 		m: mode,
 	}
 }
 
+//fetch the current mode value
 func (s *SyncMode) GetMode() api.Mode {
 	s.RLock()
 	var mode api.Mode = s.m
@@ -96,11 +108,13 @@ func (s *SyncMode) GetMode() api.Mode {
 	return mode
 }
 
+//assign a value to the mode
 func (s *SyncMode) SetMode(mode api.Mode) {
 	s.Lock()
 	s.m = mode
 	s.Unlock()
 }
+
 
 type SyncState struct {
 	sync.RWMutex
@@ -320,56 +334,5 @@ func (s *SyncMapNameReportState) Get(n api.Name) (*api.ReportState, bool) {
 func (s *SyncMapNameReportState) Set(n api.Name, rs *api.ReportState) {
 	s.Lock()
 	s.m[n] = rs
-	s.Unlock()
-}
-
-//PeerTable struct keeps a track of all peers(deviceID and address:port) in the system.
-type PeerTable struct {
-	p api.PMAP  // peers map[DeviceId] address:port
-	sync.RWMutex
-}
-
-//NewPeerTable() is called whenever a new gateway is created 
-func NewPeerTable() *PeerTable {
-	return &PeerTable{
-		p: make(map[int]string),
-	}
-}
-
-//AddPeer(): When a new Peer registers with the gateway and obtains a new Device ID.
-//The DeviceID and Address:Port are added to the PeerTable
-func (s *PeerTable) AddPeer(i int, address string) {
-	s.Lock()
-	s.p[i] = address
-	s.Unlock()
-}
-
-// ShowPeer() is mainly used for testing if the peertable is updated correctly
-func (s *PeerTable) ShowPeer() {
-	s.RLock()
-	for key, value := range s.p {
-		fmt.Println(s.p[key], key, value)
-	}
-	s.RUnlock()
-}
-
-//FindPeer() returns the value of the map
-func (s *PeerTable) FindPeerAddress(i int) string {
-	s.RLock()
-	address := s.p[i]
-	s.RUnlock()
-	return address
-}
-
-func (s *PeerTable) PeerTableLength() int {
-	s.RLock()
-	length := len(s.p)
-	s.RUnlock()
-	return length
-}
-
-func (s *PeerTable) DeletePeer(i int) {
-	s.Lock()
-	delete(s.p,i)
 	s.Unlock()
 }

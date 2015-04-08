@@ -4,16 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
-	"github.com/ppegusii/cs677-smart-homes-IoT/middleware"
 	"log"
 	"net"
 	"net/rpc"
 	"time"
 )
 
+// This struct keeps a track of all the attributes of gateway, reference to peertable, middleware,
+// ordering events and types of devices registered in the system
 type Gateway struct {
-	id 				int
 	bulbDev         structs.SyncMapIntBool
 	bulbTimer       structs.SyncTimer
 	database        structs.SyncRegGatewayUserParam
@@ -21,6 +22,7 @@ type Gateway struct {
 	ip              string
 	mode            structs.SyncMode
 	motionSen       structs.SyncMapIntBool
+	orderMW         api.OrderingMiddlewareInterface
 	outletDev       structs.SyncMapIntBool
 	outletMode      structs.SyncMode
 	pollingInterval int
@@ -28,19 +30,18 @@ type Gateway struct {
 	senAndDev       structs.SyncMapIntRegParam
 	tempSen         structs.SyncMapIntBool
 	user            structs.SyncRegGatewayUserParam
-	peers           structs.PeerTable // To keep a track of all peers
-	middleware		*middleware.Middleware
 }
 
-func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInterval int, port string) *Gateway {
+// create and initialize the fields of gateway
+func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInterval int, port string, ordering api.Ordering) *Gateway {
 	var g *Gateway = &Gateway{
-		id: 			 0,
 		bulbDev:         *structs.NewSyncMapIntBool(),
 		database:        *structs.NewSyncRegGatewayUserParam(),
 		doorSen:         *structs.NewSyncMapIntBool(),
 		ip:              ip,
 		mode:            *structs.NewSyncMode(mode),
 		motionSen:       *structs.NewSyncMapIntBool(),
+		orderMW:         ordermw.GetOrderingMiddleware(ordering, 0, ip, port),
 		outletDev:       *structs.NewSyncMapIntBool(),
 		outletMode:      *structs.NewSyncMode(api.OutletsOff),
 		pollingInterval: pollingInterval,
@@ -48,18 +49,19 @@ func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInt
 		senAndDev:       *structs.NewSyncMapIntRegParam(),
 		tempSen:         *structs.NewSyncMapIntBool(),
 		user:            *structs.NewSyncRegGatewayUserParam(),
-		peers:           *structs.NewPeerTable(),
 	}
 	g.database.Set(api.RegisterGatewayUserParams{Address: dbIP, Port: dbPort})
 	g.bulbTimer = *structs.NewSyncTimer(5*time.Minute, g.turnBulbsOff)
-	g.peers.AddPeer(api.GatewayID, ip+":"+port) //Add the Gateway;DeviceID 10000 is assigned to Gateway
-	g.peers.ShowPeer()                          // Testing: Remove later
-	g.middleware = middleware.NewMiddleware(g.id, g.ip, (pollingInterval), g.port)
-	fmt.Println("Value of m is",g.middleware)
 	return g
 }
 
 func (g *Gateway) start() {
+	//register funcs with middleware
+	g.orderMW.RegisterReportState(api.Bulb, g.ReportBulbState)
+	g.orderMW.RegisterReportState(api.Door, g.ReportDoorState)
+	g.orderMW.RegisterReportState(api.Motion, g.ReportMotion)
+	g.orderMW.RegisterReportState(api.Outlet, g.ReportOutletState)
+	g.orderMW.RegisterReportState(api.Temperature, g.ReportTemperature)
 	//start RPC server
 	//The interface cast only checks that the implementation satisfies
 	//the interface. Only implementations can be registered.
@@ -90,6 +92,7 @@ func (g *Gateway) start() {
 	g.pollTempSensors()
 }
 
+// Poll the temperature sensor every n secs, n is determined by the value of pollingInterval
 func (g *Gateway) pollTempSensors() {
 	//this function would need changes if there were
 	//many temperature sensors
@@ -111,70 +114,150 @@ func (g *Gateway) pollTempSensors() {
 				if err != nil {
 					log.Printf("calling error: %+v", err)
 				}
-				log.Printf("Received temp: %d", tempReply.State)
-				//Write temperature sensor state to database
-				g.writeStateInfo("Database.AddState", &tempReply)
+				/*
+					log.Printf("Received temp: %d", tempReply.State)
+					//Write temperature sensor state to database
+					g.writeStateInfo("Database.AddState", &tempReply)
+				*/
 			}
-			//update the outlets
-			//just using the last tempVal
-			var tempVal api.State = tempReply.State
-			var s api.State
-			var outletState api.Mode = g.outletMode.GetMode()
-			if tempVal < 1 && outletState == api.OutletsOff {
-				s = api.On
-				g.outletMode.SetMode(api.OutletsOn)
-			} else if tempVal > 2 && outletState == api.OutletsOn {
-				s = api.Off
-				g.outletMode.SetMode(api.OutletsOff)
-			} else {
-				switch outletState {
-				case api.OutletsOff:
-					s = api.Off
-					break
-				case api.OutletsOn:
+			/*
+				//update the outlets
+				//just using the last tempVal
+				var tempVal api.State = tempReply.State
+				var s api.State
+				var outletState api.Mode = g.outletMode.GetMode()
+				if tempVal < 1 && outletState == api.OutletsOff {
 					s = api.On
-					break
+					g.outletMode.SetMode(api.OutletsOn)
+				} else if tempVal > 2 && outletState == api.OutletsOn {
+					s = api.Off
+					g.outletMode.SetMode(api.OutletsOff)
+				} else {
+					switch outletState {
+					case api.OutletsOff:
+						s = api.Off
+						break
+					case api.OutletsOn:
+						s = api.On
+						break
+					}
 				}
+				var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.outletDev.GetInts())
+				if len(outletIdRegParams) != 0 {
+					for outletId, regParams := range outletIdRegParams {
+						var client *rpc.Client
+						var err error
+						client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+						if err != nil {
+							log.Printf("dialing error: %+v", err)
+							continue
+						}
+						var stateInfo api.StateInfo = api.StateInfo{
+							DeviceId: outletId,
+							State:    s,
+						}
+						g.writeStateInfo("Database.AddEvent", &stateInfo)
+						var reply api.StateInfo
+						err = client.Call("SmartOutlet.ChangeState", stateInfo, &reply)
+						if err != nil {
+							log.Printf("Error changing smart outlet state: %+v", err)
+							continue
+						}
+						g.writeStateInfo("Database.AddState", &reply)
+					}
+				}
+			*/
+		}
+	}
+}
+
+// Write to the Database
+func (g *Gateway) ReportTemperature(params *api.StateInfo, _ *struct{}) error {
+	log.Printf("Received temp: %d", params.State)
+	//Write temperature sensor state to database
+	g.writeStateInfo("Database.AddState", params)
+	go g.updateOutlets(params.State)
+	return nil
+}
+
+// Based on the temperature reported by the temperature sensor send a notification to the smartoutlet
+func (g *Gateway) updateOutlets(tempVal api.State) {
+	var s api.State
+	var outletState api.Mode = g.outletMode.GetMode()
+	// Ensure that the outlet is On only if the temperarture is between 1 and 2 else the smartoutlet is Off
+	if tempVal < 1 && outletState == api.OutletsOff {
+		s = api.On
+		g.outletMode.SetMode(api.OutletsOn)
+	} else if tempVal > 2 && outletState == api.OutletsOn {
+		s = api.Off
+		g.outletMode.SetMode(api.OutletsOff)
+	} else {
+		switch outletState {
+		case api.OutletsOff:
+			s = api.Off
+			break
+		case api.OutletsOn:
+			s = api.On
+			break
+		}
+	}
+	// Dial the outlet and send the state
+	var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.outletDev.GetInts())
+	if len(outletIdRegParams) != 0 {
+		for outletId, regParams := range outletIdRegParams {
+			var client *rpc.Client
+			var err error
+			client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
+			if err != nil {
+				log.Printf("dialing error: %+v", err)
+				continue
 			}
-			var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.outletDev.GetInts())
-			if len(outletIdRegParams) != 0 {
-				for outletId, regParams := range outletIdRegParams {
-					var client *rpc.Client
-					var err error
-					client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
-					if err != nil {
-						log.Printf("dialing error: %+v", err)
-						continue
-					}
-					var stateInfo api.StateInfo = api.StateInfo{
-						DeviceId: outletId,
-						State:    s,
-					}
-					g.writeStateInfo("Database.AddEvent", &stateInfo)
-					var reply api.StateInfo
-					err = client.Call("SmartOutlet.ChangeState", stateInfo, &reply)
-					if err != nil {
-						log.Printf("Error changing smart outlet state: %+v", err)
-						continue
-					}
-					g.writeStateInfo("Database.AddState", &reply)
-				}
+			var stateInfo api.StateInfo = api.StateInfo{
+				DeviceId: outletId,
+				State:    s,
+			}
+			// Register the event in the database
+			g.writeStateInfo("Database.AddEvent", &stateInfo)
+			var reply api.StateInfo
+			err = client.Call("SmartOutlet.ChangeState", stateInfo, &reply)
+			if err != nil {
+				log.Printf("Error changing smart outlet state: %+v", err)
+				continue
 			}
 		}
 	}
 }
 
+// Register Smartoutlet state to database
+func (g *Gateway) ReportOutletState(params *api.StateInfo, _ *struct{}) error {
+	g.writeStateInfo("Database.AddState", params)
+	return nil
+}
+
+// Register Bulb state to database
+func (g *Gateway) ReportBulbState(params *api.StateInfo, _ *struct{}) error {
+	g.writeStateInfo("Database.AddState", params)
+	return nil
+}
+
+// Register user to the Gateway
 func (g *Gateway) RegisterUser(params *api.RegisterGatewayUserParams, _ *struct{}) error {
 	log.Printf("Registering user with info: %+v", params)
 	g.user.Set(*params)
 	return nil
 }
 
+// Register devices and sensors to the gateway
 func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	log.Printf("Attempting to register device with this info: %+v", params)
 	var err error = nil
 	var id int
+	var oNode api.OrderingNode = api.OrderingNode{
+		Address: params.Address,
+		Port:    params.Port,
+	}
 	switch params.Type {
+	//Register Sensors
 	case api.Sensor:
 		switch params.Name {
 		case api.Door:
@@ -182,18 +265,24 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 			g.doorSen.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
+			oNode.ID = id
+			g.orderMW.SendNewNodeNotify(oNode)
 			break
 		case api.Motion:
 			id = g.senAndDev.AddRegParam(params)
 			g.motionSen.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
+			oNode.ID = id
+			g.orderMW.SendNewNodeNotify(oNode)
 			break
 		case api.Temperature:
 			id = g.senAndDev.AddRegParam(params)
 			g.tempSen.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
+			oNode.ID = id
+			g.orderMW.SendNewNodeNotify(oNode)
 			break
 		default:
 			err = errors.New(fmt.Sprintf("Invalid Sensor Name: %+v", params.Name))
@@ -201,18 +290,23 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 		}
 		break
 	case api.Device:
+	//Register Device
 		switch params.Name {
 		case api.Bulb:
 			id = g.senAndDev.AddRegParam(params)
 			g.bulbDev.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
+			oNode.ID = id
+			g.orderMW.SendNewNodeNotify(oNode)
 			break
 		case api.Outlet:
 			id = g.senAndDev.AddRegParam(params)
 			g.outletDev.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
+			oNode.ID = id
+			g.orderMW.SendNewNodeNotify(oNode)
 			break
 		default:
 			err = errors.New(fmt.Sprintf("Invalid Device Name: %+v", params.Name))
@@ -222,14 +316,10 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 		err = errors.New(fmt.Sprintf("Invalid Type: %+v", params.Type))
 	}
 	*reply = id
-	params.DeviceId = id
-	fmt.Println(params.DeviceId)
-
-	g.peers.AddPeer(id, params.Address+":"+params.Port)
-	g.peers.ShowPeer()
 	return err
 }
 
+//Motion sensor is a push based sensor it reports motion to the gateway by ReportMotion() interface
 func (g *Gateway) ReportMotion(params *api.StateInfo, _ *struct{}) error {
 	log.Printf("Received motion report with this info: %+v", params)
 	var exists bool = g.motionSen.Exists(params.DeviceId)
@@ -260,6 +350,7 @@ func (g *Gateway) ReportMotion(params *api.StateInfo, _ *struct{}) error {
 	return nil
 }
 
+// Function to send text to the user if Mode is set to AWAY and motion detected in the house
 func (g *Gateway) sendText() {
 	if !g.user.Exists() {
 		return
@@ -277,14 +368,17 @@ func (g *Gateway) sendText() {
 	client.Go("User.TextMessage", &msg, &empty, nil)
 }
 
+//Change the bulb state to On
 func (g *Gateway) turnBulbsOn() {
 	g.changeBulbStates(api.On)
 }
 
+//Change the bulb state mainted in gateway struct to Off
 func (g *Gateway) turnBulbsOff() {
 	g.changeBulbStates(api.Off)
 }
 
+//Change the state of smartbulb
 func (g *Gateway) changeBulbStates(s api.State) {
 	var bulbIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.bulbDev.GetInts())
 	for bulbId, regParams := range bulbIdRegParams {
@@ -306,10 +400,11 @@ func (g *Gateway) changeBulbStates(s api.State) {
 			log.Printf("Error changing smart bulb state: %+v", err)
 			continue
 		}
-		g.writeStateInfo("Database.AddState", &stateInfo)
+		//g.writeStateInfo("Database.AddState", &stateInfo)
 	}
 }
 
+// Change the mode of the System to Home or Away
 func (g *Gateway) ChangeMode(params *api.Mode, _ *struct{}) error {
 	log.Printf("Received change mode request with this mode: %+v", *params)
 	var err error = nil
@@ -340,6 +435,7 @@ func (g *Gateway) ChangeMode(params *api.Mode, _ *struct{}) error {
 	return err
 }
 
+//Get the current mode and print it on the console
 func logCurrentMode(m api.Mode) {
 	var text string
 	switch m {
@@ -356,6 +452,7 @@ func logCurrentMode(m api.Mode) {
 	log.Printf("Current mode: %s", text)
 }
 
+//Query motion sensor for current state
 func (g *Gateway) checkForMotion() bool {
 	var motionIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.motionSen.GetInts())
 	if len(motionIdRegParams) != 0 {
@@ -363,6 +460,7 @@ func (g *Gateway) checkForMotion() bool {
 		for motionId, regParams := range motionIdRegParams {
 			var client *rpc.Client
 			var err error
+			//Dial the middleware of the motion sensor
 			client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
 			if err != nil {
 				log.Printf("dialing error: %+v", err)
@@ -425,150 +523,3 @@ func (g *Gateway) writeRegInfo(regInfo *api.RegisterParams) {
 		log.Printf("Error calling database: %+v", err)
 	}
 }
-
-// When a new resource joins the network and has registered ; gateway broadcasts
-// its details to other peers
-
-func (g *Gateway) BroadcastPeer(token int, id int, address string) {
-	var empty struct{}
-
-	// Update Temperature Sensor
-	var tempIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.tempSen.GetInts())
-	if len(tempIdRegParams) != 0 {
-		for tempId, regParams := range tempIdRegParams {
-			if (tempId != id) || (token == 4 && tempId > id) {
-				var client *rpc.Client
-				var err error
-				client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
-				if err != nil {
-					log.Printf("dialing error: %+v", err)
-					if token == 2 {
-						g.BroadcastPeer(1, tempId, regParams.Address+":"+regParams.Port)
-					}
-					continue
-				}
-				client.Go("TemperatureSensor.UpdatePeerTable", api.PeerInfo{Token: token, DeviceId: id, Address: address}, &empty, nil)
-			}
-		}
-	}
-
-	// Update SmartOutlet
-	var outletIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.outletDev.GetInts())
-	if len(outletIdRegParams) != 0 {
-		for tempId, regParams := range outletIdRegParams {
-			if (tempId != id) || (token == 4 && tempId > id) {
-				var client *rpc.Client
-				var err error
-				client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
-				if err != nil {
-					log.Printf("dialing error: %+v", err)
-					if token == 2 {
-						g.BroadcastPeer(1, tempId, regParams.Address+":"+regParams.Port)
-					}
-					continue
-				}
-				client.Go("SmartOutlet.UpdatePeerTable", api.PeerInfo{Token: token, DeviceId: id, Address: address}, &empty, nil)
-			}
-		}
-	}
-
-	//Update Motion Sensor
-	var motionIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.motionSen.GetInts())
-	if len(motionIdRegParams) != 0 {
-		for tempId, regParams := range motionIdRegParams {
-			if (tempId != id) || (token == 4 && tempId > id) {
-				var client *rpc.Client
-				var err error
-				client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
-				if err != nil {
-					log.Printf("dialing error: %+v", err)
-					if token == 2 {
-						g.BroadcastPeer(1, tempId, regParams.Address+":"+regParams.Port)
-					}
-					continue
-				}
-				fmt.Println("Executing update motionsensor call")
-				client.Go("MotionSensor.UpdatePeerTable", api.PeerInfo{Token: token, DeviceId: id, Address: address}, &empty, nil)
-			}
-		}
-	}
-
-	//Update SmartBulb
-	var bulbIdRegParams map[int]*api.RegisterParams = *g.senAndDev.GetRegParams(g.bulbDev.GetInts())
-	if len(bulbIdRegParams) != 0 {
-		for tempId, regParams := range bulbIdRegParams {
-			if (tempId != id) || (token == 4 && tempId > id) {
-				var client *rpc.Client
-				var err error
-				client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
-				if err != nil {
-					log.Printf("dialing error: %+v", err)
-					if token == 2 {
-						g.BroadcastPeer(1, tempId, regParams.Address+":"+regParams.Port)
-					}
-					continue
-				}
-				client.Go("SmartBulb.UpdatePeerTable", api.PeerInfo{Token: token, DeviceId: id, Address: address}, &empty, nil)
-			}
-		}
-	}
-
-	//Update Door Sensor
-	if len(tempIdRegParams) != 0 {
-		for tempId, regParams := range tempIdRegParams {
-			if (tempId != id) || (token == 4 && tempId > id) {
-				var client *rpc.Client
-				var err error
-				client, err = rpc.Dial("tcp", regParams.Address+":"+regParams.Port)
-				if err != nil {
-					log.Printf("dialing error: %+v", err)
-					if token == 2 {
-						g.BroadcastPeer(1, tempId, regParams.Address+":"+regParams.Port)
-					}
-					continue
-				}
-				client.Go("Door.UpdatePeerTable", api.PeerInfo{Token: token, DeviceId: id, Address: address}, &empty, nil)
-			}
-		}
-	}
-}
-
-func (g *Gateway) SendPeerTable(id int, peers *api.PMAP) error {
-	var i int
-	log.Printf("Sending the peer table to deviceID", id)
-	len := g.peers.PeerTableLength()
-	*peers = make(map[int]string)
-	for i = 0; i < len-1; i++ {
-		(*peers)[i] = g.peers.FindPeerAddress(i)
-	}
-	// Only for checking the values : Remove at the end
-	for k, v := range *peers {
-		fmt.Println("I am in Send Peer Table")
-		fmt.Println(k, v)
-	}
-	//code for checking the peer table value ends here
-
-	// Broadcast to all peers the new device id
-	// Set token to 0, since, peer tables should add the peer
-	g.BroadcastPeer(0, id, g.peers.FindPeerAddress(id))
-	return nil
-}
-
-/*
-func (g *Gateway) GetPeerTable() *api.PMAP {
-	var i int
-	log.Printf("Populate the peer table of the middleware")
-	len := g.peers.PeerTableLength()
-	*peers = make(map[int]string)
-	for i = 0; i < len-1; i++ {
-		(*peers)[i] = g.peers.FindPeerAddress(i)
-	}
-	// Only for checking the values : Remove at the end
-	for k, v := range *peers {
-		fmt.Println("I am in Send Peer Table")
-		fmt.Println(k, v)
-	}
-	//code for checking the peer table value ends here
-	return peers
-}
-*/

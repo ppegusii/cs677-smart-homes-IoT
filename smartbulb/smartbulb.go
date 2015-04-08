@@ -2,32 +2,37 @@ package main
 
 import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
+	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
 	"net"
 	"net/rpc"
-	"fmt"
 )
 
+// This struct contains all the attributes of the smart bulb and information needed for
+// ordering for clock synchronization, peer table to keep a track of ip of the peers 
+// and reference to its middleware
 type SmartBulb struct {
 	id          int
 	gatewayIp   string
 	gatewayPort string
+	ordering    api.Ordering
+	orderMW     api.OrderingMiddlewareInterface
 	selfIp      string
 	selfPort    string
 	state       structs.SyncState
-	peers		map[int]string// To keep a track of all peers
 }
 
-func newSmartBulb(gatewayIp string, gatewayPort string, selfIp string, selfPort string) *SmartBulb {
+// create and initialize a new smart bulb
+func newSmartBulb(gatewayIp string, gatewayPort string, selfIp string, selfPort string, ordering api.Ordering) *SmartBulb {
 	return &SmartBulb{
 		gatewayIp:   gatewayIp,
 		gatewayPort: gatewayPort,
+		ordering:    ordering,
 		selfIp:      selfIp,
 		selfPort:    selfPort,
 		state:       *structs.NewSyncState(api.Off),
-		peers:       make(map[int]string),
 	}
 }
 
@@ -44,7 +49,9 @@ func (s *SmartBulb) start() {
 		log.Fatal("calling error: %+v", err)
 	}
 	log.Printf("Device id: %d", s.id)
-	//RPC server
+	//initialize middleware
+	s.orderMW = ordermw.GetOrderingMiddleware(s.ordering, s.id, s.selfIp, s.selfPort)
+	//start RPC server
 	err = rpc.Register(api.DeviceInterface(s))
 	if err != nil {
 		log.Fatal("rpc.Register error: %s\n", err)
@@ -54,64 +61,35 @@ func (s *SmartBulb) start() {
 	if err != nil {
 		log.Fatal("net.Listen error: %s\n", err)
 	}
-	s.getPeerTable()
 	util.LogCurrentState(s.state.GetState())
 	rpc.Accept(listener)
 }
 
+//This is an RPC function that is issued by the gateway to get the state of the SmartBulb
 func (s *SmartBulb) QueryState(params *int, reply *api.StateInfo) error {
 	//this will not be called in practice
 	reply.DeviceId = s.id
 	reply.State = s.state.GetState()
+	go s.sendState()
 	return nil
 }
 
+//RPC stub to change state remotely;it is called by the gateway to change the state of the smartbulb
+// based on the current state of the motion sensor
 func (s *SmartBulb) ChangeState(params *api.StateInfo, reply *api.StateInfo) error {
 	log.Printf("Received change state request with info: %+v", params)
 	s.state.SetState(params.State)
 	util.LogCurrentState(s.state.GetState())
 	reply.DeviceId = s.id
 	reply.State = params.State
+	go s.sendState()
 	return nil
 }
 
-// This is an asynchronous call to fetch the PeerTable from the Gateway
-func (s *SmartBulb) getPeerTable() {
-	var client *rpc.Client
-	var err error
-	client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
+// sendState() is used to report state to the middleware
+func (s *SmartBulb) sendState() {
+	var err error = s.orderMW.SendState(api.StateInfo{DeviceId: s.id, DeviceName: api.Outlet, State: s.state.GetState()}, s.gatewayIp, s.gatewayPort)
 	if err != nil {
-		log.Printf("dialing error: %+v", err)
+		log.Printf("Error sending state: %+v", err)
 	}
-	replycall := client.Go("Gateway.SendPeerTable", s.id, &s.peers, nil)
-	pt :=  <-replycall.Done
-	if(pt != nil) {
-		log.Println("Fetching PeerTable from the gateway")
-	} else {
-		log.Println("SendPeerTable RPC call return value: ",pt)
-	}
-
-	// Add the gateway to the peertable
-	s.peers[api.GatewayID] = s.gatewayIp+":"+s.gatewayPort
-
-	// Testing to check if the entire peertable has been received
-	fmt.Println("Received the peer table from Gateway as below:")
-	for k, v := range s.peers {
-		fmt.Println(k, v)
-	}
-}
-
-func (s *SmartBulb) UpdatePeerTable(params *api.PeerInfo, _ *struct{}) error {
-	switch params.Token {
-	case 0:
-		//Add new peer
-		s.peers[params.DeviceId] = params.Address
-		log.Println("Received a new peer: DeviceID - ",params.DeviceId," Address - ", s.peers[params.DeviceId])
-	case 1:
-		//Delete the old peer that got disconnected from the system
-		delete(s.peers,params.DeviceId)
-	default:
-		log.Println("Unexpected Token")
-	}
-	return nil
 }

@@ -4,8 +4,7 @@ import ()
 
 type Type int
 
-type PMAP map[int]string
-
+// Device types
 const (
 	Sensor Type = iota
 	Device Type = iota
@@ -13,8 +12,7 @@ const (
 
 type Name int
 
-const GatewayID int = 100000
-
+//Device Names
 const (
 	Bulb        Name = iota
 	Door        Name = iota
@@ -25,6 +23,7 @@ const (
 
 type State int
 
+// Different states of devices and sensors
 const (
 	Closed      State = iota
 	MotionStart State = iota
@@ -58,6 +57,7 @@ const (
 
 type ReportState func(*StateInfo, *struct{}) error
 
+// Interfaces provided by the Database layer
 type DatabaseInterface interface {
 	AddDeviceOrSensor(params *RegisterParams, _ *struct{}) error
 	AddEvent(params *StateInfo, _ *struct{}) error
@@ -66,29 +66,33 @@ type DatabaseInterface interface {
 	RegisterGateway(params *RegisterGatewayUserParams, _ *struct{}) error
 }
 
+//Interface or RPC stubs provided by the Devices
 type DeviceInterface interface {
 	QueryState(params *int, reply *StateInfo) error
 	ChangeState(params *StateInfo, reply *StateInfo) error
 }
 
+// Interface provided by the Gateway
 type GatewayInterface interface {
 	ChangeMode(params *Mode, _ *struct{}) error
 	Register(params *RegisterParams, reply *int) error
 	RegisterUser(params *RegisterGatewayUserParams, _ *struct{}) error
-	ReportMotion(params *StateInfo, _ *struct{}) error
+	ReportBulbState(params *StateInfo, _ *struct{}) error
 	ReportDoorState(params *StateInfo, _ *struct{}) error
-	SendPeerTable(id int, peers *PMAP) error
+	ReportMotion(params *StateInfo, _ *struct{}) error
+	ReportOutletState(params *StateInfo, _ *struct{}) error
+	ReportTemperature(params *StateInfo, _ *struct{}) error
 }
 
 type OrderingMiddlewareInterface interface {
 	//Multicasts new node notification to all other nodes.
 	//Called only by the gateway front-end application.
-	SendNewNodeNotify(o *OrderingNode) error
+	SendNewNodeNotify(o OrderingNode) error
 	//**Ordinary unicast for clock sync.
 	//Logical clocks:
 	//Multicasts event notification to all other nodes.
 	//Called by applications instead of reporting state directly to another process.
-	SendState(s *StateInfo, destAddr string, destPort string) error
+	SendState(s StateInfo, destAddr string, destPort string) error
 	//Register functions that handle the states received inside events.
 	RegisterReportState(name Name, reportState ReportState)
 }
@@ -108,10 +112,12 @@ type OrderingMiddlewareRPCInterface interface {
 	ReceiveEvent(params *Event, _ *struct{}) error
 }
 
+//Interfaces provided by the Sensor
 type SensorInterface interface {
 	QueryState(params *int, reply *StateInfo) error
 }
 
+// Interface needed to send text messages to the user incase the Mode is set to AWAY and motion is detected
 type UserInterface interface {
 	TextMessage(params *string, _ *struct{}) error
 }
@@ -130,6 +136,8 @@ type OrderingNode struct {
 	Port    string
 }
 
+//Structure used during device registration, 
+//it is send as one of the parameters during RPC Register call to gateway
 type RegisterParams struct {
 	Address  string
 	DeviceId int
@@ -139,6 +147,7 @@ type RegisterParams struct {
 	Type     Type
 }
 
+//Struct for set and get methods where only IP and port are needed 
 type RegisterGatewayUserParams struct {
 	Address string
 	Port    string
@@ -149,11 +158,4 @@ type StateInfo struct {
 	DeviceId   int
 	DeviceName Name
 	State      State
-}
-
-// Used when gateway sends an update to the other peers about a newly registered device
-type PeerInfo struct {
-	Token int // Token value 0 means add the new peer , token value 1 means delete the old peer
-	DeviceId int
-	Address string
 }
