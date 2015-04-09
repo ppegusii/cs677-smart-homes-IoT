@@ -13,6 +13,8 @@ import (
 	"os"
 )
 
+// This struct contains all the attributes of the door sensor and information needed for
+// ordering for clock synchronization, peer table to keep a track of ip of the peers and reference to its middleware
 type DoorSensor struct {
 	id          int
 	gatewayIp   string
@@ -24,6 +26,7 @@ type DoorSensor struct {
 	state       structs.SyncState
 }
 
+// initialize a new doorsensor
 func newDoorSensor(gatewayIp string, gatewayPort string, selfIp string, selfPort string, ordering api.Ordering) *DoorSensor {
 	return &DoorSensor{
 		gatewayIp:   gatewayIp,
@@ -108,6 +111,7 @@ func (d *DoorSensor) getInput() {
 	}
 }
 
+//This is an RPC function that is issued by the gateway to get the state of the door sensor
 func (d *DoorSensor) QueryState(params *int, reply *api.StateInfo) error {
 	reply.DeviceId = d.id
 	reply.State = d.state.GetState()
@@ -115,6 +119,8 @@ func (d *DoorSensor) QueryState(params *int, reply *api.StateInfo) error {
 	return nil
 }
 
+// The Door sensor is a push based device and can be polled by the gateway. 
+// sendState() is used to report state to the gateway
 func (d *DoorSensor) sendState() {
 	var err error = d.orderMW.SendState(api.StateInfo{DeviceId: d.id, DeviceName: api.Door, State: d.state.GetState()}, d.gatewayIp, d.gatewayPort)
 	if err != nil {

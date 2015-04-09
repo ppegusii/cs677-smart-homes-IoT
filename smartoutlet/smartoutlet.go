@@ -10,6 +10,9 @@ import (
 	"net/rpc"
 )
 
+// This struct contains all the attributes of the smart outlet and information needed for
+// ordering for clock synchronization, peer table to keep a track of ip of the peers 
+// and reference to its middleware
 type SmartOutlet struct {
 	id          int
 	gatewayIp   string
@@ -21,6 +24,7 @@ type SmartOutlet struct {
 	state       structs.SyncState
 }
 
+// create and initialize a new smart outlet
 func newSmartOutlet(gatewayIp string, gatewayPort string, selfIp string, selfPort string, ordering api.Ordering) *SmartOutlet {
 	return &SmartOutlet{
 		gatewayIp:   gatewayIp,
@@ -61,6 +65,7 @@ func (s *SmartOutlet) start() {
 	rpc.Accept(listener)
 }
 
+//This is an RPC function that is issued by the gateway to get the state of the Smart Outlet
 func (s *SmartOutlet) QueryState(params *int, reply *api.StateInfo) error {
 	//this will not be called in practice
 	reply.DeviceId = s.id
@@ -69,6 +74,8 @@ func (s *SmartOutlet) QueryState(params *int, reply *api.StateInfo) error {
 	return nil
 }
 
+//RPC stub to change state remotely;it is called by the gateway to change the state of the smartoutlet
+// based on the current state of the temperature sensor
 func (s *SmartOutlet) ChangeState(params *api.StateInfo, reply *api.StateInfo) error {
 	log.Printf("Received change state request with info: %+v", params)
 	s.state.SetState(params.State)
@@ -79,6 +86,7 @@ func (s *SmartOutlet) ChangeState(params *api.StateInfo, reply *api.StateInfo) e
 	return nil
 }
 
+//sendState() is used to report state to the middleware
 func (s *SmartOutlet) sendState() {
 	var err error = s.orderMW.SendState(api.StateInfo{DeviceId: s.id, DeviceName: api.Outlet, State: s.state.GetState()}, s.gatewayIp, s.gatewayPort)
 	if err != nil {

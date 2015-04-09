@@ -4,6 +4,13 @@ import ()
 
 type Type int
 
+//Peer Map Table
+type PMAP map[int]string
+
+//GatewayID
+const GatewayID int = 0
+
+// Device types
 const (
 	Sensor Type = iota
 	Device Type = iota
@@ -11,6 +18,7 @@ const (
 
 type Name int
 
+//Device Names
 const (
 	Bulb        Name = iota
 	Door        Name = iota
@@ -21,6 +29,7 @@ const (
 
 type State int
 
+// Different states of devices and sensors
 const (
 	Closed      State = iota
 	MotionStart State = iota
@@ -61,6 +70,7 @@ const (
 
 type ReportState func(*StateInfo, *struct{}) error
 
+// Interfaces provided by the Database layer
 type DatabaseInterface interface {
 	AddDeviceOrSensor(params *RegisterParams, _ *struct{}) error
 	AddEvent(params *StateInfo, _ *struct{}) error
@@ -69,11 +79,13 @@ type DatabaseInterface interface {
 	RegisterGateway(params *RegisterGatewayUserParams, _ *struct{}) error
 }
 
+//Interface or RPC stubs provided by the Devices
 type DeviceInterface interface {
 	QueryState(params *int, reply *StateInfo) error
 	ChangeState(params *StateInfo, reply *StateInfo) error
 }
 
+// Interface provided by the Gateway
 type GatewayInterface interface {
 	ChangeMode(params *Mode, _ *struct{}) error
 	Register(params *RegisterParams, reply *int) error
@@ -113,10 +125,12 @@ type OrderingMiddlewareRPCInterface interface {
 	ReceiveEvent(params *Event, _ *struct{}) error
 }
 
+//Interfaces provided by the Sensor
 type SensorInterface interface {
 	QueryState(params *int, reply *StateInfo) error
 }
 
+// Interface needed to send text messages to the user incase the Mode is set to AWAY and motion is detected
 type UserInterface interface {
 	TextMessage(params *string, _ *struct{}) error
 }
@@ -135,6 +149,8 @@ type OrderingNode struct {
 	Port    string
 }
 
+//Structure used during device registration, 
+//it is send as one of the parameters during RPC Register call to gateway
 type RegisterParams struct {
 	Address  string
 	DeviceId int
@@ -144,6 +160,7 @@ type RegisterParams struct {
 	Type     Type
 }
 
+//Struct for set and get methods where only IP and port are needed 
 type RegisterGatewayUserParams struct {
 	Address string
 	Port    string
