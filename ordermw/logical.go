@@ -1,6 +1,7 @@
 package ordermw
 
 import (
+	"github.com/nu7hatch/gouuid"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"log"
@@ -9,6 +10,8 @@ import (
 )
 
 type Logical struct {
+	clock        *structs.SyncInt
+	events       *structs.SyncLogicalEventContainer
 	id           int
 	ip           string
 	nodes        *structs.SyncMapIntOrderingNode
@@ -18,6 +21,8 @@ type Logical struct {
 
 func NewLogical(id int, ip string, port string) *Logical {
 	var l *Logical = &Logical{
+		clock:        structs.NewSyncInt(0),
+		events:       structs.NewSyncLogicalEventContainer(),
 		id:           id,
 		ip:           ip,
 		nodes:        structs.NewSyncMapIntOrderingNode(),
@@ -35,7 +40,7 @@ func NewLogical(id int, ip string, port string) *Logical {
 }
 func (this *Logical) start() {
 	//register RPC server
-	var err error = rpc.Register(api.OrderingMiddlewareRPCInterface(this))
+	var err error = rpc.Register(api.OrderingMiddlewareLogicalRPCInterface(this))
 	if err != nil {
 		log.Fatal("rpc.Register error: %s\n", err)
 	}
@@ -84,24 +89,41 @@ func (this *Logical) ReceiveNewNodesNotify(params map[int]api.OrderingNode, _ *s
 //Multicasts event notification to all other nodes.
 //Called by applications instead of reporting state directly to another process.
 func (this *Logical) SendState(s api.StateInfo, destAddr string, destPort string) error {
-	var event api.Event = api.Event{
+	//increment clock then add clock to state info
+	s.Clock = this.clock.IncThenGet()
+	var eventID *uuid.UUID
+	var err error
+	eventID, err = uuid.NewV4()
+	if err != nil {
+		log.Fatal("Error creating uuid: %+v", err)
+	}
+	var event api.LogicalEvent = api.LogicalEvent{
+		EventID:    *eventID,
 		IsAck:      false,
 		SrcAddress: this.ip,
-		SrcId:      s.DeviceId,
+		SrcId:      this.id,
 		SrcPort:    this.port,
 		StateInfo:  s,
 	}
+	return this.multicastEvent(&event)
+}
+
+//Multicasts events to all other nodes.
+func (this *Logical) multicastEvent(event *api.LogicalEvent) error {
 	var client *rpc.Client
-	var err error
-	client, err = rpc.Dial("tcp", destAddr+":"+destPort)
-	if err != nil {
-		log.Fatal("dialing error: %+v", err)
-	}
 	var empty struct{}
-	err = client.Call("Logical.ReceiveEvent", event, &empty)
-	if err != nil {
-		log.Fatal("calling error: %+v", err)
-		return err
+	var err error
+	var IDs = this.nodes.GetKeys()
+	event.DestIDs = IDs
+	var nodes map[int]api.OrderingNode = this.nodes.GetMap()
+	for id := range IDs {
+		node, _ := nodes[id]
+		client, err = rpc.Dial("tcp", node.Address+":"+node.Port)
+		if err != nil {
+			log.Printf("dialing error: %+v\n", err)
+			return err
+		}
+		client.Go("Logical.ReceiveEvent", event, &empty, nil)
 	}
 	return nil
 }
@@ -114,17 +136,31 @@ func (this *Logical) SendState(s api.StateInfo, destAddr string, destPort string
 //on messages delivered to the application. Those messages are delivered to
 //registered report state functions.
 //Called only by other ordering implementations.
-func (this *Logical) ReceiveEvent(params *api.Event, _ *struct{}) error {
-	var rsPtr *api.ReportState
-	var ok bool
-	rsPtr, ok = this.reportStates.Get(params.StateInfo.DeviceName)
-	if !ok {
-		log.Printf("No registered func to handle device name: %d", params.StateInfo.DeviceName)
-		return nil
+func (this *Logical) ReceiveEvent(params api.LogicalEvent, _ *struct{}) error {
+	//set clock to the max of own and received
+	if params.StateInfo.Clock > this.clock.Get() {
+		this.clock.Set(params.StateInfo.Clock)
 	}
-	var empty struct{}
-	var rs api.ReportState = *rsPtr
-	return rs(&(params.StateInfo), &empty)
+	//increment clock then set the clock value in state info
+	params.StateInfo.Clock = this.clock.IncThenGet()
+	if !params.IsAck {
+		//enqueue the event
+		//multicast event acknowledgement
+		var rsPtr *api.ReportState
+		var ok bool
+		rsPtr, ok = this.reportStates.Get(params.StateInfo.DeviceName)
+		if !ok {
+			log.Printf("No registered func to handle device name: %d", params.StateInfo.DeviceName)
+			return nil
+		}
+		var empty struct{}
+		var rs api.ReportState = *rsPtr
+		return rs(&(params.StateInfo), &empty)
+	}
+	//this is an acknowledgement
+	//add acknowledgement to event
+	//if event at head of queue is fully acknowledged, deliver to application
+	return nil
 }
 
 //Register functions that handle the states received inside events.

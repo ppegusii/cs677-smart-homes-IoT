@@ -1,12 +1,14 @@
 package structs
 
 import (
+	"fmt"
+	"github.com/nu7hatch/gouuid"
+	"github.com/oleiade/lane"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"log"
 	"os"
 	"sync"
 	"time"
-	"fmt"
 )
 
 type SyncMapIntBool struct {
@@ -47,7 +49,7 @@ func (s *SyncMapIntBool) Exists(i int) bool {
 	return ok
 }
 
-// A map for the Sensors and Device registered in the system. 
+// A map for the Sensors and Device registered in the system.
 //The int i keeps a track of last deviceid assigned to the most recent registered device in the system
 type SyncMapIntRegParam struct {
 	sync.RWMutex
@@ -115,7 +117,6 @@ func (s *SyncMode) SetMode(mode api.Mode) {
 	s.m = mode
 	s.Unlock()
 }
-
 
 type SyncState struct {
 	sync.RWMutex
@@ -314,6 +315,18 @@ func (s *SyncMapIntOrderingNode) GetMap() map[int]api.OrderingNode {
 	return n
 }
 
+func (s *SyncMapIntOrderingNode) GetKeys() []int {
+	var idx int = 0
+	s.RLock()
+	var keys []int = make([]int, len(s.m))
+	for key := range s.m {
+		keys[idx] = key
+		idx++
+	}
+	s.RUnlock()
+	return keys
+}
+
 type SyncMapNameReportState struct {
 	sync.RWMutex
 	m map[api.Name]*api.ReportState
@@ -340,11 +353,11 @@ func (s *SyncMapNameReportState) Set(n api.Name, rs *api.ReportState) {
 
 //PeerTable struct keeps a track of all peers(deviceID and address:port) in the system.
 type PeerTable struct {
-	p api.PMAP  // peers map[DeviceId] address:port
+	p api.PMAP // peers map[DeviceId] address:port
 	sync.RWMutex
 }
 
-//NewPeerTable() is called whenever a new gateway is created 
+//NewPeerTable() is called whenever a new gateway is created
 func NewPeerTable() *PeerTable {
 	return &PeerTable{
 		p: make(map[int]string),
@@ -387,6 +400,88 @@ func (s *PeerTable) PeerTableLength() int {
 //Delete a peer from the peertable
 func (s *PeerTable) DeletePeer(i int) {
 	s.Lock()
-	delete(s.p,i)
+	delete(s.p, i)
 	s.Unlock()
+}
+
+//Synchronizes concurrent access to an int.
+type SyncInt struct {
+	i int
+	sync.RWMutex
+}
+
+//Creates an new instance of the struct.
+func NewSyncInt(i int) *SyncInt {
+	return &SyncInt{i: i}
+}
+
+//Returns the int.
+func (s *SyncInt) Get() int {
+	var r int
+	s.RLock()
+	r = s.i
+	s.RUnlock()
+	return r
+}
+
+//Increments the int by 1 then returns it.
+func (s *SyncInt) IncThenGet() int {
+	var r int
+	s.RLock()
+	s.i++
+	r = s.i
+	s.RUnlock()
+	return r
+}
+
+//Set the value of the int.
+func (s *SyncInt) Set(n int) {
+	s.Lock()
+	s.i = n
+	s.Unlock()
+}
+
+type SyncLogicalEventContainer struct {
+	//maps event ID to a map of device id to booleans
+	//true indicates the device has acknowledge the event
+	mapEventToAcks map[uuid.UUID]*map[int]bool
+	//data structure is already synchornized
+	eventQ *lane.PQueue
+	sync.RWMutex
+}
+
+func NewSyncLogicalEventContainer() *SyncLogicalEventContainer {
+	return &SyncLogicalEventContainer{
+		mapEventToAcks: make(map[uuid.UUID]*map[int]bool),
+		eventQ:         lane.NewPQueue(lane.MINPQ),
+	}
+}
+
+func (s *SyncLogicalEventContainer) AddEvent(event api.LogicalEvent) {
+	s.eventQ.Push(event, event.StateInfo.Clock)
+}
+
+func (s *SyncLogicalEventContainer) AddAck(event api.LogicalEvent) {
+	var acksPtr *map[int]bool
+	var ok bool
+	s.Lock()
+	acksPtr, ok = s.mapEventToAcks[event.EventID]
+	if ok {
+		//if ack map already exists, add ack
+		(*acksPtr)[event.SrcId] = true
+	} else {
+		//else make ack map, set all acks to false, then add ack
+		var acks map[int]bool
+		acks = make(map[int]bool)
+		s.mapEventToAcks[event.EventID] = &acks
+		for id := range event.DestIDs {
+			acks[id] = false
+		}
+		acks[event.SrcId] = true
+	}
+	s.Unlock()
+}
+
+func (s *SyncLogicalEventContainer) GetHeadIfAcked() (*api.LogicalEvent, bool) {
+	return nil, false
 }

@@ -1,6 +1,8 @@
 package api
 
-import ()
+import (
+	"github.com/nu7hatch/gouuid"
+)
 
 type Type int
 
@@ -125,6 +127,21 @@ type OrderingMiddlewareRPCInterface interface {
 	ReceiveEvent(params *Event, _ *struct{}) error
 }
 
+type OrderingMiddlewareLogicalRPCInterface interface {
+	//Accepts new node notifications
+	//Called only by other ordering implementations.
+	ReceiveNewNodesNotify(params map[int]OrderingNode, _ *struct{}) error
+	//**Simple delivery of state info to registered report state functions for clock sync.
+	//Logical clocks:
+	//Multicasts acknowledgement of event to all other nodes.
+	//Maintains a queue of messages delivering the one with the least clock value once
+	//all acknowledgments have been received. Therefore, there is a total ordering
+	//on messages delivered to the application. Those messages are delivered to
+	//registered report state functions.
+	//Called only by other ordering implementations.
+	ReceiveEvent(params LogicalEvent, _ *struct{}) error
+}
+
 //Interfaces provided by the Sensor
 type SensorInterface interface {
 	QueryState(params *int, reply *StateInfo) error
@@ -143,13 +160,23 @@ type Event struct {
 	StateInfo  StateInfo
 }
 
+type LogicalEvent struct {
+	EventID    uuid.UUID
+	DestIDs    []int
+	IsAck      bool
+	SrcAddress string
+	SrcId      int
+	SrcPort    string
+	StateInfo  StateInfo
+}
+
 type OrderingNode struct {
 	Address string
 	ID      int
 	Port    string
 }
 
-//Structure used during device registration, 
+//Structure used during device registration,
 //it is send as one of the parameters during RPC Register call to gateway
 type RegisterParams struct {
 	Address  string
@@ -160,7 +187,7 @@ type RegisterParams struct {
 	Type     Type
 }
 
-//Struct for set and get methods where only IP and port are needed 
+//Struct for set and get methods where only IP and port are needed
 type RegisterGatewayUserParams struct {
 	Address string
 	Port    string
