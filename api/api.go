@@ -52,6 +52,13 @@ const (
 	NoOrder      Ordering = iota
 )
 
+type StaticOrderingID int
+
+const (
+	DatabaseOID StaticOrderingID = -1
+	GatewayOID  StaticOrderingID = 0
+)
+
 type ReportState func(*StateInfo, *struct{}) error
 
 type DatabaseInterface interface {
@@ -94,7 +101,7 @@ type OrderingMiddlewareInterface interface {
 type OrderingMiddlewareRPCInterface interface {
 	//Accepts new node notifications
 	//Called only by other ordering implementations.
-	ReceiveNewNodeNotify(params *OrderingNode, _ *struct{}) error
+	ReceiveNewNodesNotify(params map[int]OrderingNode, _ *struct{}) error
 	//**Simple delivery of state info to registered report state functions for clock sync.
 	//Logical clocks:
 	//Multicasts acknowledgement of event to all other nodes.

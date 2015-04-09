@@ -38,7 +38,7 @@ func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInt
 		ip:              ip,
 		mode:            *structs.NewSyncMode(mode),
 		motionSen:       *structs.NewSyncMapIntBool(),
-		orderMW:         ordermw.GetOrderingMiddleware(ordering, 0, ip, port),
+		orderMW:         ordermw.GetOrderingMiddleware(ordering, int(api.GatewayOID), ip, port),
 		outletDev:       *structs.NewSyncMapIntBool(),
 		outletMode:      *structs.NewSyncMode(api.OutletsOff),
 		pollingInterval: pollingInterval,
@@ -85,6 +85,12 @@ func (g *Gateway) start() {
 	if err != nil {
 		log.Fatal("error registering with gateway: %+v", err)
 	}
+	//notify middleware of database
+	go g.orderMW.SendNewNodeNotify(api.OrderingNode{
+		Address: db.Address,
+		ID:      int(api.DatabaseOID),
+		Port:    db.Port,
+	})
 	//start polling temperature sensors
 	g.pollTempSensors()
 }
@@ -252,7 +258,7 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 			params.DeviceId = id
 			g.writeRegInfo(params)
 			oNode.ID = id
-			g.orderMW.SendNewNodeNotify(oNode)
+			go g.orderMW.SendNewNodeNotify(oNode)
 			break
 		case api.Motion:
 			id = g.senAndDev.AddRegParam(params)
@@ -260,7 +266,7 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 			params.DeviceId = id
 			g.writeRegInfo(params)
 			oNode.ID = id
-			g.orderMW.SendNewNodeNotify(oNode)
+			go g.orderMW.SendNewNodeNotify(oNode)
 			break
 		case api.Temperature:
 			id = g.senAndDev.AddRegParam(params)
@@ -268,7 +274,7 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 			params.DeviceId = id
 			g.writeRegInfo(params)
 			oNode.ID = id
-			g.orderMW.SendNewNodeNotify(oNode)
+			go g.orderMW.SendNewNodeNotify(oNode)
 			break
 		default:
 			err = errors.New(fmt.Sprintf("Invalid Sensor Name: %+v", params.Name))
@@ -283,7 +289,7 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 			params.DeviceId = id
 			g.writeRegInfo(params)
 			oNode.ID = id
-			g.orderMW.SendNewNodeNotify(oNode)
+			go g.orderMW.SendNewNodeNotify(oNode)
 			break
 		case api.Outlet:
 			id = g.senAndDev.AddRegParam(params)
@@ -291,7 +297,7 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 			params.DeviceId = id
 			g.writeRegInfo(params)
 			oNode.ID = id
-			g.orderMW.SendNewNodeNotify(oNode)
+			go g.orderMW.SendNewNodeNotify(oNode)
 			break
 		default:
 			err = errors.New(fmt.Sprintf("Invalid Device Name: %+v", params.Name))

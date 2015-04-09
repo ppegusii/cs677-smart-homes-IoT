@@ -29,8 +29,8 @@ func main() {
 	var port *string = flag.String("p", "6770", "port")
 	var dbIP *string = flag.String("I", "127.0.0.1", "database IP address")
 	var dbPort *string = flag.String("P", "6777", "database port")
-	flag.Parse()
 	var order *string = flag.String("o", "n", "none=n,clock sync=c,logical clocks=l")
+	flag.Parse()
 
 	//start server
 	var ordering api.Ordering

@@ -27,7 +27,7 @@ func newDatabase(ip string, port string, ordering api.Ordering) *Database {
 		events:     structs.NewSyncMapIntSyncFile(),
 		gateway:    structs.NewSyncRegGatewayUserParam(),
 		ip:         ip,
-		orderMW:    ordermw.GetOrderingMiddleware(ordering, -1, ip, port),
+		orderMW:    ordermw.GetOrderingMiddleware(ordering, int(api.DatabaseOID), ip, port),
 		port:       port,
 		stateCache: structs.NewSyncMapIntStateInfo(),
 		states:     structs.NewSyncMapIntSyncFile(),

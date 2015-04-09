@@ -10,7 +10,7 @@ func GetOrderingMiddleware(o api.Ordering, id int, ip string, port string) api.O
 	case api.ClockSync:
 		return nil
 	case api.LogicalClock:
-		return nil
+		return NewLogical(id, ip, port)
 	case api.NoOrder:
 		return NewDummy(id, ip, port)
 	default:

@@ -51,6 +51,7 @@ type SyncMapIntRegParam struct {
 func NewSyncMapIntRegParam() *SyncMapIntRegParam {
 	return &SyncMapIntRegParam{
 		m: make(map[int]*api.RegisterParams),
+		i: 1,
 	}
 }
 
@@ -268,29 +269,29 @@ func (s *SyncMapIntStateInfo) Set(i int, state *api.StateInfo) {
 
 type SyncMapIntOrderingNode struct {
 	sync.RWMutex
-	m map[int]*api.OrderingNode
+	m map[int]api.OrderingNode
 }
 
 func NewSyncMapIntOrderingNode() *SyncMapIntOrderingNode {
 	return &SyncMapIntOrderingNode{
-		m: make(map[int]*api.OrderingNode),
+		m: make(map[int]api.OrderingNode),
 	}
 }
 
-func (s *SyncMapIntOrderingNode) Get(i int) (*api.OrderingNode, bool) {
+func (s *SyncMapIntOrderingNode) Get(i int) (api.OrderingNode, bool) {
 	s.RLock()
 	node, ok := s.m[i]
 	s.RUnlock()
 	return node, ok
 }
 
-func (s *SyncMapIntOrderingNode) Set(i int, node *api.OrderingNode) {
+func (s *SyncMapIntOrderingNode) Set(i int, node api.OrderingNode) {
 	s.Lock()
 	s.m[i] = node
 	s.Unlock()
 }
 
-func (s *SyncMapIntOrderingNode) GetMap() map[int]*api.OrderingNode {
+func (s *SyncMapIntOrderingNode) GetMap() map[int]api.OrderingNode {
 	s.RLock()
 	//shallow copy
 	n := s.m

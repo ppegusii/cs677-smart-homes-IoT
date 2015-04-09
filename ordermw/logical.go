@@ -4,52 +4,78 @@ import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"log"
-	//"net"
 	"net/rpc"
+	"time"
 )
 
-type Dummy struct {
+type Logical struct {
 	id           int
 	ip           string
+	nodes        *structs.SyncMapIntOrderingNode
 	port         string
 	reportStates *structs.SyncMapNameReportState
 }
 
-func NewDummy(id int, ip string, port string) *Dummy {
-	var d *Dummy = &Dummy{
+func NewLogical(id int, ip string, port string) *Logical {
+	var l *Logical = &Logical{
 		id:           id,
 		ip:           ip,
+		nodes:        structs.NewSyncMapIntOrderingNode(),
 		port:         port,
 		reportStates: structs.NewSyncMapNameReportState(),
 	}
-	d.start()
-	return d
+	l.nodes.Set(id,
+		api.OrderingNode{
+			Address: ip,
+			ID:      id,
+			Port:    port,
+		})
+	l.start()
+	return l
 }
-func (this *Dummy) start() {
+func (this *Logical) start() {
 	//register RPC server
 	var err error = rpc.Register(api.OrderingMiddlewareRPCInterface(this))
 	if err != nil {
 		log.Fatal("rpc.Register error: %s\n", err)
 	}
-	/*
-		var listener net.Listener
-		listener, err = net.Listen("tcp", this.ip+":"+this.port)
-		if err != nil {
-			log.Fatal("net.Listen error: %s\n", err)
-		}
-		rpc.Accept(listener)
-	*/
 }
 
 //Multicasts new node notification to all other nodes.
 //Called only by the gateway front-end application.
-func (this *Dummy) SendNewNodeNotify(o api.OrderingNode) error {
+func (this *Logical) SendNewNodeNotify(o api.OrderingNode) error {
+	//poor style the remote RPC server should be up
+	//but we'll give it a second to get it's ID and start
+	timer := time.NewTimer(time.Second)
+	<-timer.C
+
+	this.nodes.Set(o.ID, o)
+	var err error
+	var empty struct{}
+	var client *rpc.Client
+	var nodes map[int]api.OrderingNode = this.nodes.GetMap()
+	for id, node := range nodes {
+		if id == this.id {
+			continue
+		}
+		client, err = rpc.Dial("tcp", node.Address+":"+node.Port)
+		if err != nil {
+			log.Printf("dialing error: %+v", err)
+			return err
+		}
+		client.Go("Logical.ReceiveNewNodesNotify", nodes, &empty, nil)
+	}
 	return nil
 }
 
 //Accepts new node notifications
 //Called only by other ordering implementations.
-func (this *Dummy) ReceiveNewNodesNotify(params map[int]api.OrderingNode, _ *struct{}) error {
+func (this *Logical) ReceiveNewNodesNotify(params map[int]api.OrderingNode, _ *struct{}) error {
+	log.Printf("Received nodes: %+v", params)
+	for id, node := range params {
+		this.nodes.Set(id, node)
+	}
+	log.Printf("My nodes are now: %+v", this.nodes.GetMap())
 	return nil
 }
 
@@ -57,7 +83,7 @@ func (this *Dummy) ReceiveNewNodesNotify(params map[int]api.OrderingNode, _ *str
 //Logical clocks:
 //Multicasts event notification to all other nodes.
 //Called by applications instead of reporting state directly to another process.
-func (this *Dummy) SendState(s api.StateInfo, destAddr string, destPort string) error {
+func (this *Logical) SendState(s api.StateInfo, destAddr string, destPort string) error {
 	var event api.Event = api.Event{
 		IsAck:      false,
 		SrcAddress: this.ip,
@@ -72,7 +98,7 @@ func (this *Dummy) SendState(s api.StateInfo, destAddr string, destPort string) 
 		log.Fatal("dialing error: %+v", err)
 	}
 	var empty struct{}
-	err = client.Call("Dummy.ReceiveEvent", event, &empty)
+	err = client.Call("Logical.ReceiveEvent", event, &empty)
 	if err != nil {
 		log.Fatal("calling error: %+v", err)
 		return err
@@ -88,7 +114,7 @@ func (this *Dummy) SendState(s api.StateInfo, destAddr string, destPort string) 
 //on messages delivered to the application. Those messages are delivered to
 //registered report state functions.
 //Called only by other ordering implementations.
-func (this *Dummy) ReceiveEvent(params *api.Event, _ *struct{}) error {
+func (this *Logical) ReceiveEvent(params *api.Event, _ *struct{}) error {
 	var rsPtr *api.ReportState
 	var ok bool
 	rsPtr, ok = this.reportStates.Get(params.StateInfo.DeviceName)
@@ -102,6 +128,6 @@ func (this *Dummy) ReceiveEvent(params *api.Event, _ *struct{}) error {
 }
 
 //Register functions that handle the states received inside events.
-func (this *Dummy) RegisterReportState(name api.Name, reportState api.ReportState) {
+func (this *Logical) RegisterReportState(name api.Name, reportState api.ReportState) {
 	this.reportStates.Set(name, &reportState)
 }
