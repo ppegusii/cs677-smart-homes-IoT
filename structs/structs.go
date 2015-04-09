@@ -447,7 +447,7 @@ type SyncLogicalEventContainer struct {
 	mapEventToAcks map[uuid.UUID]*map[int]bool
 	//data structure is already synchornized
 	eventQ *lane.PQueue
-	sync.RWMutex
+	sync.Mutex
 }
 
 func NewSyncLogicalEventContainer() *SyncLogicalEventContainer {
@@ -457,10 +457,12 @@ func NewSyncLogicalEventContainer() *SyncLogicalEventContainer {
 	}
 }
 
+//Add event to container
 func (s *SyncLogicalEventContainer) AddEvent(event api.LogicalEvent) {
 	s.eventQ.Push(event, event.StateInfo.Clock)
 }
 
+//Update container with acknowledgement
 func (s *SyncLogicalEventContainer) AddAck(event api.LogicalEvent) {
 	var acksPtr *map[int]bool
 	var ok bool
@@ -482,6 +484,38 @@ func (s *SyncLogicalEventContainer) AddAck(event api.LogicalEvent) {
 	s.Unlock()
 }
 
+//Return the event with the lowest clock value if it has been
+//acknowledged by all processes.
 func (s *SyncLogicalEventContainer) GetHeadIfAcked() (*api.LogicalEvent, bool) {
-	return nil, false
+	s.Lock()
+	//if queue empty return
+	if s.eventQ.Size() == 0 {
+		return nil, false
+	}
+	//check that the earliest event has been acked by all processes
+	head, _ := s.eventQ.Head()
+	var event api.LogicalEvent = head.(api.LogicalEvent)
+	var acksPtr *map[int]bool
+	var ok bool
+	acksPtr, ok = s.mapEventToAcks[event.EventID]
+	//if no acks exist return
+	if !ok {
+		s.Unlock()
+		return nil, false
+	}
+	for _, hasAcked := range *acksPtr {
+		if !hasAcked {
+			s.Unlock()
+			return nil, false
+		}
+	}
+	//now we know all processes have acked the event
+	//remove the earliest event from the queue
+	head, _ = s.eventQ.Pop()
+	event = head.(api.LogicalEvent)
+	//delete the ack map
+	delete(s.mapEventToAcks, event.EventID)
+	s.Unlock()
+	//return the fully acked event
+	return &event, true
 }
