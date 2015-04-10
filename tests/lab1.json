@@ -10,7 +10,7 @@
       "Time": 1000,
       "Command": "ChangeState",
       "Target": "motionsensor",
-      "State": 2
+      "State": 3
     },
     {
       "Time": 1001,
@@ -40,7 +40,7 @@
       "Time": 3200,
       "Command": "ChangeState",
       "Target": "motionsensor",
-      "State": 1
+      "State": 2
     },
     {
       "Time": 5000,
@@ -52,7 +52,7 @@
       "Time": 5000,
       "Command": "ChangeState",
       "Target": "motionsensor",
-      "State": 2
+      "State": 3
     },
     {
       "Time": 5001,

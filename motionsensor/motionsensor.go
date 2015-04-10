@@ -73,10 +73,11 @@ func (m *MotionSensor) start() {
 //RPC stub to change state remotely.
 //It is called by the test controller.
 func (m *MotionSensor) ChangeState(params *api.StateInfo, reply *api.StateInfo) error {
+	log.Printf("Received request to change state to: %s\n", util.StateToString(params.State))
 	switch params.State {
 	case api.MotionStop:
 		if m.state.GetState() == api.MotionStop {
-			fmt.Println("No change")
+			log.Printf("No change\n")
 			break
 		}
 		m.state.SetState(api.MotionStop)
@@ -85,7 +86,7 @@ func (m *MotionSensor) ChangeState(params *api.StateInfo, reply *api.StateInfo) 
 		break
 	case api.MotionStart:
 		if m.state.GetState() == api.MotionStart {
-			fmt.Println("No change")
+			log.Printf("No change\n")
 			break
 		}
 		m.state.SetState(api.MotionStart)
@@ -93,7 +94,7 @@ func (m *MotionSensor) ChangeState(params *api.StateInfo, reply *api.StateInfo) 
 		m.sendState()
 		break
 	default:
-		fmt.Println("Invalid change state request")
+		log.Printf("Invalid change state request")
 		break
 	}
 	return nil

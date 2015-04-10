@@ -136,6 +136,7 @@ func (this *TestController) runInstruction(inst Instruction) {
 		client, err = rpc.Dial("tcp", process.IPAddress+":"+process.Port)
 		if err != nil {
 			log.Printf("Error dialing gateway: %+v\n", err)
+			return
 		}
 		client.Go("Gateway.Query", name, &empty, nil)
 		return
@@ -163,6 +164,7 @@ func (this *TestController) runInstruction(inst Instruction) {
 		client, err = rpc.Dial("tcp", process.IPAddress+":"+process.Port)
 		if err != nil {
 			log.Printf("Error dialing %s: %+v\n", inst.Target, err)
+			return
 		}
 		client.Go(rpcName, api.StateInfo{State: inst.State}, &empty, nil)
 		return
