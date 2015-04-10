@@ -1,0 +1,74 @@
+{
+  "Instructions": [
+    {
+      "Time": 1000,
+      "Process": "temperaturesensor",
+      "Command": "ChangeState",
+      "Target": "",
+      "State": 0
+    },
+    {
+      "Time": 1000,
+      "Process": "motionsensor",
+      "Command": "ChangeState",
+      "Target": "",
+      "State": 2
+    },
+    {
+      "Time": 1001,
+      "Process": "gateway",
+      "Command": "QueryState",
+      "Target": "temperaturesensor",
+      "State": 0
+    },
+    {
+      "Time": 2000,
+      "Process": "temperaturesensor",
+      "Command": "ChangeState",
+      "Target": "",
+      "State": 1
+    },
+    {
+      "Time": 2001,
+      "Process": "gateway",
+      "Command": "QueryState",
+      "Target": "temperaturesensor",
+      "State": 0
+    },
+    {
+      "Time": 2001,
+      "Process": "gateway",
+      "Command": "QueryState",
+      "Target": "motionsensor",
+      "State": 0
+    },
+    {
+      "Time": 3200,
+      "Process": "motionsensor",
+      "Command": "ChangeState",
+      "Target": "",
+      "State": 1
+    },
+    {
+      "Time": 5000,
+      "Process": "temperaturesensor",
+      "Command": "ChangeState",
+      "Target": "",
+      "State": 2
+    },
+    {
+      "Time": 5000,
+      "Process": "motionsensor",
+      "Command": "ChangeState",
+      "Target": "",
+      "State": 2
+    },
+    {
+      "Time": 5001,
+      "Process": "gateway",
+      "Command": "QueryState",
+      "Target": "temperaturesensor",
+      "State": 0
+    }
+  ]
+}

@@ -14,7 +14,7 @@ import (
 )
 
 // This struct contains all the attributes of the motion sensor and information needed for
-// ordering for clock synchronization, peer table to keep a track of ip of the peers 
+// ordering for clock synchronization, peer table to keep a track of ip of the peers
 // and reference to its middleware
 type MotionSensor struct {
 	id          int
@@ -65,9 +65,38 @@ func (m *MotionSensor) start() {
 	if err != nil {
 		log.Fatal("net.Listen error: %s\n", err)
 	}
-	go rpc.Accept(listener)
+	rpc.Accept(listener)
 	//listen on stdin for motion triggers
-	m.getInput()
+	//m.getInput()
+}
+
+//RPC stub to change state remotely.
+//It is called by the test controller.
+func (m *MotionSensor) ChangeState(params *api.StateInfo, reply *api.StateInfo) error {
+	switch params.State {
+	case api.MotionStop:
+		if m.state.GetState() == api.MotionStop {
+			fmt.Println("No change")
+			break
+		}
+		m.state.SetState(api.MotionStop)
+		util.LogCurrentState(m.state.GetState())
+		m.sendState()
+		break
+	case api.MotionStart:
+		if m.state.GetState() == api.MotionStart {
+			fmt.Println("No change")
+			break
+		}
+		m.state.SetState(api.MotionStart)
+		util.LogCurrentState(m.state.GetState())
+		m.sendState()
+		break
+	default:
+		fmt.Println("Invalid change state request")
+		break
+	}
+	return nil
 }
 
 func (m *MotionSensor) getInput() {

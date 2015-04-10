@@ -13,7 +13,7 @@ import (
 )
 
 // This struct contains all the attributes of the temperature sensor and information needed for
-// ordering for clock synchronization, peer table to keep a track of ip of the peers 
+// ordering for clock synchronization, peer table to keep a track of ip of the peers
 // and reference to its middleware
 type TemperatureSensor struct {
 	id          int
@@ -64,9 +64,16 @@ func (t *TemperatureSensor) start() {
 	if err != nil {
 		log.Fatal("net.Listen error: %s\n", err)
 	}
-	go rpc.Accept(listener)
+	rpc.Accept(listener)
 	//listen on stdin for temperature triggers
-	t.getInput()
+	//t.getInput()
+}
+
+//RPC stub to change state remotely.
+//It is called by the test controller.
+func (t *TemperatureSensor) ChangeState(params *api.StateInfo, reply *api.StateInfo) error {
+	t.temperature.SetState(params.State)
+	return nil
 }
 
 func (t *TemperatureSensor) getInput() {

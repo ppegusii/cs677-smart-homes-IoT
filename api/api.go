@@ -33,12 +33,12 @@ type State int
 
 // Different states of devices and sensors
 const (
-	Closed      State = iota
-	MotionStart State = iota
-	MotionStop  State = iota
-	Off         State = iota
-	On          State = iota
-	Open        State = iota
+	Closed      State = iota //0
+	MotionStart State = iota //1
+	MotionStop  State = iota //2
+	Off         State = iota //3
+	On          State = iota //4
+	Open        State = iota //5
 )
 
 type Mode int
@@ -144,6 +144,7 @@ type OrderingMiddlewareLogicalRPCInterface interface {
 
 //Interfaces provided by the Sensor
 type SensorInterface interface {
+	ChangeState(params *StateInfo, reply *StateInfo) error
 	QueryState(params *int, reply *StateInfo) error
 }
 

@@ -64,9 +64,38 @@ func (d *DoorSensor) start() {
 	if err != nil {
 		log.Fatal("net.Listen error: %s\n", err)
 	}
-	go rpc.Accept(listener)
+	rpc.Accept(listener)
 	//listen on stdin for door triggers
-	d.getInput()
+	//d.getInput()
+}
+
+//RPC stub to change state remotely.
+//It is called by the test controller.
+func (d *DoorSensor) ChangeState(params *api.StateInfo, reply *api.StateInfo) error {
+	switch params.State {
+	case api.Open:
+		if d.state.GetState() == api.Open {
+			fmt.Println("No change")
+			break
+		}
+		d.state.SetState(api.Open)
+		util.LogCurrentState(d.state.GetState())
+		d.sendState()
+		break
+	case api.Closed:
+		if d.state.GetState() == api.Closed {
+			fmt.Println("No change")
+			break
+		}
+		d.state.SetState(api.Closed)
+		util.LogCurrentState(d.state.GetState())
+		d.sendState()
+		break
+	default:
+		fmt.Println("Invalid change state request")
+		break
+	}
+	return nil
 }
 
 func (d *DoorSensor) getInput() {
@@ -119,7 +148,7 @@ func (d *DoorSensor) QueryState(params *int, reply *api.StateInfo) error {
 	return nil
 }
 
-// The Door sensor is a push based device and can be polled by the gateway. 
+// The Door sensor is a push based device and can be polled by the gateway.
 // sendState() is used to report state to the gateway
 func (d *DoorSensor) sendState() {
 	var err error = d.orderMW.SendState(api.StateInfo{DeviceId: d.id, DeviceName: api.Door, State: d.state.GetState()}, d.gatewayIp, d.gatewayPort)

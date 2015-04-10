@@ -1,0 +1,48 @@
+{
+  "IPAddress": "127.0.0.1",
+  "Ordering": "l",
+  "Port": "6778",
+  "ProcessDescriptions": {
+    "database": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6777"
+    },
+    "gateway": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6770"
+    },
+    "motionsensor": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6771"
+    },
+    "doorsensor": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6776"
+    },
+    "smartbulb": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6772"
+    },
+    "temperaturesensor": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6773"
+    },
+    "user": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6775"
+    },
+    "smartoutlet": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6774"
+    }
+  },
+  "StartLocalProcesses": [
+    "database",
+    "gateway",
+    "motionsensor",
+    "doorsensor",
+    "smartbulb",
+    "temperaturesensor",
+    "smartoutlet"
+  ]
+}
