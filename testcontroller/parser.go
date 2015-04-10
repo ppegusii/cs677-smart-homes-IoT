@@ -8,11 +8,13 @@ import (
 )
 
 type Config struct {
-	IPAddress           string
-	Ordering            string
-	Port                string
-	ProcessDescriptions map[string]ProcessDescription
-	StartLocalProcesses []string
+	DatabaseDirectory       string
+	GatewayTempPollInterval int
+	IPAddress               string
+	Ordering                string
+	Port                    string
+	ProcessDescriptions     map[string]ProcessDescription
+	StartLocalProcesses     []string
 }
 
 type ProcessDescription struct {
@@ -26,7 +28,6 @@ type Test struct {
 
 type Instruction struct {
 	Command string
-	Process string
 	State   api.State
 	Target  string
 	Time    int

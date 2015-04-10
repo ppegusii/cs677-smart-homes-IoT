@@ -144,6 +144,7 @@ func (m *MotionSensor) getInput() {
 //This is an RPC function that is issued by the gateway to get the state of the motion sensor
 func (m *MotionSensor) QueryState(params *int, reply *api.StateInfo) error {
 	reply.DeviceId = m.id
+	reply.DeviceName = api.Motion
 	reply.State = m.state.GetState()
 	go m.sendState()
 	return nil

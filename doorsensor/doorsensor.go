@@ -143,6 +143,7 @@ func (d *DoorSensor) getInput() {
 //This is an RPC function that is issued by the gateway to get the state of the door sensor
 func (d *DoorSensor) QueryState(params *int, reply *api.StateInfo) error {
 	reply.DeviceId = d.id
+	reply.DeviceName = api.Door
 	reply.State = d.state.GetState()
 	go d.sendState()
 	return nil

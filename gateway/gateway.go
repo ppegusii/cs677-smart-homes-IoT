@@ -537,3 +537,29 @@ func (g *Gateway) writeRegInfo(regInfo *api.RegisterParams) {
 		log.Printf("Error calling database: %+v", err)
 	}
 }
+
+//Query RPC used for testing
+func (g *Gateway) Query(params api.Name, _ *struct{}) error {
+	var err error = nil
+	switch params {
+	case api.Bulb:
+		err = errors.New("Quering bulb state not implemented")
+		break
+	case api.Door:
+		err = errors.New("Quering door state not implemented")
+		break
+	case api.Motion:
+		go g.checkForMotion()
+		break
+	case api.Outlet:
+		err = errors.New("Quering outlet state not implemented")
+		break
+	case api.Temperature:
+		go g.pollTempSensors()
+		break
+	default:
+		err = errors.New(fmt.Sprintf("Invalid name: %d", params))
+		break
+	}
+	return err
+}

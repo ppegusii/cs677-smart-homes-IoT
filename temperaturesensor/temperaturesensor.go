@@ -106,10 +106,9 @@ func (t *TemperatureSensor) getInput() {
 
 //This is an RPC function that is issued by the gateway to get the state of the Temperature sensor
 func (t *TemperatureSensor) QueryState(params *int, reply *api.StateInfo) error {
-	/*
-		reply.DeviceId = t.id
-		reply.State = t.temperature.GetState()
-	*/
+	reply.DeviceId = t.id
+	reply.DeviceName = api.Temperature
+	reply.State = t.temperature.GetState()
 	go t.sendState()
 	return nil
 }

@@ -4,24 +4,26 @@ import (
 	"github.com/nu7hatch/gouuid"
 )
 
-type Type int
-
 //Peer Map Table
 type PMAP map[int]string
 
 //GatewayID
 const GatewayID int = 0
 
+type Type int
+
 // Device types
 const (
-	Sensor Type = iota
-	Device Type = iota
+	InvalidType Type = iota
+	Sensor      Type = iota
+	Device      Type = iota
 )
 
 type Name int
 
 //Device Names
 const (
+	InvalidName Name = iota
 	Bulb        Name = iota
 	Door        Name = iota
 	Motion      Name = iota
@@ -33,19 +35,21 @@ type State int
 
 // Different states of devices and sensors
 const (
-	Closed      State = iota //0
-	MotionStart State = iota //1
-	MotionStop  State = iota //2
-	Off         State = iota //3
-	On          State = iota //4
-	Open        State = iota //5
+	InvalidState State = iota //0
+	Closed       State = iota //1
+	MotionStart  State = iota //2
+	MotionStop   State = iota //3
+	Off          State = iota //4
+	On           State = iota //5
+	Open         State = iota //6
 )
 
 type Mode int
 
 const (
-	Away Mode = iota
-	Home Mode = iota
+	InvalidMode Mode = iota
+	Away        Mode = iota
+	Home        Mode = iota
 	//Logical Mode = iota
 	//These states indicate whether the
 	//gateway believes smart outlets are
@@ -58,9 +62,10 @@ const (
 type Ordering int
 
 const (
-	ClockSync    Ordering = iota
-	LogicalClock Ordering = iota
-	NoOrder      Ordering = iota
+	InvalidOrdering Ordering = iota
+	ClockSync       Ordering = iota
+	LogicalClock    Ordering = iota
+	NoOrder         Ordering = iota
 )
 
 type StaticOrderingID int
@@ -90,6 +95,7 @@ type DeviceInterface interface {
 // Interface provided by the Gateway
 type GatewayInterface interface {
 	ChangeMode(params *Mode, _ *struct{}) error
+	Query(params Name, _ *struct{}) error
 	Register(params *RegisterParams, reply *int) error
 	RegisterUser(params *RegisterGatewayUserParams, _ *struct{}) error
 	ReportBulbState(params *StateInfo, _ *struct{}) error

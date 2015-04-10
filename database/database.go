@@ -6,9 +6,11 @@ import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
+	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
 	"net"
 	"net/rpc"
+	"strconv"
 )
 
 type Database struct {
@@ -59,10 +61,10 @@ func (d *Database) start() {
 func (d *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) error {
 	var err error
 	//Writes object information to table.
-	_, err = d.devSen.WriteString(fmt.Sprintf("%d,%d,%d,%s,%s\n",
+	_, err = d.devSen.WriteString(fmt.Sprintf("%d,%s,%s,%s,%s\n",
 		params.DeviceId,
-		params.Type,
-		params.Name,
+		util.TypeToString(params.Type),
+		util.NameToString(params.Name),
 		params.Address,
 		params.Port))
 	if err != nil {
@@ -70,12 +72,16 @@ func (d *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) er
 	}
 	//Creates tables to track object states and events.
 	var f *structs.SyncFile
-	f, err = structs.NewSyncFile(fmt.Sprintf("%d_events.tbl", params.DeviceId))
+	f, err = structs.NewSyncFile(fmt.Sprintf("%d_%s_events.tbl",
+		params.DeviceId,
+		util.NameToString(params.Name)))
 	if err != nil {
 		return err
 	}
 	d.events.Set(params.DeviceId, f)
-	f, err = structs.NewSyncFile(fmt.Sprintf("%d_states.tbl", params.DeviceId))
+	f, err = structs.NewSyncFile(fmt.Sprintf("%d_%s_states.tbl",
+		params.DeviceId,
+		util.NameToString(params.Name)))
 	if err != nil {
 		return err
 	}
@@ -119,7 +125,17 @@ func (d *Database) writeStateInfo(stateInfo *api.StateInfo, f *structs.SyncFile)
 	var line string
 	var i int
 	var err error
-	line = fmt.Sprintf("%d,%d\n", stateInfo.Clock, stateInfo.State)
+	var stateStr string
+	if stateInfo.DeviceName == api.Temperature {
+		stateStr = strconv.Itoa(int(stateInfo.State))
+	} else {
+		stateStr = util.StateToString(stateInfo.State)
+	}
+	line = fmt.Sprintf("%d,%d,%s,%s\n",
+		stateInfo.Clock,
+		stateInfo.DeviceId,
+		util.NameToString(stateInfo.DeviceName),
+		stateStr)
 	i, err = f.WriteString(line)
 	return i, err
 }

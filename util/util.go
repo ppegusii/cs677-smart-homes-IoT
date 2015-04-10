@@ -67,3 +67,50 @@ func GetOwnIP() string {
 	log.Fatal("Error")
 	return ""
 }
+
+func NameToString(name api.Name) string {
+	switch name {
+	case api.Bulb:
+		return "bulb"
+	case api.Door:
+		return "door"
+	case api.Motion:
+		return "motion"
+	case api.Outlet:
+		return "outlet"
+	case api.Temperature:
+		return "temperature"
+	default:
+		return "invalid"
+	}
+}
+
+func StateToString(state api.State) string {
+	switch state {
+	case api.Closed:
+		return "closed"
+	case api.MotionStart:
+		return "motion"
+	case api.MotionStop:
+		return "nomotion"
+	case api.Off:
+		return "off"
+	case api.On:
+		return "on"
+	case api.Open:
+		return "open"
+	default:
+		return "invalid"
+	}
+}
+
+func TypeToString(t api.Type) string {
+	switch t {
+	case api.Sensor:
+		return "sensor"
+	case api.Device:
+		return "device"
+	default:
+		return "invalid"
+	}
+}

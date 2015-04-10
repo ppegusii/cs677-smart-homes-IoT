@@ -2,9 +2,12 @@ package main
 
 import (
 	"github.com/oleiade/lane"
+	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"log"
+	"net/rpc"
 	"os"
 	"os/exec"
+	"strconv"
 	"time"
 )
 
@@ -34,6 +37,7 @@ func (this *TestController) startProcesses() {
 	var otherIpSwitch string = "-I"
 	var otherPortSwitch string = "-P"
 	var orderingSwitch string = "-o"
+	var pollingSwitch string = "-s"
 	var databaseIp string = this.config.ProcessDescriptions["database"].IPAddress
 	var databasePort string = this.config.ProcessDescriptions["database"].Port
 	var gatewayIp string = this.config.ProcessDescriptions["gateway"].IPAddress
@@ -51,7 +55,7 @@ func (this *TestController) startProcesses() {
 	//next start gateway if it's a local process
 	if stringInSlice(this.config.StartLocalProcesses, "gateway") {
 		command = "gateway"
-		args = []string{ipSwitch, gatewayIp, portSwitch, gatewayPort, orderingSwitch, this.config.Ordering}
+		args = []string{ipSwitch, gatewayIp, portSwitch, gatewayPort, pollingSwitch, strconv.Itoa(this.config.GatewayTempPollInterval), orderingSwitch, this.config.Ordering}
 		this.startProcess(command, args)
 		//allow gateway to come up, all other processes depend on it
 		waitFor(time.Second)
@@ -105,6 +109,67 @@ func (this *TestController) runTestCase() {
 //Run an inststruction.
 func (this *TestController) runInstruction(inst Instruction) {
 	log.Printf("Will run instruction: %+v\n", inst)
+	var client *rpc.Client
+	var empty struct{}
+	var err error
+	var ok bool
+	var process ProcessDescription
+	switch inst.Command {
+	//all QueryState commands will be made to RPCs to gateway
+	case "QueryState":
+		var name api.Name
+		switch inst.Target {
+		case "motionsensor":
+			name = api.Motion
+			break
+		case "temperaturesensor":
+			name = api.Temperature
+			break
+		default:
+			log.Printf("Query state unimplemented for: %s\n", inst.Target)
+			return
+		}
+		process, ok = this.config.ProcessDescriptions["gateway"]
+		if !ok {
+			log.Printf("Gateway process does not exist: %s\n", inst.Target)
+		}
+		client, err = rpc.Dial("tcp", process.IPAddress+":"+process.Port)
+		if err != nil {
+			log.Printf("Error dialing gateway: %+v\n", err)
+		}
+		client.Go("Gateway.Query", name, &empty, nil)
+		return
+	case "ChangeState":
+		//all ChangeState commands will be made to RPCs to sensors
+		var rpcName string
+		switch inst.Target {
+		case "motionsensor":
+			rpcName = "MotionSensor.ChangeState"
+			break
+		case "temperaturesensor":
+			rpcName = "TemperatureSensor.ChangeState"
+			break
+		case "doorsensor":
+			rpcName = "DoorSensor.ChangeState"
+			break
+		default:
+			log.Printf("Invalid sensor for change state: %s\n", inst.Target)
+			return
+		}
+		process, ok = this.config.ProcessDescriptions[inst.Target]
+		if !ok {
+			log.Printf("Process does not exist: %s\n", inst.Target)
+		}
+		client, err = rpc.Dial("tcp", process.IPAddress+":"+process.Port)
+		if err != nil {
+			log.Printf("Error dialing %s: %+v\n", inst.Target, err)
+		}
+		client.Go(rpcName, api.StateInfo{State: inst.State}, &empty, nil)
+		return
+	default:
+		log.Printf("Invalid instruction command: %s\n", inst.Command)
+		return
+	}
 }
 
 func waitFor(duration time.Duration) {
