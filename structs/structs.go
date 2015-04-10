@@ -511,7 +511,8 @@ func (s *SyncLogicalEventContainer) GetHeadIfAcked() (*api.LogicalEvent, bool) {
 		s.Unlock()
 		return nil, false
 	}
-	for id, hasAcked := range *acksPtr {
+	//for id, hasAcked := range *acksPtr {
+	for _, hasAcked := range *acksPtr {
 		if !hasAcked {
 			//log.Printf("Node has not acked: %d\n", id)
 			s.Unlock()
