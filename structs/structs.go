@@ -459,11 +459,13 @@ func NewSyncLogicalEventContainer() *SyncLogicalEventContainer {
 
 //Add event to container
 func (s *SyncLogicalEventContainer) AddEvent(event api.LogicalEvent) {
+	//log.Printf("Adding event: %+v", event)
 	s.eventQ.Push(event, event.StateInfo.Clock)
 }
 
 //Update container with acknowledgement
 func (s *SyncLogicalEventContainer) AddAck(event api.LogicalEvent) {
+	//log.Printf("Adding ack: %+v", event)
 	var acksPtr *map[int]bool
 	var ok bool
 	s.Lock()
@@ -476,7 +478,8 @@ func (s *SyncLogicalEventContainer) AddAck(event api.LogicalEvent) {
 		var acks map[int]bool
 		acks = make(map[int]bool)
 		s.mapEventToAcks[event.EventID] = &acks
-		for id := range event.DestIDs {
+		for idx := range event.DestIDs {
+			var id int = event.DestIDs[idx]
 			acks[id] = false
 		}
 		acks[event.SrcId] = true
@@ -488,8 +491,12 @@ func (s *SyncLogicalEventContainer) AddAck(event api.LogicalEvent) {
 //acknowledged by all processes.
 func (s *SyncLogicalEventContainer) GetHeadIfAcked() (*api.LogicalEvent, bool) {
 	s.Lock()
+	//log.Printf("eventQ = %+v\n", s.eventQ)
+	//log.Printf("mapEventToAcks = %+v\n", s.mapEventToAcks)
 	//if queue empty return
 	if s.eventQ.Size() == 0 {
+		//log.Printf("eventQ.Size == 0\n")
+		s.Unlock()
 		return nil, false
 	}
 	//check that the earliest event has been acked by all processes
@@ -500,11 +507,13 @@ func (s *SyncLogicalEventContainer) GetHeadIfAcked() (*api.LogicalEvent, bool) {
 	acksPtr, ok = s.mapEventToAcks[event.EventID]
 	//if no acks exist return
 	if !ok {
+		//log.Printf("No acks exists\n")
 		s.Unlock()
 		return nil, false
 	}
-	for _, hasAcked := range *acksPtr {
+	for id, hasAcked := range *acksPtr {
 		if !hasAcked {
+			//log.Printf("Node has not acked: %d\n", id)
 			s.Unlock()
 			return nil, false
 		}
@@ -517,5 +526,6 @@ func (s *SyncLogicalEventContainer) GetHeadIfAcked() (*api.LogicalEvent, bool) {
 	delete(s.mapEventToAcks, event.EventID)
 	s.Unlock()
 	//return the fully acked event
+	//log.Printf("returning event: %+v\n", event)
 	return &event, true
 }

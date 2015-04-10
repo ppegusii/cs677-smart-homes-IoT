@@ -65,7 +65,7 @@ func (this *Logical) SendNewNodeNotify(o api.OrderingNode) error {
 		}
 		client, err = rpc.Dial("tcp", node.Address+":"+node.Port)
 		if err != nil {
-			log.Printf("dialing error: %+v", err)
+			log.Printf("dialing error: %+v\n", err)
 			return err
 		}
 		client.Go("Logical.ReceiveNewNodesNotify", nodes, &empty, nil)
@@ -76,11 +76,11 @@ func (this *Logical) SendNewNodeNotify(o api.OrderingNode) error {
 //Accepts new node notifications
 //Called only by other ordering implementations.
 func (this *Logical) ReceiveNewNodesNotify(params map[int]api.OrderingNode, _ *struct{}) error {
-	log.Printf("Received nodes: %+v", params)
+	//log.Printf("Received nodes: %+v\n", params)
 	for id, node := range params {
 		this.nodes.Set(id, node)
 	}
-	log.Printf("My nodes are now: %+v", this.nodes.GetMap())
+	//log.Printf("My nodes are now: %+v\n", this.nodes.GetMap())
 	return nil
 }
 
@@ -95,7 +95,7 @@ func (this *Logical) SendState(s api.StateInfo, destAddr string, destPort string
 	var err error
 	eventID, err = uuid.NewV4()
 	if err != nil {
-		log.Fatal("Error creating uuid: %+v", err)
+		log.Fatal("Error creating uuid: %+v\n", err)
 	}
 	var event api.LogicalEvent = api.LogicalEvent{
 		DestIDs:    this.nodes.GetKeys(),
@@ -106,20 +106,21 @@ func (this *Logical) SendState(s api.StateInfo, destAddr string, destPort string
 		SrcPort:    this.port,
 		StateInfo:  s,
 	}
-	return this.multicastEvent(&event)
+	return this.multicastEvent(event)
 }
 
 //Multicasts events to all other nodes.
-func (this *Logical) multicastEvent(event *api.LogicalEvent) error {
+func (this *Logical) multicastEvent(event api.LogicalEvent) error {
 	var client *rpc.Client
 	var empty struct{}
 	var err error
 	var nodes map[int]api.OrderingNode = this.nodes.GetMap()
-	for id := range event.DestIDs {
+	for idx := range event.DestIDs {
+		var id int = event.DestIDs[idx]
 		node, _ := nodes[id]
 		client, err = rpc.Dial("tcp", node.Address+":"+node.Port)
 		if err != nil {
-			log.Printf("dialing error: %+v\n", err)
+			log.Printf("multicast dialing error id=%d nodes=%+v: %+v\n", id, nodes, err)
 			return err
 		}
 		client.Go("Logical.ReceiveEvent", event, &empty, nil)
@@ -146,8 +147,9 @@ func (this *Logical) ReceiveEvent(params api.LogicalEvent, _ *struct{}) error {
 		//enqueue the event
 		this.events.AddEvent(params)
 		//multicast event acknowledgement
+		params.SrcId = this.id
 		params.IsAck = true
-		return this.multicastEvent(&params)
+		return this.multicastEvent(params)
 	}
 	//this is an acknowledgement
 	//add acknowledgement to event
@@ -165,7 +167,7 @@ func (this *Logical) ReceiveEvent(params api.LogicalEvent, _ *struct{}) error {
 		var rsPtr *api.ReportState
 		rsPtr, ok = this.reportStates.Get(params.StateInfo.DeviceName)
 		if !ok {
-			log.Printf("No registered func to handle device name: %d", params.StateInfo.DeviceName)
+			log.Printf("No registered func to handle device name: %d\n", params.StateInfo.DeviceName)
 			continue
 		}
 		var empty struct{}
