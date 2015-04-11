@@ -134,19 +134,11 @@ func (d *Database) AddState(params *api.StateInfo, _ *struct{}) error {
 	return err
 }
 
-//Given a clock value and device id, return the cached state infos that happened just before and just after
-func (d *Database) GetState(params api.StateInfo, reply *([]api.StateInfo)) error {
-	before, after := d.stateCaches.Get(params.DeviceId).GetBeforeAndAfter(params.Clock)
-	if before == nil {
-		before = &api.StateInfo{}
-	}
-	if after == nil {
-		after = &api.StateInfo{}
-	}
-	array := make([]api.StateInfo, 2)
-	array[0] = *before
-	array[1] = *after
-	reply = &array
+//Given a clock value and device id, return the cached state info that happened just before
+func (d *Database) GetHappensBefore(params api.StateInfo, reply *api.StateInfo) error {
+	var before, _ *api.StateInfo = d.stateCaches.Get(params.DeviceId).GetBeforeAndAfter(params.Clock)
+	log.Printf("before = %+v\n", before)
+	*reply = *before
 	return nil
 }
 

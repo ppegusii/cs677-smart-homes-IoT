@@ -573,7 +573,6 @@ func (this *SyncLatestStateInfos) AddStateInfo(s api.StateInfo) {
 
 func (this *SyncLatestStateInfos) GetBeforeAndAfter(clock int) (*api.StateInfo, *api.StateInfo) {
 	this.RLock()
-	log.Printf("dead!!!\n")
 	//get the clock values
 	var idx int = 0
 	var clocks []int = make([]int, len(this.stateInfos))

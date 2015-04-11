@@ -87,7 +87,7 @@ type DatabaseInterface interface {
 	AddDeviceOrSensor(params *RegisterParams, _ *struct{}) error
 	AddEvent(params *StateInfo, _ *struct{}) error
 	AddState(params *StateInfo, _ *struct{}) error
-	GetState(params StateInfo, reply *([]StateInfo)) error
+	GetHappensBefore(params StateInfo, reply *StateInfo) error
 	//log the gateway mode
 	LogMode(params ModeAndClock, _ *struct{}) error
 	RegisterGateway(params *RegisterGatewayUserParams, _ *struct{}) error

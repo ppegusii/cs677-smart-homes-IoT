@@ -522,25 +522,26 @@ func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 		Clock:    params.Clock,
 		DeviceId: motionId,
 	}
-	var beforeAfter []api.StateInfo
+	var before api.StateInfo
 	var client *rpc.Client
 	var err error
 	var db api.RegisterGatewayUserParams = g.database.Get()
 	client, err = rpc.Dial("tcp", db.Address+":"+db.Port)
 	if err != nil {
-		log.Printf("Error dialing database: %+v", err)
+		log.Printf("Error dialing database: %+v\n", err)
 		return nil
 	}
-	err = client.Call("Database.GetState", stateInfo, &beforeAfter)
+	err = client.Call("Database.GetHappensBefore", stateInfo, &before)
 	if err != nil {
-		log.Printf("Error calling database: %+v", err)
+		log.Printf("Error calling database: %+v\n", err)
 		return nil
 	}
 	//if motion happens before door opening
 	//change mode to away
 	var empty struct{}
 	var newMode api.Mode
-	if beforeAfter[0].State == api.MotionStart {
+	log.Printf("before = %+v\n", before)
+	if before.State == api.MotionStart {
 		newMode = api.Away
 		g.ChangeMode(&newMode, &empty)
 		g.writeMode(api.ModeAndClock{
@@ -550,7 +551,7 @@ func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	}
 	//if no motion happens before door opening
 	//change mode to home
-	if beforeAfter[0].State == api.MotionStop {
+	if before.State == api.MotionStop {
 		newMode = api.Home
 		g.ChangeMode(&newMode, &empty)
 		g.writeMode(api.ModeAndClock{
