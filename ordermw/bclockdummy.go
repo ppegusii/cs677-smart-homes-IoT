@@ -118,8 +118,9 @@ func (this *BClockDummy) SendState(s api.StateInfo, destAddr string, destPort st
 	var err error
 	client, err = rpc.Dial("tcp", destAddr+":"+destPort)
 	if err != nil {
-		log.Fatal("dialing error: %+v", err)
+		log.Println("dialing error: %+v", err)
 	}
+	defer client.Close()
 	var empty struct{}
 	err = client.Call("BClockDummy.ReceiveEvent", event, &empty)
 	if err != nil {
@@ -188,17 +189,20 @@ func (this *BClockDummy) SendPeertableNotification(i int) {
 	var err error
 
 	for key, value := range this.peers {
+		if(key > -1) {
 		client, err = rpc.Dial("tcp", value)
 		if err != nil {
 			log.Println("error dialing from SendPeertableNotification : %+v", err)
 			delete(this.peers, key)
 		}
+		defer client.Close()
 		fmt.Println("Sending the peertable to the middleware of device id ", key, this.peers[i])
 		err = client.Call("BClockDummy.ReceivePeertableNotification", params, &empty)
 		if err != nil {
 			log.Fatal("calling error: %+v", err)
 		}
 	}
+}
 }
 
 //Leader Election Algorithm : Algorithm implemented is Bully Algorithm
@@ -213,10 +217,11 @@ func (this *BClockDummy) Bully() {
 		if this.currentLeader > -1 {
 			client, err = rpc.Dial("tcp", this.peers[this.currentLeader])
 		}
+		defer client.Close()
 		if (this.currentLeader == -1) || (err != nil) {
 			//Send an election message to all higher deviceid's
 			for key, value := range this.peers {
-				if key > this.id {
+				if ((key > this.id) && (key > -1)) {
 					client, err = rpc.Dial("tcp", value)
 					if err != nil {
 						this.ShowPeer()
@@ -241,11 +246,13 @@ func (this *BClockDummy) Bully() {
 			if this.leaderElection == true {
 				//Send IWIN notifications to everyone
 				for key, value := range this.peers {
+					if key > -1 {
 					client, err = rpc.Dial("tcp", value)
 					if err != nil {
 						log.Println("error dialing from Bully IWIN part: %+v", err)
 						delete(this.peers, i)
 					}
+					defer client.Close()
 					fmt.Println("Sending an IWIN Message from Device ID to deviceID", this.id, key)
 					this.currentLeader = this.id
 					err = client.Call("BClockDummy.IWIN", this.id, &empty)
@@ -254,6 +261,7 @@ func (this *BClockDummy) Bully() {
 						delete(this.peers, key)
 					}
 				}
+			}
 			}
 		}
 		/*		if(this.id == this.currentLeader){
@@ -272,12 +280,10 @@ func (this *BClockDummy) Election(id int, _ *struct{}) error {
 		var err error
 		//Send an OK message back to the device
 		client, err = rpc.Dial("tcp", this.peers[id])
+		defer client.Close()
 		if err != nil {
 			log.Println("error dialing from Election : %+v", this.peers[id], err)
 			delete(this.peers, id)
-			for key, value := range this.peers {
-				fmt.Println(key, value)
-			}
 		} else {
 			fmt.Println("Sending an OK Message to Device ID ", id)
 			err = client.Call("BClockDummy.OKAY", this.id, &empty)
@@ -322,8 +328,10 @@ func (this *BClockDummy) GetTime() {
 			fmt.Println(key, value)
 		}
 		for key, value := range this.peers {
+			if(key > -1) {
 			fmt.Println("Values of key and value are", key, value)
 			client, err = rpc.Dial("tcp", value)
+			defer client.Close()
 			if err != nil {
 				log.Println("error dialing from GetTime: %+v", err)
 				delete(this.peers, key)
@@ -344,6 +352,7 @@ func (this *BClockDummy) GetTime() {
 				}
 			}
 		}
+		}
 		fmt.Println("The PeerTimestamps map looks as below:")
 		for key, value := range PeerTimestamps {
 			fmt.Println(key, value)
@@ -357,11 +366,14 @@ func (this *BClockDummy) GetTime() {
 		fmt.Println("Average offset and count values are", average, count)
 		//Send the offsets back to the devices
 		for key, value := range this.peers {
+			if (key > -1) {
 			client, err = rpc.Dial("tcp", value)
 			if err != nil {
 				log.Println("error dialing from GetTime to return offsets: %+v", err)
 				delete(this.peers, key)
+				defer client.Close()
 			} else {
+				defer client.Close()
 				fmt.Println("Sending the Timestamp offsets from Device ID ", this.id)
 				offset := average - ((offsetsum + PeerTimestamps[key] - leadertime) / count)
 				//			offset := average + leadertime - PeerTimestamps[key]
@@ -375,6 +387,7 @@ func (this *BClockDummy) GetTime() {
 				}
 			}
 		}
+	}
 	}
 }
 
