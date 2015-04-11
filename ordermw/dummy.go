@@ -105,3 +105,39 @@ func (this *Dummy) ReceiveEvent(params *api.Event, _ *struct{}) error {
 func (this *Dummy) RegisterReportState(name api.Name, reportState api.ReportState) {
 	this.reportStates.Set(name, &reportState)
 }
+
+//Send PeerTable to other middlewares
+func (this *Dummy) ReceivePeertableNotification(params *api.PMAP, _ *struct{}) error {
+	return nil
+}
+
+func (this *Dummy) SendPeertableNotification(i int) {}
+
+//Leader Election Algorithm : Algorithm implemented is Bully Algorithm
+func (this *Dummy) Bully() {}
+
+func (this *Dummy) GetTime() {}
+
+//Receive Election message from other middlewares.
+func (this *Dummy) Election(id int, _ *struct{}) error {
+	return nil
+}
+
+//Receive OKAY message from higher device id middlewares.
+func (this *Dummy) OKAY(id int, _ *struct{}) error {
+	return nil
+}
+
+//Send IWIN message to peers
+func (this *Dummy) IWIN(id int, _ *struct{}) error {
+	return nil
+}
+
+func (this *Dummy) ReceiveOffset(offset int32, _ *struct{}) error {
+	return nil
+}
+
+// This is an RPC call that returns the current Unix timestamp to the leader middleware
+func (this *Dummy) SendTime(id int, timestamp *api.BTimeStamp) error {
+	return nil
+}

@@ -6,7 +6,9 @@ import (
 	"github.com/oleiade/lane"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"log"
+	"math"
 	"os"
+	"sort"
 	"sync"
 	"time"
 )
@@ -529,4 +531,96 @@ func (s *SyncLogicalEventContainer) GetHeadIfAcked() (*api.LogicalEvent, bool) {
 	//return the fully acked event
 	//log.Printf("returning event: %+v\n", event)
 	return &event, true
+}
+
+//Used to cache the latest states in the database.
+type SyncLatestStateInfos struct {
+	size       int
+	stateInfos map[int]api.StateInfo
+	sync.RWMutex
+}
+
+func NewSyncLatestStateInfos(size int) *SyncLatestStateInfos {
+	return &SyncLatestStateInfos{
+		size:       size,
+		stateInfos: make(map[int]api.StateInfo),
+	}
+}
+
+func (this *SyncLatestStateInfos) AddStateInfo(s api.StateInfo) {
+	this.Lock()
+	//if size of map less than size just add new state info
+	if len(this.stateInfos) < this.size {
+		this.stateInfos[s.Clock] = s
+		this.Unlock()
+		return
+	}
+	//find the earliest state info in the map
+	var earliest int = math.MaxInt32
+	for clock, _ := range this.stateInfos {
+		if earliest < clock {
+			earliest = clock
+		}
+	}
+	//if it is earlier than the one to be added
+	//replace the earliest with the one to be added
+	if earliest < s.Clock {
+		delete(this.stateInfos, earliest)
+		this.stateInfos[s.Clock] = s
+	}
+	this.Unlock()
+}
+
+func (this *SyncLatestStateInfos) GetBeforeAndAfter(clock int) (*api.StateInfo, *api.StateInfo) {
+	this.RLock()
+	log.Printf("dead!!!\n")
+	//get the clock values
+	var idx int = 0
+	var clocks []int = make([]int, len(this.stateInfos))
+	for key := range this.stateInfos {
+		clocks[idx] = key
+		idx++
+	}
+	//sort the clock values in increasing order
+	sort.Ints(clocks)
+	//find before and after
+	var beforePtr *api.StateInfo = nil
+	var afterPtr *api.StateInfo = nil
+	for _, c := range clocks {
+		if c < clock {
+			before := this.stateInfos[c]
+			beforePtr = &before
+		}
+		if clock < c {
+			after := this.stateInfos[c]
+			afterPtr = &after
+			break
+		}
+	}
+	this.RUnlock()
+	return beforePtr, afterPtr
+}
+
+type SyncMapIntSyncLatestStateInfos struct {
+	latestSizes int
+	m           map[int]*SyncLatestStateInfos
+	sync.Mutex
+}
+
+func NewSyncMapIntSyncLatestStateInfos(latestSizes int) *SyncMapIntSyncLatestStateInfos {
+	return &SyncMapIntSyncLatestStateInfos{
+		latestSizes: latestSizes,
+		m:           make(map[int]*SyncLatestStateInfos),
+	}
+}
+
+func (this *SyncMapIntSyncLatestStateInfos) Get(i int) *SyncLatestStateInfos {
+	this.Lock()
+	latest, ok := this.m[i]
+	if !ok {
+		latest = NewSyncLatestStateInfos(this.latestSizes)
+		this.m[i] = latest
+	}
+	this.Unlock()
+	return latest
 }

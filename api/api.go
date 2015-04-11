@@ -59,6 +59,11 @@ const (
 	//Time       Mode = iota
 )
 
+type ModeAndClock struct {
+	Clock int
+	Mode  Mode
+}
+
 type Ordering int
 
 const (
@@ -82,7 +87,9 @@ type DatabaseInterface interface {
 	AddDeviceOrSensor(params *RegisterParams, _ *struct{}) error
 	AddEvent(params *StateInfo, _ *struct{}) error
 	AddState(params *StateInfo, _ *struct{}) error
-	GetState(params *int, reply *StateInfo) error
+	GetState(params StateInfo, reply *([]StateInfo)) error
+	//log the gateway mode
+	LogMode(params ModeAndClock, _ *struct{}) error
 	RegisterGateway(params *RegisterGatewayUserParams, _ *struct{}) error
 }
 
@@ -131,6 +138,18 @@ type OrderingMiddlewareRPCInterface interface {
 	//registered report state functions.
 	//Called only by other ordering implementations.
 	ReceiveEvent(params *Event, _ *struct{}) error
+	ReceivePeertableNotification(params *PMAP, _ *struct{}) error
+	//	SendPeertableNotification(params *PMAP, _ *struct{}) error
+	Election(id int, _ *struct{}) error
+	OKAY(id int, _ *struct{}) error
+	IWIN(id int, _ *struct{}) error
+	SendTime(id int, timestamp *BTimeStamp) error
+	ReceiveOffset(offset int32, _ *struct{}) error
+}
+
+type BTimeStamp struct {
+	DeviceId  int
+	Timestamp int32
 }
 
 type OrderingMiddlewareLogicalRPCInterface interface {

@@ -14,25 +14,26 @@ import (
 )
 
 type Database struct {
-	devSen     *structs.SyncFile
-	events     *structs.SyncMapIntSyncFile
-	gateway    *structs.SyncRegGatewayUserParam
-	ip         string
-	orderMW    api.OrderingMiddlewareInterface
-	port       string
-	stateCache *structs.SyncMapIntStateInfo
-	states     *structs.SyncMapIntSyncFile
+	devSen      *structs.SyncFile
+	events      *structs.SyncMapIntSyncFile
+	gateway     *structs.SyncRegGatewayUserParam
+	gwMode      *structs.SyncFile
+	ip          string
+	orderMW     api.OrderingMiddlewareInterface
+	port        string
+	stateCaches *structs.SyncMapIntSyncLatestStateInfos
+	states      *structs.SyncMapIntSyncFile
 }
 
 func newDatabase(ip string, port string, ordering api.Ordering) *Database {
 	return &Database{
-		events:     structs.NewSyncMapIntSyncFile(),
-		gateway:    structs.NewSyncRegGatewayUserParam(),
-		ip:         ip,
-		orderMW:    ordermw.GetOrderingMiddleware(ordering, int(api.DatabaseOID), ip, port),
-		port:       port,
-		stateCache: structs.NewSyncMapIntStateInfo(),
-		states:     structs.NewSyncMapIntSyncFile(),
+		events:      structs.NewSyncMapIntSyncFile(),
+		gateway:     structs.NewSyncRegGatewayUserParam(),
+		ip:          ip,
+		orderMW:     ordermw.GetOrderingMiddleware(ordering, int(api.DatabaseOID), ip, port),
+		port:        port,
+		stateCaches: structs.NewSyncMapIntSyncLatestStateInfos(2),
+		states:      structs.NewSyncMapIntSyncFile(),
 	}
 }
 
@@ -42,6 +43,11 @@ func (d *Database) start() {
 	d.devSen, err = structs.NewSyncFile("dev_sen.tbl")
 	if err != nil {
 		log.Fatal("Error creating devSen file: %s\n", err)
+	}
+	//create file for gateway mode
+	d.gwMode, err = structs.NewSyncFile("gw_modes.tbl")
+	if err != nil {
+		log.Fatal("Error creating gwMode file: %s\n", err)
 	}
 	//start RPC server
 	err = rpc.Register(api.DatabaseInterface(d))
@@ -54,6 +60,24 @@ func (d *Database) start() {
 		log.Fatal("net.Listen error: %s\n", err)
 	}
 	rpc.Accept(listener)
+}
+
+//Writes object information to table.
+//Creates tables to track object states and events.
+func (d *Database) LogMode(params api.ModeAndClock, _ *struct{}) error {
+	var err error = nil
+	var modeStr string = ""
+	if params.Mode == api.Away {
+		modeStr = "away"
+	}
+	if params.Mode == api.Home {
+		modeStr = "home"
+	}
+	//Write object information to table.
+	_, err = d.gwMode.WriteString(fmt.Sprintf("%d,%s\n",
+		params.Clock,
+		modeStr))
+	return err
 }
 
 //Writes object information to table.
@@ -106,13 +130,23 @@ func (d *Database) AddState(params *api.StateInfo, _ *struct{}) error {
 		return errors.New(fmt.Sprintf("Invalid device ID: %d", params.DeviceId))
 	}
 	_, err := d.writeStateInfo(params, f)
-	d.stateCache.Set(params.DeviceId, params)
+	d.stateCaches.Get(params.DeviceId).AddStateInfo(*params)
 	return err
 }
 
-//Retrieve state from cache
-func (d *Database) GetState(params *int, reply *api.StateInfo) error {
-	reply, _ = d.stateCache.Get(*params)
+//Given a clock value and device id, return the cached state infos that happened just before and just after
+func (d *Database) GetState(params api.StateInfo, reply *([]api.StateInfo)) error {
+	before, after := d.stateCaches.Get(params.DeviceId).GetBeforeAndAfter(params.Clock)
+	if before == nil {
+		before = &api.StateInfo{}
+	}
+	if after == nil {
+		after = &api.StateInfo{}
+	}
+	array := make([]api.StateInfo, 2)
+	array[0] = *before
+	array[1] = *after
+	reply = &array
 	return nil
 }
 
