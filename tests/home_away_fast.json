@@ -1,0 +1,40 @@
+{
+  "Instructions": [
+    {
+      "Time": 1000,
+      "Command": "ChangeState",
+      "Target": "motionsensor",
+      "State": 2
+    },
+    {
+      "Time": 1100,
+      "Command": "ChangeState",
+      "Target": "doorsensor",
+      "State": 6
+    },
+    {
+      "Time": 1200,
+      "Command": "ChangeState",
+      "Target": "doorsensor",
+      "State": 1
+    },
+    {
+      "Time": 1300,
+      "Command": "ChangeState",
+      "Target": "motionsensor",
+      "State": 3
+    },
+    {
+      "Time": 1400,
+      "Command": "ChangeState",
+      "Target": "doorsensor",
+      "State": 6
+    },
+    {
+      "Time": 1500,
+      "Command": "ChangeState",
+      "Target": "motionsensor",
+      "State": 2
+    }
+  ]
+}

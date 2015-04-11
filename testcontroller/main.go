@@ -13,5 +13,6 @@ func main() {
 	tc := NewTestController(configFileName, testFileName)
 	tc.startProcesses()
 	tc.runTestCase()
+	tc.requestEnd()
 	tc.killLocalProcesses()
 }

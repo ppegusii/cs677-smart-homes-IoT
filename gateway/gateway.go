@@ -541,7 +541,7 @@ func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	var empty struct{}
 	var newMode api.Mode
 	log.Printf("before = %+v\n", before)
-	if before.State == api.MotionStart {
+	if before.State == api.MotionStart && g.mode.GetMode() != api.Away {
 		newMode = api.Away
 		g.ChangeMode(&newMode, &empty)
 		g.writeMode(api.ModeAndClock{
@@ -551,7 +551,7 @@ func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	}
 	//if no motion happens before door opening
 	//change mode to home
-	if before.State == api.MotionStop {
+	if before.State == api.MotionStop && g.mode.GetMode() != api.Home {
 		newMode = api.Home
 		g.ChangeMode(&newMode, &empty)
 		g.writeMode(api.ModeAndClock{
