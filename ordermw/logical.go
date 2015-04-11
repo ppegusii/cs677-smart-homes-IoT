@@ -181,3 +181,5 @@ func (this *Logical) ReceiveEvent(params api.LogicalEvent, _ *struct{}) error {
 func (this *Logical) RegisterReportState(name api.Name, reportState api.ReportState) {
 	this.reportStates.Set(name, &reportState)
 }
+
+func (this *Logical) SendPeertableNotification(i int) {}

@@ -110,6 +110,7 @@ type GatewayInterface interface {
 	ReportMotion(params *StateInfo, _ *struct{}) error
 	ReportOutletState(params *StateInfo, _ *struct{}) error
 	ReportTemperature(params *StateInfo, _ *struct{}) error
+	RegisterAck(id int, _ *struct{}) error
 }
 
 type OrderingMiddlewareInterface interface {
@@ -123,6 +124,11 @@ type OrderingMiddlewareInterface interface {
 	SendState(s StateInfo, destAddr string, destPort string) error
 	//Register functions that handle the states received inside events.
 	RegisterReportState(name Name, reportState ReportState)
+	//This function is called when a new device send acknowledgement of registration
+	//The main purpose of this function is to send the peertable to all the peers.
+	SendPeertableNotification(i int)
+	//Bully()
+	//GetTime()
 }
 
 type OrderingMiddlewareRPCInterface interface {

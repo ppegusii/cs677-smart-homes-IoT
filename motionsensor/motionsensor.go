@@ -55,6 +55,16 @@ func (m *MotionSensor) start() {
 	util.LogCurrentState(m.state.GetState())
 	//initialize middleware
 	m.orderMW = ordermw.GetOrderingMiddleware(m.ordering, m.id, m.selfIp, m.selfPort)
+
+	//send acknowledgment of registration
+	var empty struct{}
+	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
+	if err != nil {
+		log.Printf("dialing error: %+v", err)
+		return
+	}
+	client.Go("Gateway.RegisterAck", m.id, &empty, nil)
+
 	//start RPC server
 	err = rpc.Register(api.SensorInterface(m))
 	if err != nil {

@@ -54,6 +54,16 @@ func (t *TemperatureSensor) start() {
 	logCurrentTemp(t.temperature.GetState())
 	//initialize middleware
 	t.orderMW = ordermw.GetOrderingMiddleware(t.ordering, t.id, t.selfIp, t.selfPort)
+
+	//send acknowledgment of registration
+	var empty struct{}
+	client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
+	if err != nil {
+		log.Printf("dialing error: %+v", err)
+		return
+	}
+	client.Go("Gateway.RegisterAck", t.id, &empty, nil)
+
 	//start RPC server
 	err = rpc.Register(api.SensorInterface(t))
 	if err != nil {

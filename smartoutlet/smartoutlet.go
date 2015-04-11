@@ -11,7 +11,7 @@ import (
 )
 
 // This struct contains all the attributes of the smart outlet and information needed for
-// ordering for clock synchronization, peer table to keep a track of ip of the peers 
+// ordering for clock synchronization, peer table to keep a track of ip of the peers
 // and reference to its middleware
 type SmartOutlet struct {
 	id          int
@@ -51,6 +51,16 @@ func (s *SmartOutlet) start() {
 	log.Printf("Device id: %d", s.id)
 	//initialize middleware
 	s.orderMW = ordermw.GetOrderingMiddleware(s.ordering, s.id, s.selfIp, s.selfPort)
+
+	//send acknowledgment of registration
+	var empty struct{}
+	client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
+	if err != nil {
+		log.Printf("dialing error: %+v", err)
+		return
+	}
+	client.Go("Gateway.RegisterAck", s.id, &empty, nil)
+
 	//start RPC server
 	err = rpc.Register(api.DeviceInterface(s))
 	if err != nil {

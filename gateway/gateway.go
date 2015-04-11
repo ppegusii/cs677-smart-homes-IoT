@@ -30,7 +30,7 @@ type Gateway struct {
 	senAndDev       structs.SyncMapIntRegParam
 	tempSen         structs.SyncMapIntBool
 	user            structs.SyncRegGatewayUserParam
-	//peers           structs.PeerTable // To keep a track of all peers
+	peers           structs.PeerTable // To keep a track of all peers
 }
 
 // create and initialize the fields of gateway
@@ -50,12 +50,12 @@ func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInt
 		senAndDev:       *structs.NewSyncMapIntRegParam(),
 		tempSen:         *structs.NewSyncMapIntBool(),
 		user:            *structs.NewSyncRegGatewayUserParam(),
-		//peers:           *structs.NewPeerTable(),
+		peers:           *structs.NewPeerTable(),
 	}
 	g.database.Set(api.RegisterGatewayUserParams{Address: dbIP, Port: dbPort})
 	g.bulbTimer = *structs.NewSyncTimer(5*time.Minute, g.turnBulbsOff)
-	//g.peers.AddPeer(api.GatewayID, ip+":"+port) //Add the Gateway to the peertable
-	//g.peers.ShowPeer()                          // Testing: Remove later
+	g.peers.AddPeer(api.GatewayID, ip+":"+port) //Add the Gateway to the peertable
+	g.peers.ShowPeer()                          // Testing: Remove later
 	return g
 }
 
@@ -86,7 +86,7 @@ func (g *Gateway) start() {
 	var empty struct{}
 	client, err = rpc.Dial("tcp", db.Address+":"+db.Port)
 	if err != nil {
-		log.Fatal("error dialing gateway: %+v", err)
+		log.Fatal("error dialing database: %+v", err)
 	}
 	err = client.Call("Database.RegisterGateway", &api.RegisterGatewayUserParams{Address: g.ip, Port: g.port}, &empty)
 	if err != nil {
@@ -328,8 +328,8 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	*reply = id
 	params.DeviceId = id
 
-	//g.peers.AddPeer(id, params.Address+":"+params.Port)
-	//g.peers.ShowPeer()
+	g.peers.AddPeer(id, params.Address+":"+params.Port)
+	//  g.peers.ShowPeer()
 	return err
 }
 
@@ -611,6 +611,16 @@ func (g *Gateway) writeRegInfo(regInfo *api.RegisterParams) {
 	if err != nil {
 		log.Printf("Error calling database: %+v", err)
 	}
+}
+
+//RPC function used by other devices to acknowledge the registration.
+//The execution of this function results in initiation of Send Peertable call from
+//the middleware of gateway to other devices
+func (g *Gateway) RegisterAck(id int, _ *struct{}) error {
+	log.Printf("Received Registration Acknowledgement from device: ", id)
+	// Call middleware stub to broadcast the peertable to other middlewares
+	g.orderMW.SendPeertableNotification(id)
+	return nil
 }
 
 //Query RPC used for testing

@@ -54,6 +54,16 @@ func (d *DoorSensor) start() {
 	util.LogCurrentState(d.state.GetState())
 	//initialize middleware
 	d.orderMW = ordermw.GetOrderingMiddleware(d.ordering, d.id, d.selfIp, d.selfPort)
+
+	//send acknowledgment of registration
+	var empty struct{}
+	client, err = rpc.Dial("tcp", d.gatewayIp+":"+d.gatewayPort)
+	if err != nil {
+		log.Printf("dialing error: %+v", err)
+		return
+	}
+	client.Go("Gateway.RegisterAck", d.id, &empty, nil)
+
 	//start RPC server
 	err = rpc.Register(api.SensorInterface(d))
 	if err != nil {

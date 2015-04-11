@@ -8,7 +8,7 @@ import (
 func GetOrderingMiddleware(o api.Ordering, id int, ip string, port string) api.OrderingMiddlewareInterface {
 	switch o {
 	case api.ClockSync:
-		return nil
+		return BClockNewDummy(id, ip, port)
 	case api.LogicalClock:
 		return NewLogical(id, ip, port)
 	case api.NoOrder:
