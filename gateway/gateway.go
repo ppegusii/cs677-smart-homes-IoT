@@ -121,6 +121,7 @@ func (g *Gateway) pollTempSensors() {
 					continue
 				}
 				err = client.Call("TemperatureSensor.QueryState", &tempId, &tempReply)
+				client.Close()
 				if err != nil {
 					log.Printf("calling error: %+v", err)
 				}
@@ -345,10 +346,12 @@ func (g *Gateway) ReportMotion(params *api.StateInfo, _ *struct{}) error {
 	case api.Home:
 		switch params.State {
 		case api.MotionStart:
-			var timerActive bool = g.bulbTimer.Stop()
-			if !timerActive {
-				g.turnBulbsOn()
-			}
+			//var timerActive bool = g.bulbTimer.Stop()
+			g.bulbTimer.Stop()
+			//if !timerActive {
+			//	g.turnBulbsOn()
+			//}
+			g.turnBulbsOn()
 			break
 		case api.MotionStop:
 			g.bulbTimer.Reset()

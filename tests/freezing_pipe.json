@@ -1,0 +1,40 @@
+{
+  "Instructions": [
+    {
+      "Time": 5000,
+      "Command": "ChangeState",
+      "Target": "temperaturesensor",
+      "State": 1
+    },
+    {
+      "Time": 10000,
+      "Command": "ChangeState",
+      "Target": "temperaturesensor",
+      "State": 2
+    },
+    {
+      "Time": 15000,
+      "Command": "ChangeState",
+      "Target": "temperaturesensor",
+      "State": 3
+    },
+    {
+      "Time": 20000,
+      "Command": "ChangeState",
+      "Target": "temperaturesensor",
+      "State": 2
+    },
+    {
+      "Time": 25000,
+      "Command": "ChangeState",
+      "Target": "temperaturesensor",
+      "State": 1
+    },
+    {
+      "Time": 30000,
+      "Command": "ChangeState",
+      "Target": "temperaturesensor",
+      "State": 0
+    }
+  ]
+}

@@ -27,11 +27,23 @@
     {
       "Time": 5000,
       "Command": "ChangeState",
+      "Target": "motionsensor",
+      "State": 2
+    },
+    {
+      "Time": 6000,
+      "Command": "ChangeState",
+      "Target": "motionsensor",
+      "State": 3
+    },
+    {
+      "Time": 7000,
+      "Command": "ChangeState",
       "Target": "doorsensor",
       "State": 6
     },
     {
-      "Time": 6000,
+      "Time": 8000,
       "Command": "ChangeState",
       "Target": "motionsensor",
       "State": 2
