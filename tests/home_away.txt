@@ -14,6 +14,8 @@ clock,id,device_name,state
 or
 clock,gateway_mode
 
+Logical clock results
+
 18,1,motion,motion
 39,2,bulb,on
 61,3,door,open
@@ -29,3 +31,20 @@ clock,gateway_mode
 272,1,motion,nomotion (gateway checks motion state when changing modes to know if lights should be on)
 289,1,motion,motion
 316,2,bulb,on
+
+Clock sync results
+
+1905078341,1,motion,motion
+1905078341,3,bulb,on
+1905078342,2,door,open
+1905078342,3,bulb,off
+1905078342,away
+1905078343,2,door,closed
+1905078344,1,motion,nomotion
+1905078345,1,motion,motion
+1905078346,1,motion,nomotion
+1905078347,1,motion,nomotion
+1905078347,2,door,open
+1905078347,home
+1905078348,1,motion,motion
+1905078348,3,bulb,on

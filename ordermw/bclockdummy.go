@@ -149,6 +149,8 @@ func (this *BClockDummy) ReceiveEvent(params *api.Event, _ *struct{}) error {
 	}
 	var empty struct{}
 	var rs api.ReportState = *rsPtr
+	//set time stamp on state info
+	params.StateInfo.Clock = int(int32(time.Now().Unix()) + this.offset)
 	return rs(&(params.StateInfo), &empty)
 }
 
@@ -177,7 +179,7 @@ func (this *BClockDummy) ReceivePeertableNotification(params *api.PMAP, _ *struc
 	if this.id == this.currentLeader {
 		go this.GetTime()
 	}
-//
+	//
 	return nil
 }
 
@@ -198,12 +200,12 @@ func (this *BClockDummy) SendPeertableNotification(i int) {
 				delete(this.peers, key)
 				defer client.Close()
 			} else {
-			defer client.Close()
-			fmt.Println("Sending the peertable to the middleware of device id ", key, this.peers[i])
-			err = client.Call("BClockDummy.ReceivePeertableNotification", params, &empty)
-			if err != nil {
-				log.Fatal("calling error: %+v", err)
-			}
+				defer client.Close()
+				fmt.Println("Sending the peertable to the middleware of device id ", key, this.peers[i])
+				err = client.Call("BClockDummy.ReceivePeertableNotification", params, &empty)
+				if err != nil {
+					log.Fatal("calling error: %+v", err)
+				}
 			}
 		}
 	}
@@ -225,7 +227,7 @@ func (this *BClockDummy) Bully() {
 		if (this.currentLeader == -1) || (err != nil) {
 			//Send an election message to all higher deviceid's
 			for key, value := range this.peers {
-				if (key > this.id) {
+				if key > this.id {
 					client, err = rpc.Dial("tcp", value)
 					defer client.Close()
 					if err != nil {
@@ -239,7 +241,7 @@ func (this *BClockDummy) Bully() {
 						*/
 					} else {
 						this.leaderElection = true
-//						fmt.Println("Sending an Election Message from Device ID to device ID", this.id, key)
+						//						fmt.Println("Sending an Election Message from Device ID to device ID", this.id, key)
 						err = client.Call("BClockDummy.Election", this.id, &empty)
 						if err != nil {
 							log.Println("calling error: %+v", err)
@@ -247,7 +249,7 @@ func (this *BClockDummy) Bully() {
 						}
 					}
 				}
-//				client.Close()
+				//				client.Close()
 			}
 			time.Sleep(time.Second * 1)
 			//Check if no OK was send
@@ -262,7 +264,7 @@ func (this *BClockDummy) Bully() {
 							delete(this.peers, i)
 						}
 						defer client.Close()
-//						fmt.Println("Sending an IWIN Message from Device ID to deviceID", this.id, key)
+						//						fmt.Println("Sending an IWIN Message from Device ID to deviceID", this.id, key)
 						this.currentLeader = this.id
 						err = client.Call("BClockDummy.IWIN", this.id, &empty)
 						if err != nil {
@@ -273,10 +275,10 @@ func (this *BClockDummy) Bully() {
 				}
 			}
 		}
-/*		if(this.id == this.currentLeader){
-					go this.GetTime()
-		}
-*/
+		/*		if(this.id == this.currentLeader){
+							go this.GetTime()
+				}
+		*/
 	} //end of ticker code
 }
 
@@ -294,7 +296,7 @@ func (this *BClockDummy) Election(id int, _ *struct{}) error {
 			log.Println("error dialing from Election : %+v", this.peers[id], err)
 			delete(this.peers, id)
 		} else {
-//			fmt.Println("Sending an OK Message to Device ID ", id)
+			//			fmt.Println("Sending an OK Message to Device ID ", id)
 			err = client.Call("BClockDummy.OKAY", this.id, &empty)
 			if err != nil {
 				log.Println("error Calling RPC Okay from Election() : %+v", id, err)
@@ -327,88 +329,88 @@ func (this *BClockDummy) IWIN(id int, _ *struct{}) error {
 //Compute average time and then send the offset value back to the peers
 func (this *BClockDummy) GetTime() {
 	// put a ticker for every 10 seconds...
-		if this.id == this.currentLeader {
+	if this.id == this.currentLeader {
 
-			var PeerTimestamps = make(map[int]int32)
-			var offsetsum, average, count int32 = 0, 0, 0
-			var empty struct{}
-			var client *rpc.Client
-			var err error
-			var timestamp *api.BTimeStamp
-			leadertime := int32(time.Now().Unix())
-			fmt.Println("LeaderTime", leadertime)
-			/* Code for testing
-			for key, value := range this.peers {
-				fmt.Println(key, value)
-			}
-			*/
-			for key, value := range this.peers {
-				if key > -1 {
-//					fmt.Println("Values of key and value are", key, value)
-					client, err = rpc.Dial("tcp", value)
+		var PeerTimestamps = make(map[int]int32)
+		var offsetsum, average, count int32 = 0, 0, 0
+		var empty struct{}
+		var client *rpc.Client
+		var err error
+		var timestamp *api.BTimeStamp
+		leadertime := int32(time.Now().Unix())
+		fmt.Println("LeaderTime", leadertime)
+		/* Code for testing
+		for key, value := range this.peers {
+			fmt.Println(key, value)
+		}
+		*/
+		for key, value := range this.peers {
+			if key > -1 {
+				//					fmt.Println("Values of key and value are", key, value)
+				client, err = rpc.Dial("tcp", value)
+				if err != nil {
+					log.Println("error dialing from GetTime: %+v", err)
+					delete(this.peers, key)
+					defer client.Close()
+				} else {
+					defer client.Close()
+					//						fmt.Println("Sending a GetTimestamp request to Device ID ", key)
+					err = client.Call("BClockDummy.SendTime", this.id, &timestamp)
 					if err != nil {
-						log.Println("error dialing from GetTime: %+v", err)
+						log.Println("calling error: %+v", err)
 						delete(this.peers, key)
-						defer client.Close()
 					} else {
-						defer client.Close()
-//						fmt.Println("Sending a GetTimestamp request to Device ID ", key)
-						err = client.Call("BClockDummy.SendTime", this.id, &timestamp)
-						if err != nil {
-							log.Println("calling error: %+v", err)
-							delete(this.peers, key)
-						} else {
-							//Enter the timestamp in the map
-							//					fmt.Println(timestamp)
-							PeerTimestamps[timestamp.DeviceId] = timestamp.Timestamp
-							/* Code for testing
-							fmt.Println("The PeerTimestamps map looks as below after entering the timestamp:")
-							for key, value := range PeerTimestamps {
-								fmt.Println(key, value)
-							}
-							*/
+						//Enter the timestamp in the map
+						//					fmt.Println(timestamp)
+						PeerTimestamps[timestamp.DeviceId] = timestamp.Timestamp
+						/* Code for testing
+						fmt.Println("The PeerTimestamps map looks as below after entering the timestamp:")
+						for key, value := range PeerTimestamps {
+							fmt.Println(key, value)
 						}
-					}
-				}
-			}
-			/* Code for testing the values of peertimestamps
-			fmt.Println("The PeerTimestamps map looks as below:")
-			for key, value := range PeerTimestamps {
-				fmt.Println(key, value)
-			}
-			*/
-			//Now, that we have all timestamps take average of all the timestamps
-			for _, value := range PeerTimestamps {
-				count++
-				offsetsum = offsetsum + value - leadertime
-			}
-			average = offsetsum / count
-			//Send the offsets back to the devices
-			fmt.Println("Sending the Timestamp offsets from Leader", this.id)
-			for key, value := range this.peers {
-				if key > -1 {
-					client, err = rpc.Dial("tcp", value)
-					if err != nil {
-						log.Println("error dialing from GetTime to return offsets: %+v", err)
-						delete(this.peers, key)
-						defer client.Close()
-					} else {
-						defer client.Close()
-//						fmt.Println("Sending the Timestamp offsets from Device ID %d to deviceid %d", this.id,key)
-						offset := average - ((offsetsum + PeerTimestamps[key] - leadertime) / count)
-						//			offset := average + leadertime - PeerTimestamps[key]
-						err = client.Call("BClockDummy.ReceiveOffset", offset, &empty)
-						if err != nil {
-							log.Println("calling error: %+v", err)
-							delete(this.peers, key)
-						} else {
-							//Enter the timestamp in the map
-							PeerTimestamps[timestamp.DeviceId] = timestamp.Timestamp
-						}
+						*/
 					}
 				}
 			}
 		}
+		/* Code for testing the values of peertimestamps
+		fmt.Println("The PeerTimestamps map looks as below:")
+		for key, value := range PeerTimestamps {
+			fmt.Println(key, value)
+		}
+		*/
+		//Now, that we have all timestamps take average of all the timestamps
+		for _, value := range PeerTimestamps {
+			count++
+			offsetsum = offsetsum + value - leadertime
+		}
+		average = offsetsum / count
+		//Send the offsets back to the devices
+		fmt.Println("Sending the Timestamp offsets from Leader", this.id)
+		for key, value := range this.peers {
+			if key > -1 {
+				client, err = rpc.Dial("tcp", value)
+				if err != nil {
+					log.Println("error dialing from GetTime to return offsets: %+v", err)
+					delete(this.peers, key)
+					defer client.Close()
+				} else {
+					defer client.Close()
+					//						fmt.Println("Sending the Timestamp offsets from Device ID %d to deviceid %d", this.id,key)
+					offset := average - ((offsetsum + PeerTimestamps[key] - leadertime) / count)
+					//			offset := average + leadertime - PeerTimestamps[key]
+					err = client.Call("BClockDummy.ReceiveOffset", offset, &empty)
+					if err != nil {
+						log.Println("calling error: %+v", err)
+						delete(this.peers, key)
+					} else {
+						//Enter the timestamp in the map
+						PeerTimestamps[timestamp.DeviceId] = timestamp.Timestamp
+					}
+				}
+			}
+		}
+	}
 }
 
 //Send Offsets to peers

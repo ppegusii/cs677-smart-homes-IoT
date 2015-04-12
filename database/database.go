@@ -143,6 +143,9 @@ func (d *Database) AddState(params *api.StateInfo, _ *struct{}) error {
 func (d *Database) GetHappensBefore(params api.StateInfo, reply *api.StateInfo) error {
 	var before, _ *api.StateInfo = d.stateCaches.Get(params.DeviceId).GetBeforeAndAfter(params.Clock)
 	log.Printf("before = %+v\n", before)
+	if before == nil {
+		return nil
+	}
 	*reply = *before
 	return nil
 }
