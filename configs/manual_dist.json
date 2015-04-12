@@ -1,24 +1,24 @@
 {
   "DatabaseDirectory": "./db",
   "GatewayTempPollInterval": 1,
-  "IPAddress": "127.0.0.1",
+  "IPAddress": "172.16.136.10",
   "Ordering": "l",
   "Port": "6778",
   "ProcessDescriptions": {
     "database": {
-      "IPAddress": "127.0.0.1",
+      "IPAddress": "172.16.136.10",
       "Port": "6777"
     },
     "gateway": {
-      "IPAddress": "127.0.0.1",
+      "IPAddress": "172.16.136.10",
       "Port": "6770"
     },
     "motionsensor": {
-      "IPAddress": "127.0.0.1",
+      "IPAddress": "172.16.136.10",
       "Port": "6771"
     },
     "doorsensor": {
-      "IPAddress": "127.0.0.1",
+      "IPAddress": "192.168.10.130",
       "Port": "6776"
     },
     "smartbulb": {

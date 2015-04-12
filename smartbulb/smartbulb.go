@@ -99,7 +99,7 @@ func (s *SmartBulb) ChangeState(params *api.StateInfo, reply *api.StateInfo) err
 
 // sendState() is used to report state to the middleware
 func (s *SmartBulb) sendState() {
-	var err error = s.orderMW.SendState(api.StateInfo{DeviceId: s.id, DeviceName: api.Outlet, State: s.state.GetState()}, s.gatewayIp, s.gatewayPort)
+	var err error = s.orderMW.SendState(api.StateInfo{DeviceId: s.id, DeviceName: api.Bulb, State: s.state.GetState()}, s.gatewayIp, s.gatewayPort)
 	if err != nil {
 		log.Printf("Error sending state: %+v", err)
 	}

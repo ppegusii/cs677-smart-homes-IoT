@@ -1,0 +1,98 @@
+1. Launch processes starting with the gateway. Note the initial temperature given by the temperature sensor is 0 and the gateway polls the temperature sensor every second.
+2. After polling the temperature sensor, the gateway turns on the outlet.
+3. Increase the temperature sensor to 1.
+4. After polling the temperature sensor, the gateway does not change the state of the outlet.
+5. Increase the temperature sensor to 2.
+6. After polling the temperature sensor, the gateway does not change the state of the outlet.
+7. Increase the temperature sensor to 3.
+8. After polling the temperature sensor, the gateway turns off the outlet.
+9. Decrease the temperature sensor to 2.
+10. After polling the temperature sensor, the gateway does not change the state of the outlet.
+11. Decrease the temperature sensor to 1.
+12. After polling the temperature sensor, the gateway does not change the state of the outlet.
+13. Decrease the temperature sensor to 0.
+14. After polling the temperature sensor, the gateway turns on the outlet.
+
+Merged database tables showing states:
+clock,id,device_name,state
+7,1,temperature,0
+14,1,temperature,0
+23,1,temperature,0
+28,1,temperature,0
+37,2,outlet,on
+46,1,temperature,0
+55,2,outlet,on
+64,1,temperature,0
+71,2,outlet,on
+82,1,temperature,0
+91,2,outlet,on
+102,1,temperature,0
+109,2,outlet,on
+120,1,temperature,0
+131,2,outlet,on
+136,1,temperature,0
+143,2,outlet,on
+154,1,temperature,1
+163,2,outlet,on
+172,1,temperature,1
+181,2,outlet,on
+194,1,temperature,1
+199,2,outlet,on
+212,1,temperature,1
+217,2,outlet,on
+226,1,temperature,1
+235,2,outlet,on
+244,1,temperature,2
+257,2,outlet,on
+262,1,temperature,2
+270,2,outlet,on
+279,1,temperature,2
+288,2,outlet,on
+297,1,temperature,2
+308,2,outlet,on
+315,1,temperature,2
+326,2,outlet,on
+333,1,temperature,3
+346,2,outlet,off
+351,1,temperature,3
+358,2,outlet,off
+369,1,temperature,3
+378,2,outlet,off
+387,1,temperature,3
+396,2,outlet,off
+409,1,temperature,3
+414,2,outlet,off
+425,1,temperature,2
+432,2,outlet,off
+443,1,temperature,2
+452,2,outlet,off
+459,1,temperature,2
+468,2,outlet,off
+477,1,temperature,2
+486,2,outlet,off
+495,1,temperature,2
+504,2,outlet,off
+513,1,temperature,1
+522,2,outlet,off
+531,1,temperature,1
+542,2,outlet,off
+549,1,temperature,1
+558,2,outlet,off
+571,1,temperature,1
+576,2,outlet,off
+587,1,temperature,1
+594,2,outlet,off
+603,1,temperature,0
+610,2,outlet,on
+621,1,temperature,0
+630,2,outlet,on
+639,1,temperature,0
+648,2,outlet,on
+661,1,temperature,0
+666,2,outlet,on
+677,1,temperature,0
+684,2,outlet,on
+693,1,temperature,0
+702,2,outlet,on
+711,1,temperature,0
+722,2,outlet,on

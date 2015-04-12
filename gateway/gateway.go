@@ -122,6 +122,7 @@ func (g *Gateway) pollTempSensors() {
 					continue
 				}
 				err = client.Call("TemperatureSensor.QueryState", &tempId, &tempReply)
+				client.Close()
 				if err != nil {
 					log.Printf("calling error: %+v", err)
 				}
@@ -346,10 +347,12 @@ func (g *Gateway) ReportMotion(params *api.StateInfo, _ *struct{}) error {
 	case api.Home:
 		switch params.State {
 		case api.MotionStart:
-			var timerActive bool = g.bulbTimer.Stop()
-			if !timerActive {
-				g.turnBulbsOn()
-			}
+			//var timerActive bool = g.bulbTimer.Stop()
+			g.bulbTimer.Stop()
+			//if !timerActive {
+			//	g.turnBulbsOn()
+			//}
+			g.turnBulbsOn()
 			break
 		case api.MotionStop:
 			g.bulbTimer.Reset()
@@ -542,7 +545,7 @@ func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	var empty struct{}
 	var newMode api.Mode
 	log.Printf("before = %+v\n", before)
-	if before.State == api.MotionStart {
+	if before.State == api.MotionStart && g.mode.GetMode() != api.Away {
 		newMode = api.Away
 		g.ChangeMode(&newMode, &empty)
 		g.writeMode(api.ModeAndClock{
@@ -552,7 +555,7 @@ func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	}
 	//if no motion happens before door opening
 	//change mode to home
-	if before.State == api.MotionStop {
+	if before.State == api.MotionStop && g.mode.GetMode() != api.Home {
 		newMode = api.Home
 		g.ChangeMode(&newMode, &empty)
 		g.writeMode(api.ModeAndClock{

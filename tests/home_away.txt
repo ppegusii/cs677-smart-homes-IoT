@@ -1,0 +1,31 @@
+1. Launch all 6 processes starting with the gateway. Note the initial mode of the gateway is Home and the initial states of the door and motion sensor are Closed and NoMotion, respectively.
+2. Set the motion sensor to YesMotion, which is pushed to the gateway, which turns the bulb On.
+3. Set the door sensor to Open, which is pushed to the gateway, which changes the mode of the gateway to Away and turns the lights off.
+4. Set the door sensor to Closed.
+5. Set the motion sensor to NoMotion.
+6. Set the motion sensor to YesMotion, which sends a text to the user.
+7. Set the motion sensor to NoMotion.
+8. Set the door sensor to Open, which is pushed to the gateway, which changes the mode of the gateway to Home.
+9. Set the motion sensor to YesMotion, which turns the lights On.
+10. Set the door sensor to Closed.
+
+Merged database tables showing states:
+clock,id,device_name,state
+or
+clock,gateway_mode
+
+18,1,motion,motion
+39,2,bulb,on
+61,3,door,open
+61,away
+84,2,bulb,off
+113,3,door,closed
+147,1,motion,nomotion
+178,1,motion,motion
+(pasted from user process output) Received text: There's something moving in your house!
+197,1,motion,nomotion
+247,3,door,open
+247,home
+272,1,motion,nomotion (gateway checks motion state when changing modes to know if lights should be on)
+289,1,motion,motion
+316,2,bulb,on

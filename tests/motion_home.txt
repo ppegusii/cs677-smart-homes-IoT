@@ -1,0 +1,10 @@
+1. Launch processes starting with the gateway. Note the initial mode of the gateway is Home and the initial states of the bulb and motion sensor are Off and NoMotion, respectively.
+2. Set the motion sensor to YesMotion, which is pushed to the gateway, which turns the bulb On.
+3. Set the motion sensor to NoMotion, which is pushed to the gateway, which turns the bulb Off after 5 minutes.
+
+Merged database tables showing states:
+clock,id,device_name,state
+6,1,motion,motion
+13,2,bulb,on
+22,1,motion,nomotion
+35,2,bulb,off

@@ -1,0 +1,16 @@
+{
+  "Instructions": [
+    {
+      "Time": 1000,
+      "Command": "ChangeState",
+      "Target": "motionsensor",
+      "State": 2
+    },
+    {
+      "Time": 2000,
+      "Command": "ChangeState",
+      "Target": "motionsensor",
+      "State": 3
+    }
+  ]
+}

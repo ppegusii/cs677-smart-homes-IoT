@@ -1,4 +1,4 @@
-1. Launch all 6 processes starting with the gateway. Note the initial temperature given by the temperature sensor is 0 and the gateway polls the temperature sensor every minute.
+1. Launch all 6 processes starting with the gateway. Note the initial temperature given by the temperature sensor is 0 and the gateway polls the temperature sensor every second.
 2. After polling the temperature sensor, the gateway turns on the outlet.
 3. Increase the temperature sensor to 1.
 4. After polling the temperature sensor, the gateway does not change the state of the outlet.

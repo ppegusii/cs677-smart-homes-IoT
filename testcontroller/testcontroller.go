@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"github.com/oleiade/lane"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"log"
@@ -177,6 +179,12 @@ func (this *TestController) runInstruction(inst Instruction) {
 func waitFor(duration time.Duration) {
 	timer := time.NewTimer(duration)
 	<-timer.C
+}
+
+func (this *TestController) requestEnd() {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Press enter to exit")
+	reader.ReadString('\n')
 }
 
 //http://stackoverflow.com/questions/11886531/terminating-a-process-started-with-os-exec-in-golang

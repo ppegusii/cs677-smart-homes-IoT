@@ -71,7 +71,12 @@ func (this *Logical) SendNewNodeNotify(o api.OrderingNode) error {
 			log.Printf("dialing error: %+v\n", err)
 			return err
 		}
-		client.Go("Logical.ReceiveNewNodesNotify", nodes, &empty, nil)
+		//client.Go("Logical.ReceiveNewNodesNotify", nodes, &empty, nil)
+		err = client.Call("Logical.ReceiveNewNodesNotify", nodes, &empty)
+		client.Close()
+		if err != nil {
+			log.Printf("calling error: %+v\n", err)
+		}
 	}
 	return nil
 }
@@ -126,7 +131,12 @@ func (this *Logical) multicastEvent(event api.LogicalEvent) error {
 			log.Printf("multicast dialing error id=%d nodes=%+v: %+v\n", id, nodes, err)
 			return err
 		}
-		client.Go("Logical.ReceiveEvent", event, &empty, nil)
+		//client.Go("Logical.ReceiveEvent", event, &empty, nil)
+		err = client.Call("Logical.ReceiveEvent", event, &empty)
+		client.Close()
+		if err != nil {
+			log.Printf("calling error: %+v\n", err)
+		}
 	}
 	return nil
 }
@@ -166,6 +176,7 @@ func (this *Logical) ReceiveEvent(params api.LogicalEvent, _ *struct{}) error {
 		if !ok {
 			break
 		}
+		log.Printf("Sending message with this id to app: %+v\n", event.EventID)
 		//send event to application if it has a func registered
 		var rsPtr *api.ReportState
 		rsPtr, ok = this.reportStates.Get(params.StateInfo.DeviceName)
