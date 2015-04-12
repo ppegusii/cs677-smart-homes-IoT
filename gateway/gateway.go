@@ -1,3 +1,4 @@
+// This file declares all the structs and interfaces needed by gateway
 package main
 
 import (
@@ -617,7 +618,7 @@ func (g *Gateway) writeRegInfo(regInfo *api.RegisterParams) {
 //The execution of this function results in initiation of Send Peertable call from
 //the middleware of gateway to other devices
 func (g *Gateway) RegisterAck(id int, _ *struct{}) error {
-	log.Printf("Received Registration Acknowledgement from device: ", id)
+	log.Printf("Received Registration Acknowledgement from device: %d", id)
 	// Call middleware stub to broadcast the peertable to other middlewares
 	g.orderMW.SendPeertableNotification(id)
 	return nil

@@ -1,3 +1,6 @@
+// This file defines the basic selection menu for clock sync, logical clocks or no ordering
+// Based on the value selected the corresponding middleware stub is started
+
 package ordermw
 
 import (

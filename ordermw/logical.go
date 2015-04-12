@@ -1,3 +1,4 @@
+// This file declares all the structs and interfaces needed by logical clock
 package ordermw
 
 import (
@@ -9,6 +10,7 @@ import (
 	"time"
 )
 
+// Defines the logical clock structure
 type Logical struct {
 	clock        *structs.SyncInt
 	events       *structs.SyncLogicalEventContainer
@@ -19,6 +21,7 @@ type Logical struct {
 	reportStates *structs.SyncMapNameReportState
 }
 
+// Initialize a new logical clock
 func NewLogical(id int, ip string, port string) *Logical {
 	var l *Logical = &Logical{
 		clock:        structs.NewSyncInt(0),
@@ -182,4 +185,5 @@ func (this *Logical) RegisterReportState(name api.Name, reportState api.ReportSt
 	this.reportStates.Set(name, &reportState)
 }
 
+//Send PeerTable to other middlewares
 func (this *Logical) SendPeertableNotification(i int) {}

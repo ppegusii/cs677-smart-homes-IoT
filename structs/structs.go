@@ -1,3 +1,5 @@
+// This file declares all the structs and interfaces needed by the gateway
+
 package structs
 
 import (

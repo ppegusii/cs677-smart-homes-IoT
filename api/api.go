@@ -1,3 +1,5 @@
+// This file declares all the structs and interfaces needed throughout the system
+
 package api
 
 import (
@@ -64,6 +66,7 @@ type ModeAndClock struct {
 	Mode  Mode
 }
 
+// Ordering type
 type Ordering int
 
 const (
@@ -153,6 +156,7 @@ type OrderingMiddlewareRPCInterface interface {
 	ReceiveOffset(offset int32, _ *struct{}) error
 }
 
+//Berkeley Clock Timestamp
 type BTimeStamp struct {
 	DeviceId  int
 	Timestamp int32
@@ -184,6 +188,7 @@ type UserInterface interface {
 	TextMessage(params *string, _ *struct{}) error
 }
 
+// General Event struct
 type Event struct {
 	IsAck      bool
 	SrcAddress string
@@ -192,6 +197,7 @@ type Event struct {
 	StateInfo  StateInfo
 }
 
+// Logical clock event struct
 type LogicalEvent struct {
 	EventID    uuid.UUID
 	DestIDs    []int
@@ -225,6 +231,7 @@ type RegisterGatewayUserParams struct {
 	Port    string
 }
 
+// To report the state use this struct
 type StateInfo struct {
 	Clock      int
 	DeviceId   int

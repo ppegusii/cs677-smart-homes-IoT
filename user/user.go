@@ -1,3 +1,6 @@
+// This file declares all the structs and interfaces needed by user process needed to
+// decide the state of the home and to send text if motion is detected when home is set to
+// AWAY
 package main
 
 import (

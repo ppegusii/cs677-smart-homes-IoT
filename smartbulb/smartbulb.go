@@ -1,3 +1,4 @@
+// This file declares all the structs and interfaces needed by smartbulb
 package main
 
 import (

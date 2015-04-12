@@ -1,3 +1,5 @@
+//This file defines all the structs, data types and interfaces used by the database
+
 package main
 
 import (
@@ -13,6 +15,8 @@ import (
 	"strconv"
 )
 
+// This struct contains all the attributes of the database and information needed for
+// ordering for clock synchronization, peer table to keep a track of ip of the peers and reference to its middleware
 type Database struct {
 	devSen      *structs.SyncFile
 	events      *structs.SyncMapIntSyncFile
@@ -25,6 +29,7 @@ type Database struct {
 	states      *structs.SyncMapIntSyncFile
 }
 
+// initialize a new database
 func newDatabase(ip string, port string, ordering api.Ordering) *Database {
 	return &Database{
 		events:      structs.NewSyncMapIntSyncFile(),
@@ -142,6 +147,7 @@ func (d *Database) GetHappensBefore(params api.StateInfo, reply *api.StateInfo) 
 	return nil
 }
 
+// Register to the gateway
 func (d *Database) RegisterGateway(params *api.RegisterGatewayUserParams, _ *struct{}) error {
 	d.gateway.Set(*params)
 	return nil
