@@ -173,6 +173,7 @@ func (this *Logical) ReceiveEvent(params api.LogicalEvent, _ *struct{}) error {
 		if !ok {
 			break
 		}
+		log.Printf("Sending message with this id to app: %+v\n", event.EventID)
 		//send event to application if it has a func registered
 		var rsPtr *api.ReportState
 		rsPtr, ok = this.reportStates.Get(params.StateInfo.DeviceName)
