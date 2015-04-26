@@ -74,6 +74,7 @@ const (
 	ClockSync       Ordering = iota
 	LogicalClock    Ordering = iota
 	NoOrder         Ordering = iota
+	FaultTolerant	Ordering = iota
 )
 
 type StaticOrderingID int

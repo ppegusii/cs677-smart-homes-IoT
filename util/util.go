@@ -45,6 +45,8 @@ func StringToOrdering(s string) (api.Ordering, error) {
 		return api.LogicalClock, nil
 	case "c":
 		return api.ClockSync, nil
+	case "f":
+		return api.FaultTolerant, nil
 	default:
 		return api.NoOrder, errors.New(fmt.Sprintf("Invalid ordering switch: %s", s))
 	}
