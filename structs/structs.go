@@ -65,7 +65,7 @@ type SyncMapIntRegParam struct {
 func NewSyncMapIntRegParam() *SyncMapIntRegParam {
 	return &SyncMapIntRegParam{
 		m: make(map[int]*api.RegisterParams),
-		i: 1,
+		i: 2,
 	}
 }
 
