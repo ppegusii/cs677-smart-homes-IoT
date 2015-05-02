@@ -106,6 +106,11 @@ func (d *DoorSensor) ChangeState(params *api.StateInfo, reply *api.StateInfo) er
 		fmt.Println("Invalid change state request")
 		break
 	}
+	reply = &api.StateInfo{
+		DeviceId:   d.id,
+		DeviceName: api.Door,
+		State:      d.state.GetState(),
+	}
 	return nil
 }
 
@@ -147,7 +152,7 @@ func (d *DoorSensor) getInput() {
 			}
 			client.Go("Gateway.ReportDoorState", api.StateInfo{DeviceId: d.id, State: d.state.GetState()}, &empty, nil)
 		*/
-		d.sendState()
+		//d.sendState()
 	}
 }
 
@@ -156,7 +161,7 @@ func (d *DoorSensor) QueryState(params *int, reply *api.StateInfo) error {
 	reply.DeviceId = d.id
 	reply.DeviceName = api.Door
 	reply.State = d.state.GetState()
-	go d.sendState()
+	//go d.sendState()
 	return nil
 }
 

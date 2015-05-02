@@ -33,11 +33,12 @@ tolerant. It is sufficient to handle crash faults.
 7. Your failure recovery method
 needs to inform the sensors / devices of the failure and have them 
 reconfigure
-themselves to communicate with the new replica for subsequent requests. 
+themselves to communicate with the new replica for subsequent requests.
   * Each gateway will have knowledge of all other things in the system.
   * Upon failure of a gateway, the alive gateway will be the leader.
   * The alive gateway will take over servicing all nodes.
   * The alive gateway will notify all new nodes of their new gateway.
+  * The alive gateway will query states as necessary in case any pushes were sent to the dead gateway and it did not have a chance to respond appropriately.
 
 8. This lab does not need vector, logical clocks or leader election aspects 
 of lab 2

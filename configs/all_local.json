@@ -2,7 +2,7 @@
   "DatabaseDirectory": "./db",
   "GatewayTempPollInterval": 1,
   "IPAddress": "127.0.0.1",
-  "Ordering": "l",
+  "Ordering": "n",
   "Port": "6778",
   "ProcessDescriptions": {
     "database": {

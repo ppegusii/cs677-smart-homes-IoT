@@ -6,6 +6,7 @@ import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"log"
 	"net"
+	"net/rpc"
 	"os"
 )
 
@@ -115,4 +116,31 @@ func TypeToString(t api.Type) string {
 	default:
 		return "invalid"
 	}
+}
+
+func RpcSync(ip, port, rpcName string, args interface{}, reply interface{}, isErrFatal bool) (interface{}, error) {
+	var client *rpc.Client
+	var err error
+	var errMsg string
+	client, err = rpc.Dial("tcp", ip+":"+port)
+	if err != nil {
+		errMsg = fmt.Sprintf("Dialing error to %s:%s for %s: %+v", ip, port, rpcName, err)
+		LogMsg(errMsg, isErrFatal)
+		return nil, err
+	}
+	err = client.Call(rpcName, args, reply)
+	client.Close()
+	if err != nil {
+		errMsg = fmt.Sprintf("Calling error to %s:%s for %s: %+v", ip, port, rpcName, err)
+		LogMsg(errMsg, isErrFatal)
+		return nil, err
+	}
+	return reply, nil
+}
+
+func LogMsg(msg string, isFatal bool) {
+	if isFatal {
+		log.Fatal(msg)
+	}
+	log.Printf(msg)
 }

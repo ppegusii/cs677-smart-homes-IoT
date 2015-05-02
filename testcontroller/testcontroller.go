@@ -77,6 +77,7 @@ func (this *TestController) startProcesses() {
 
 //Starts a local process.
 func (this *TestController) startProcess(command string, args []string) {
+	log.Printf("Starting process: %s %+v\n", command, args)
 	var cmd *exec.Cmd = exec.Command(command, args...)
 	err := cmd.Start()
 	if err != nil {

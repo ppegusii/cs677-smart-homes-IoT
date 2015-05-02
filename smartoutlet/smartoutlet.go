@@ -80,7 +80,7 @@ func (s *SmartOutlet) QueryState(params *int, reply *api.StateInfo) error {
 	//this will not be called in practice
 	reply.DeviceId = s.id
 	reply.State = s.state.GetState()
-	go s.sendState()
+	//go s.sendState()
 	return nil
 }
 
@@ -92,14 +92,16 @@ func (s *SmartOutlet) ChangeState(params *api.StateInfo, reply *api.StateInfo) e
 	util.LogCurrentState(s.state.GetState())
 	reply.DeviceId = s.id
 	reply.State = params.State
-	go s.sendState()
+	//go s.sendState()
 	return nil
 }
 
 //sendState() is used to report state to the middleware
+/*
 func (s *SmartOutlet) sendState() {
 	var err error = s.orderMW.SendState(api.StateInfo{DeviceId: s.id, DeviceName: api.Outlet, State: s.state.GetState()}, s.gatewayIp, s.gatewayPort)
 	if err != nil {
 		log.Printf("Error sending state: %+v", err)
 	}
 }
+*/

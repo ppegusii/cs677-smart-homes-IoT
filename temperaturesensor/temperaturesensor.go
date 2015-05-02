@@ -120,17 +120,19 @@ func (t *TemperatureSensor) QueryState(params *int, reply *api.StateInfo) error 
 	reply.DeviceId = t.id
 	reply.DeviceName = api.Temperature
 	reply.State = t.temperature.GetState()
-	go t.sendState()
+	//go t.sendState()
 	return nil
 }
 
 // sendState() is used to report state to the middleware
+/*
 func (t *TemperatureSensor) sendState() {
 	var err error = t.orderMW.SendState(api.StateInfo{DeviceId: t.id, DeviceName: api.Temperature, State: t.temperature.GetState()}, t.gatewayIp, t.gatewayPort)
 	if err != nil {
 		log.Printf("Error sending state: %+v", err)
 	}
 }
+*/
 
 //Print current temperature to the console
 func logCurrentTemp(t api.State) {

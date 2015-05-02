@@ -18,59 +18,59 @@ import (
 // ordering for clock synchronization, peer table to keep a track of ip of the peers
 // and reference to its middleware
 type MotionSensor struct {
-	id          int
-	gatewayIp   string
-	gatewayPort string
+	id           int
+	gatewayIp    string
+	gatewayPort  string
 	gatewayIp2   string
 	gatewayPort2 string
-	ordering    api.Ordering
-	orderMW     api.OrderingMiddlewareInterface
-	selfIp      string
-	selfPort    string
-	state       structs.SyncState
+	ordering     api.Ordering
+	orderMW      api.OrderingMiddlewareInterface
+	selfIp       string
+	selfPort     string
+	state        structs.SyncState
 }
 
 // create and initialize a new motion sensor
 func newMotionSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *MotionSensor {
 	return &MotionSensor{
-		gatewayIp:   gatewayIp,
-		gatewayPort: gatewayPort,
+		gatewayIp:    gatewayIp,
+		gatewayPort:  gatewayPort,
 		gatewayIp2:   gatewayIp2,
 		gatewayPort2: gatewayPort2,
-		ordering:    ordering,
-		selfIp:      selfIp,
-		selfPort:    selfPort,
-		state:       *structs.NewSyncState(api.MotionStop),
+		ordering:     ordering,
+		selfIp:       selfIp,
+		selfPort:     selfPort,
+		state:        *structs.NewSyncState(api.MotionStop),
 	}
 }
 
 func (m *MotionSensor) start() {
 	//register with gateway
-/*
-	var client *rpc.Client
-	var err error
-	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
-	if err != nil {
-		log.Fatal("dialing error: %+v", err)
-	}
-	err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &m.id)
-	if err != nil {
-		log.Fatal("calling error: %+v", err)
-	}
-	log.Printf("Device id: %d", m.id)
-	util.LogCurrentState(m.state.GetState())
-	//initialize middleware
-	m.orderMW = ordermw.GetOrderingMiddleware(m.ordering, m.id, m.selfIp, m.selfPort)
+	/*
+		var client *rpc.Client
+		var err error
+		client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
+		if err != nil {
+			log.Fatal("dialing error: %+v", err)
+		}
+		err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &m.id)
+		if err != nil {
+			log.Fatal("calling error: %+v", err)
+		}
+		log.Printf("Device id: %d", m.id)
+		util.LogCurrentState(m.state.GetState())
+		//initialize middleware
+		m.orderMW = ordermw.GetOrderingMiddleware(m.ordering, m.id, m.selfIp, m.selfPort)
 
-	//send acknowledgment of registration
-	var empty struct{}
-	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
-	if err != nil {
-		log.Printf("dialing error: %+v", err)
-		return
-	}
-	client.Go("Gateway.RegisterAck", m.id, &empty, nil)
-*/
+		//send acknowledgment of registration
+		var empty struct{}
+		client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
+		if err != nil {
+			log.Printf("dialing error: %+v", err)
+			return
+		}
+		client.Go("Gateway.RegisterAck", m.id, &empty, nil)
+	*/
 
 	//register with gateway through the middleware
 	var client *rpc.Client
@@ -80,18 +80,16 @@ func (m *MotionSensor) start() {
 	m.orderMW = ordermw.GetOrderingMiddleware(m.ordering, -2, m.selfIp, m.selfPort) // deviceid is uninitialized
 
 	//add gateway ips in the middlware peers table
-	var err error = m.orderMW.UpdateGatewayip(m.gatewayIp, m.gatewayPort,m.gatewayIp2, m.gatewayPort2)
+	// ***Commented out to compile***
+	//err = m.orderMW.UpdateGatewayip(m.gatewayIp, m.gatewayPort, m.gatewayIp2, m.gatewayPort2)
 	if err != nil {
 		log.Printf("Error sending state: %+v", err)
 	}
 
-
-	var err error = m.orderMW.SendState(api.StateInfo{DeviceId: m.id, DeviceName: api.Motion, State: m.state.GetState()}, m.gatewayIp, m.gatewayPort)
+	err = m.orderMW.SendState(api.StateInfo{DeviceId: m.id, DeviceName: api.Motion, State: m.state.GetState()}, m.gatewayIp, m.gatewayPort)
 	if err != nil {
 		log.Printf("Error sending state: %+v", err)
 	}
-
-
 
 	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
 	if err != nil {
@@ -114,7 +112,6 @@ func (m *MotionSensor) start() {
 		return
 	}
 	client.Go("Gateway.RegisterAck", m.id, &empty, nil)
-
 
 	//start RPC server
 	err = rpc.Register(api.SensorInterface(m))
@@ -208,7 +205,8 @@ func (m *MotionSensor) QueryState(params *int, reply *api.StateInfo) error {
 	reply.DeviceId = m.id
 	reply.DeviceName = api.Motion
 	reply.State = m.state.GetState()
-	go m.sendState()
+	// ***Commented out gateway will get state from reply***
+	//go m.sendState()
 	return nil
 }
 
