@@ -92,6 +92,21 @@ type GatewayInterface interface {
 	//RegisterAck(id int, _ *struct{}) error
 }
 
+// Elects a leader gateway that will respond to all registration requests.
+// Load balances connected devices between gateways.
+type GatewayLeaderInterface interface {
+	GatewayConsistencyInterface
+}
+
+// Provides the following consistency guarantees between replicated gateways:
+// 1. Entry consistency before home/away mode decisions.
+// 2. Eventual consistency:
+//    1. Sync when gateway comes up.
+//    2. Syncs must occur within a certain duration.
+type GatewayConsistencyInterface interface {
+	GatewayInterface
+}
+
 // Interface needed to send text messages to the user incase the Mode is set to AWAY and motion is detected
 type UserInterface interface {
 	TextMessage(params *string, _ *struct{}) error
