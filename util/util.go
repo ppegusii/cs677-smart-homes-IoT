@@ -118,7 +118,7 @@ func TypeToString(t api.Type) string {
 	}
 }
 
-func RpcSync(ip, port, rpcName string, args interface{}, reply interface{}, isErrFatal bool) (interface{}, error) {
+func RpcSync(ip, port, rpcName string, args interface{}, reply interface{}, isErrFatal bool) error {
 	var client *rpc.Client
 	var err error
 	var errMsg string
@@ -126,16 +126,16 @@ func RpcSync(ip, port, rpcName string, args interface{}, reply interface{}, isEr
 	if err != nil {
 		errMsg = fmt.Sprintf("Dialing error to %s:%s for %s: %+v", ip, port, rpcName, err)
 		LogMsg(errMsg, isErrFatal)
-		return nil, err
+		return err
 	}
 	err = client.Call(rpcName, args, reply)
 	client.Close()
 	if err != nil {
 		errMsg = fmt.Sprintf("Calling error to %s:%s for %s: %+v", ip, port, rpcName, err)
 		LogMsg(errMsg, isErrFatal)
-		return nil, err
+		return err
 	}
-	return reply, nil
+	return nil
 }
 
 func LogMsg(msg string, isFatal bool) {
@@ -143,4 +143,24 @@ func LogMsg(msg string, isFatal bool) {
 		log.Fatal(msg)
 	}
 	log.Printf(msg)
+}
+
+func RpcRegister(server interface{}, ip, port, name string, isBlocking bool) {
+	var err error = rpc.RegisterName(name, server)
+	var errMsg string
+	if err != nil {
+		errMsg = fmt.Sprintf("rpc.Register error for %+v with name %s: %+v\n", server, name, err)
+		LogMsg(errMsg, true)
+	}
+	var listener net.Listener
+	listener, err = net.Listen("tcp", ip+":"+port)
+	if err != nil {
+		errMsg = fmt.Sprintf("net.Listen error %s:%s: %+v\n", ip, port, err)
+		LogMsg(errMsg, true)
+	}
+	if isBlocking {
+		rpc.Accept(listener)
+	} else {
+		go rpc.Accept(listener)
+	}
 }

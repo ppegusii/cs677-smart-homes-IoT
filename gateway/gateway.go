@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
-	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
-	"net"
-	"net/rpc"
+	//"net"
+	//"net/rpc"
 	"time"
 )
 
@@ -27,13 +26,14 @@ type Gateway struct {
 	outletMode      structs.SyncMode
 	pollingInterval int
 	port            string
+	rpcSync         api.RpcSyncInterface
 	senAndDev       structs.SyncMapIntRegParam
 	tempSen         structs.SyncMapIntBool
 	user            structs.SyncRegGatewayUserParam
 }
 
 // create and initialize the fields of gateway
-func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInterval int, port string) *Gateway {
+func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInterval int, port string, rpcSync api.RpcSyncInterface) api.GatewayInterface {
 	var g *Gateway = &Gateway{
 		bulbDev:         *structs.NewSyncMapIntBool(),
 		database:        *structs.NewSyncRegGatewayUserParam(),
@@ -45,6 +45,7 @@ func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInt
 		outletMode:      *structs.NewSyncMode(api.OutletsOff),
 		pollingInterval: pollingInterval,
 		port:            port,
+		rpcSync:         rpcSync,
 		senAndDev:       *structs.NewSyncMapIntRegParam(),
 		tempSen:         *structs.NewSyncMapIntBool(),
 		user:            *structs.NewSyncRegGatewayUserParam(),
@@ -54,26 +55,29 @@ func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInt
 	return g
 }
 
-func (g *Gateway) start() {
+func (g *Gateway) Start() {
 	// TODO RPC server will no longer be started here
 	//start RPC server
 	//The interface cast only checks that the implementation satisfies
 	//the interface. Only implementations can be registered.
-	var err error = rpc.Register(api.GatewayInterface(g))
-	if err != nil {
-		log.Fatal("rpc.Register error: %s\n", err)
-	}
-	var listener net.Listener
-	listener, err = net.Listen("tcp", g.ip+":"+g.port)
-	if err != nil {
-		log.Fatal("net.Listen error: %s\n", err)
-	}
+	/*
+		var err error = rpc.Register(api.GatewayInterface(g))
+		if err != nil {
+			log.Fatal("rpc.Register error: %s\n", err)
+		}
+		var listener net.Listener
+		listener, err = net.Listen("tcp", g.ip+":"+g.port)
+		if err != nil {
+			log.Fatal("net.Listen error: %s\n", err)
+		}
+		logCurrentMode(g.mode.GetMode())
+		go rpc.Accept(listener)
+	*/
 	logCurrentMode(g.mode.GetMode())
-	go rpc.Accept(listener)
 	//register with database
 	var db api.RegisterGatewayUserParams = g.database.Get()
 	var empty struct{}
-	util.RpcSync(db.Address, db.Port, "Database.RegisterGateway",
+	g.rpcSync.RpcSync(db.Address, db.Port, "Database.RegisterGateway",
 		&api.RegisterGatewayUserParams{Address: g.ip, Port: g.port},
 		&empty, true)
 	//start polling temperature sensors
@@ -91,7 +95,7 @@ func (g *Gateway) pollTempSensors() {
 			var tempReply api.StateInfo
 			for tempId, regParams := range tempIdRegParams {
 				//Query temperature sensor
-				util.RpcSync(regParams.Address, regParams.Port,
+				g.rpcSync.RpcSync(regParams.Address, regParams.Port,
 					"TemperatureSensor.QueryState",
 					&tempId, &tempReply, false)
 				log.Printf("Received temp: %d", tempReply.State)
@@ -135,7 +139,7 @@ func (g *Gateway) updateOutlets(tempVal api.State) {
 			}
 			g.writeStateInfo("Database.AddEvent", &stateInfo)
 			var reply api.StateInfo
-			util.RpcSync(regParams.Address, regParams.Port,
+			g.rpcSync.RpcSync(regParams.Address, regParams.Port,
 				"SmartOutlet.ChangeState",
 				stateInfo, &reply, false)
 			g.writeStateInfo("Database.AddState", &stateInfo)
@@ -247,7 +251,7 @@ func (g *Gateway) sendText() {
 	var regUserParams api.RegisterGatewayUserParams = g.user.Get()
 	var msg string = "There's something moving in your house!"
 	var empty struct{}
-	util.RpcSync(regUserParams.Address, regUserParams.Port,
+	g.rpcSync.RpcSync(regUserParams.Address, regUserParams.Port,
 		"User.TextMessage",
 		&msg, &empty, false)
 }
@@ -272,7 +276,7 @@ func (g *Gateway) changeBulbStates(s api.State) {
 		}
 		g.writeStateInfo("Database.AddEvent", &stateInfo)
 		var reply api.StateInfo
-		util.RpcSync(regParams.Address, regParams.Port,
+		g.rpcSync.RpcSync(regParams.Address, regParams.Port,
 			"SmartBulb.ChangeState",
 			stateInfo, &reply, false)
 		g.writeStateInfo("Database.AddState", &stateInfo)
@@ -334,7 +338,7 @@ func (g *Gateway) checkForMotion() bool {
 	if len(motionIdRegParams) != 0 {
 		var queryStateParams api.StateInfo
 		for motionId, regParams := range motionIdRegParams {
-			util.RpcSync(regParams.Address, regParams.Port,
+			g.rpcSync.RpcSync(regParams.Address, regParams.Port,
 				"MotionSensor.QueryState",
 				&motionId, &queryStateParams, false)
 			log.Printf("Received motion status: %+v", queryStateParams)
@@ -375,7 +379,7 @@ func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	}
 	var before api.StateInfo
 	var db api.RegisterGatewayUserParams = g.database.Get()
-	util.RpcSync(db.Address, db.Port,
+	g.rpcSync.RpcSync(db.Address, db.Port,
 		"Database.GetHappensBefore",
 		stateInfo, &before, false)
 	//if motion happens before door opening
@@ -407,7 +411,7 @@ func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 func (g *Gateway) writeMode(m api.ModeAndClock) {
 	var db api.RegisterGatewayUserParams = g.database.Get()
 	var empty struct{}
-	util.RpcSync(db.Address, db.Port,
+	g.rpcSync.RpcSync(db.Address, db.Port,
 		"Database.LogMode",
 		m, &empty, false)
 }
@@ -416,7 +420,7 @@ func (g *Gateway) writeMode(m api.ModeAndClock) {
 func (g *Gateway) writeStateInfo(rpcName string, stateInfo *api.StateInfo) {
 	var db api.RegisterGatewayUserParams = g.database.Get()
 	var empty struct{}
-	util.RpcSync(db.Address, db.Port,
+	g.rpcSync.RpcSync(db.Address, db.Port,
 		rpcName,
 		stateInfo, &empty, false)
 }
@@ -425,7 +429,7 @@ func (g *Gateway) writeStateInfo(rpcName string, stateInfo *api.StateInfo) {
 func (g *Gateway) writeRegInfo(regInfo *api.RegisterParams) {
 	var db api.RegisterGatewayUserParams = g.database.Get()
 	var empty struct{}
-	util.RpcSync(db.Address, db.Port,
+	g.rpcSync.RpcSync(db.Address, db.Port,
 		"Database.AddDeviceOrSensor",
 		regInfo, &empty, false)
 }

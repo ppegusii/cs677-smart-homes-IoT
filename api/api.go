@@ -90,12 +90,17 @@ type GatewayInterface interface {
 	//ReportOutletState(params *StateInfo, _ *struct{}) error
 	//ReportTemperature(params *StateInfo, _ *struct{}) error
 	//RegisterAck(id int, _ *struct{}) error
+	// Initialize the gateway and start routines
+	Start()
 }
 
-// Elects a leader gateway that will respond to all registration requests.
-// Load balances connected devices between gateways.
-type GatewayLeaderInterface interface {
-	GatewayConsistencyInterface
+// A dummy wrapper of GatewayInterface to test
+// embedding.
+type GatewayWrapperInterface interface {
+	// embedded gateway
+	GatewayInterface
+	RpcSyncInterface
+	SetGateway(GatewayInterface)
 }
 
 // Provides the following consistency guarantees between replicated gateways:
@@ -105,6 +110,19 @@ type GatewayLeaderInterface interface {
 //    2. Syncs must occur within a certain duration.
 type GatewayConsistencyInterface interface {
 	GatewayInterface
+}
+
+// Elects a leader gateway that will respond to all registration requests.
+// Load balances connected devices between gateways.
+type GatewayLeaderInterface interface {
+	GatewayConsistencyInterface
+}
+
+type RpcSyncInterface interface {
+	// Function to make a synchronous RPC
+	// Arguments: IP, port, rpcName, args, reply, isErrorFatal
+	// Returns: err
+	RpcSync(string, string, string, interface{}, interface{}, bool) error
 }
 
 // Interface needed to send text messages to the user incase the Mode is set to AWAY and motion is detected

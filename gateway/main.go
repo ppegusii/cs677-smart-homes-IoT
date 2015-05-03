@@ -3,7 +3,8 @@ package main
 import (
 	"flag"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
-	//"github.com/ppegusii/cs677-smart-homes-IoT/util"
+	"github.com/ppegusii/cs677-smart-homes-IoT/gatewaywrapper"
+	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
 )
 
@@ -28,6 +29,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var g *Gateway = newGateway(*dbIP, *dbPort, *ip, mode, *pollingInterval, *port)
-	g.start()
+	var gw api.GatewayWrapperInterface = gatewaywrapper.NewGatewayWrapper()
+	var g api.GatewayInterface = newGateway(*dbIP, *dbPort, *ip, mode, *pollingInterval, *port, gw)
+	gw.SetGateway(g)
+	util.RpcRegister(gw, *ip, *port, "Gateway", false)
+	g.Start()
 }
