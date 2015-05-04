@@ -14,12 +14,15 @@ import (
 )
 
 const (
-	iWonWait time.Duration = 5 * time.Second
-	okWait   time.Duration = 2 * time.Second
-	pollWait time.Duration = 5 * time.Second
+	iWonWait         time.Duration = 5 * time.Second
+	okWait           time.Duration = 2 * time.Second
+	aliveReplyWait   time.Duration = 2 * time.Second
+	aliveRequestWait time.Duration = 5 * time.Second
 )
 
 type GatewayLeader struct {
+	aliveReplyTimer   *structs.SyncTimer
+	aliveRequestTimer *structs.SyncTimer
 	api.GatewayInterface
 	electionCheckLock  sync.Mutex
 	electionInProgress bool
@@ -27,7 +30,6 @@ type GatewayLeader struct {
 	iWonTimer          *structs.SyncTimer
 	leader             *structs.SyncRegGatewayUserParam
 	okTimer            *structs.SyncTimer
-	pollTimer          *structs.SyncTimer
 	replicas           []api.RegisterGatewayUserParams
 	sync.RWMutex       // Used to wait before sending application messages during an election.
 }
@@ -43,7 +45,8 @@ func NewGatewayLeader(ip, port string, replicas []api.RegisterGatewayUserParams)
 	}
 	g.iWonTimer = structs.NewSyncTimer(iWonWait, g.startElection)
 	g.okTimer = structs.NewSyncTimer(okWait, g.sendIWons)
-	g.pollTimer = structs.NewSyncTimer(pollWait, g.handleAliveTimeout)
+	g.aliveReplyTimer = structs.NewSyncTimer(aliveReplyWait, g.handleAliveTimeout)
+	g.aliveRequestTimer = structs.NewSyncTimer(aliveRequestWait, g.pollLeader)
 	return &g
 }
 
@@ -96,6 +99,7 @@ func (this *GatewayLeader) ReportMotion(params *api.StateInfo, empty *struct{}) 
 
 // Receive election msg from self or another replica.
 func (this *GatewayLeader) Election(replica api.RegisterGatewayUserParams, ok *api.Empty) error {
+	log.Printf("Received election msg from: %+v\n", replica)
 	// Ensure no parallel elections.
 	this.electionCheckLock.Lock()
 	if !this.electionInProgress {
@@ -113,14 +117,18 @@ func (this *GatewayLeader) Election(replica api.RegisterGatewayUserParams, ok *a
 
 // Receive an IWon message from another replica.
 func (this *GatewayLeader) IWon(replica api.RegisterGatewayUserParams, _ *api.Empty) error {
+	log.Printf("Received iwon msg from: %+v\n", replica)
 	this.iWonTimer.Stop()
 	this.leader.Set(replica)
 
 	// End election.
 	this.electionCheckLock.Lock()
-	this.electionInProgress = false
+	if this.electionInProgress {
+		this.electionInProgress = false
+		this.Unlock()
+	}
 	this.electionCheckLock.Unlock()
-	this.Unlock()
+	log.Printf("Elected other replica: %+v\n", replica)
 
 	// Start polling the leader replica for life.
 	go this.pollLeader()
@@ -129,9 +137,10 @@ func (this *GatewayLeader) IWon(replica api.RegisterGatewayUserParams, _ *api.Em
 
 // Poll the leader
 func (this *GatewayLeader) pollLeader() {
+	log.Println("Polling leader")
 	// start timer
 	// timer will call start election if duration elapses
-	this.pollTimer.Reset()
+	this.aliveReplyTimer.Reset()
 	var leader api.RegisterGatewayUserParams = this.leader.Get()
 	// async RPC to poll leader
 	util.RpcAsync(leader.Address, leader.Port, "Gateway.Alive",
@@ -140,6 +149,7 @@ func (this *GatewayLeader) pollLeader() {
 
 // Handle alive reply timeout.
 func (this *GatewayLeader) handleAliveTimeout() {
+	log.Println("Handling alive timeout")
 	// Do nothing if election in progress.
 	this.electionCheckLock.Lock()
 	if this.electionInProgress {
@@ -152,8 +162,12 @@ func (this *GatewayLeader) handleAliveTimeout() {
 
 // Handles alive replies from active replica
 func (this *GatewayLeader) handleAlive(_ interface{}, err error) {
+	log.Println("Handling alive reply")
+	if err != nil {
+		return
+	}
 	// handle RPC reply by stopping timer and recalling pollLeader
-	this.pollTimer.Stop()
+	this.aliveReplyTimer.Stop()
 	// Do nothing if election in progress.
 	this.electionCheckLock.Lock()
 	if this.electionInProgress {
@@ -161,17 +175,19 @@ func (this *GatewayLeader) handleAlive(_ interface{}, err error) {
 		return
 	}
 	this.electionCheckLock.Unlock()
-	this.pollLeader()
+	// Start timer to poll leader replica.
+	this.aliveRequestTimer.Reset()
 }
 
 func (this *GatewayLeader) startElection() {
+	log.Println("Starting election")
 	var thisId string = util.RegisterGatewayUserParamsToString(this.ipPort)
 	// Start a timer that when duration elapses sends IWon.
 	this.okTimer.Reset()
 	// Send election notice to each replica with a higher id (async RPC).
 	for _, replica := range this.replicas {
 		var id string = util.RegisterGatewayUserParamsToString(replica)
-		if id < thisId {
+		if id > thisId {
 			util.RpcAsync(replica.Address, replica.Port, "Gateway.Election",
 				this.ipPort, &api.Empty{}, this.handleOKs, false)
 		}
@@ -180,6 +196,7 @@ func (this *GatewayLeader) startElection() {
 
 // Handles OK replies in response to election messages
 func (this *GatewayLeader) handleOKs(_ interface{}, err error) {
+	log.Println("Handling OK")
 	if err != nil {
 		return
 	}
@@ -189,6 +206,7 @@ func (this *GatewayLeader) handleOKs(_ interface{}, err error) {
 }
 
 func (this *GatewayLeader) sendIWons() {
+	log.Println("Sending IWons")
 	var thisId string = util.RegisterGatewayUserParamsToString(this.ipPort)
 	// Declare self leader
 	this.leader.Set(this.ipPort)
@@ -202,11 +220,16 @@ func (this *GatewayLeader) sendIWons() {
 	}
 	// End election.
 	this.electionCheckLock.Lock()
-	this.electionInProgress = false
+	if this.electionInProgress {
+		this.electionInProgress = false
+		this.Unlock()
+	}
 	this.electionCheckLock.Unlock()
-	this.Unlock()
+
+	log.Printf("Elected self: %+v\n", this.ipPort)
 }
 
 func (this *GatewayLeader) Alive(replica api.RegisterGatewayUserParams, yes *api.Empty) error {
+	log.Println("Received alive probe")
 	return nil
 }

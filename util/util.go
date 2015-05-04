@@ -127,12 +127,12 @@ func RpcSync(ip, port, rpcName string, args interface{}, reply interface{}, isEr
 	var err error
 	var errMsg string
 	client, err = rpc.Dial("tcp", ip+":"+port)
-	defer client.Close()
 	if err != nil {
 		errMsg = fmt.Sprintf("Dialing error to %s:%s for %s: %+v", ip, port, rpcName, err)
 		LogMsg(errMsg, isErrFatal)
 		return err
 	}
+	defer client.Close()
 	err = client.Call(rpcName, args, reply)
 	if err != nil {
 		errMsg = fmt.Sprintf("Calling error to %s:%s for %s: %+v", ip, port, rpcName, err)
@@ -147,13 +147,13 @@ func RpcAsync(ip, port, rpcName string, args interface{}, reply interface{}, aft
 	var err error
 	var errMsg string
 	client, err = rpc.Dial("tcp", ip+":"+port)
-	defer client.Close()
 	if err != nil {
 		errMsg = fmt.Sprintf("Dialing error to %s:%s for %s: %+v", ip, port, rpcName, err)
 		LogMsg(errMsg, isErrFatal)
 		afterFunc(nil, err)
 		return
 	}
+	defer client.Close()
 	var divCall *rpc.Call = client.Go(rpcName, args, reply, nil)
 	var replyCall *rpc.Call = <-divCall.Done
 	if replyCall.Error != nil {
@@ -177,12 +177,14 @@ func RpcRegister(server interface{}, ip, port, name string, isBlocking bool) {
 	if err != nil {
 		errMsg = fmt.Sprintf("rpc.Register error for %+v with name %s: %+v\n", server, name, err)
 		LogMsg(errMsg, true)
+		return
 	}
 	var listener net.Listener
 	listener, err = net.Listen("tcp", ip+":"+port)
 	if err != nil {
 		errMsg = fmt.Sprintf("net.Listen error %s:%s: %+v\n", ip, port, err)
 		LogMsg(errMsg, true)
+		return
 	}
 	if isBlocking {
 		rpc.Accept(listener)
