@@ -80,15 +80,12 @@ type NodeInterface interface {
 // have meaningful returns to node RPC calls.***
 // Interface provided by the Gateway
 type GatewayInterface interface {
-	//ChangeMode(params *Mode, _ *struct{}) error
+	// Used for testing
 	Query(params Name, _ *struct{}) error
 	Register(params *RegisterParams, reply *int) error
 	RegisterUser(params *RegisterGatewayUserParams, _ *struct{}) error
-	//ReportBulbState(params *StateInfo, _ *struct{}) error
 	ReportDoorState(params *StateInfo, _ *struct{}) error
 	ReportMotion(params *StateInfo, _ *struct{}) error
-	//ReportOutletState(params *StateInfo, _ *struct{}) error
-	//ReportTemperature(params *StateInfo, _ *struct{}) error
 	//RegisterAck(id int, _ *struct{}) error
 	// Initialize the gateway and start routines
 	Start()
@@ -115,7 +112,16 @@ type GatewayConsistencyInterface interface {
 // Elects a leader gateway that will respond to all registration requests.
 // Load balances connected devices between gateways.
 type GatewayLeaderInterface interface {
-	GatewayConsistencyInterface
+	// TODO Switch from embedding GatewayInterface
+	// to GatewayConsistencyInterface
+	//GatewayConsistencyInterface
+	GatewayInterface
+	RpcSyncInterface
+	SetGateway(GatewayInterface)
+	Election(replica RegisterGatewayUserParams, ok *Empty) error
+	IWon(replica RegisterGatewayUserParams, _ *Empty) error
+	Alive(replica RegisterGatewayUserParams, yes *Empty) error
+	StartLeader()
 }
 
 type RpcSyncInterface interface {
@@ -154,3 +160,6 @@ type StateInfo struct {
 	DeviceName Name
 	State      State
 }
+
+// Used for no arguments or replies in RPCs
+type Empty struct{}

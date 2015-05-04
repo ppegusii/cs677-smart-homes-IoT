@@ -1,4 +1,4 @@
-// This file is wraps the gateway, but provides no new functionality.
+// This file wraps the gateway, but provides no new functionality.
 // It demonstrates the generic method that can be used to extend
 // the gateway.
 

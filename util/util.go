@@ -118,18 +118,22 @@ func TypeToString(t api.Type) string {
 	}
 }
 
+func RegisterGatewayUserParamsToString(p api.RegisterGatewayUserParams) string {
+	return p.Address + ":" + p.Port
+}
+
 func RpcSync(ip, port, rpcName string, args interface{}, reply interface{}, isErrFatal bool) error {
 	var client *rpc.Client
 	var err error
 	var errMsg string
 	client, err = rpc.Dial("tcp", ip+":"+port)
+	defer client.Close()
 	if err != nil {
 		errMsg = fmt.Sprintf("Dialing error to %s:%s for %s: %+v", ip, port, rpcName, err)
 		LogMsg(errMsg, isErrFatal)
 		return err
 	}
 	err = client.Call(rpcName, args, reply)
-	client.Close()
 	if err != nil {
 		errMsg = fmt.Sprintf("Calling error to %s:%s for %s: %+v", ip, port, rpcName, err)
 		LogMsg(errMsg, isErrFatal)
@@ -138,6 +142,28 @@ func RpcSync(ip, port, rpcName string, args interface{}, reply interface{}, isEr
 	return nil
 }
 
+func RpcAsync(ip, port, rpcName string, args interface{}, reply interface{}, afterFunc func(interface{}, error), isErrFatal bool) {
+	var client *rpc.Client
+	var err error
+	var errMsg string
+	client, err = rpc.Dial("tcp", ip+":"+port)
+	defer client.Close()
+	if err != nil {
+		errMsg = fmt.Sprintf("Dialing error to %s:%s for %s: %+v", ip, port, rpcName, err)
+		LogMsg(errMsg, isErrFatal)
+		afterFunc(nil, err)
+		return
+	}
+	var divCall *rpc.Call = client.Go(rpcName, args, reply, nil)
+	var replyCall *rpc.Call = <-divCall.Done
+	if replyCall.Error != nil {
+		errMsg = fmt.Sprintf("Calling error to %s:%s for %s: %+v", ip, port, rpcName, err)
+		LogMsg(errMsg, isErrFatal)
+		afterFunc(replyCall.Reply, err)
+		return
+	}
+	afterFunc(replyCall.Reply, nil)
+}
 func LogMsg(msg string, isFatal bool) {
 	if isFatal {
 		log.Fatal(msg)
