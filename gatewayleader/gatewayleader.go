@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	iWonWait         time.Duration = 5 * time.Second
-	okWait           time.Duration = 2 * time.Second
-	aliveReplyWait   time.Duration = 2 * time.Second
-	aliveRequestWait time.Duration = 5 * time.Second
+	iWonWait         time.Duration = 5 * time.Second // duration to wait for IWon replies
+	okWait           time.Duration = 2 * time.Second // duration to wait for OKs
+	aliveReplyWait   time.Duration = 2 * time.Second // duration to wait for are you alive replies
+	aliveRequestWait time.Duration = 5 * time.Second // duration to wait before sending next are you alive probe
 )
 
 type GatewayLeader struct {
