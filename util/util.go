@@ -142,7 +142,7 @@ func RpcSync(ip, port, rpcName string, args interface{}, reply interface{}, isEr
 	return nil
 }
 
-func RpcAsync(ip, port, rpcName string, args interface{}, reply interface{}, afterFunc func(interface{}, error), isErrFatal bool) {
+func RpcAsync(ip, port, rpcName string, args interface{}, reply interface{}, afterFunc func(interface{}, interface{}, error), isErrFatal bool) {
 	var client *rpc.Client
 	var err error
 	var errMsg string
@@ -150,7 +150,7 @@ func RpcAsync(ip, port, rpcName string, args interface{}, reply interface{}, aft
 	if err != nil {
 		errMsg = fmt.Sprintf("Dialing error to %s:%s for %s: %+v", ip, port, rpcName, err)
 		LogMsg(errMsg, isErrFatal)
-		afterFunc(nil, err)
+		afterFunc(args, nil, err)
 		return
 	}
 	defer client.Close()
@@ -159,10 +159,10 @@ func RpcAsync(ip, port, rpcName string, args interface{}, reply interface{}, aft
 	if replyCall.Error != nil {
 		errMsg = fmt.Sprintf("Calling error to %s:%s for %s: %+v", ip, port, rpcName, err)
 		LogMsg(errMsg, isErrFatal)
-		afterFunc(replyCall.Reply, err)
+		afterFunc(args, replyCall.Reply, err)
 		return
 	}
-	afterFunc(replyCall.Reply, nil)
+	afterFunc(args, replyCall.Reply, nil)
 }
 func LogMsg(msg string, isFatal bool) {
 	if isFatal {
