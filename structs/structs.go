@@ -625,3 +625,30 @@ func (this *SyncMapIntSyncLatestStateInfos) Get(i int) *SyncLatestStateInfos {
 	this.Unlock()
 	return latest
 }
+
+//Synchronizes concurrent access to an bool.
+type SyncBool struct {
+	b bool
+	sync.RWMutex
+}
+
+//Creates an new instance of the struct.
+func NewSyncBool(b bool) *SyncBool {
+	return &SyncBool{b: b}
+}
+
+//Returns the bool.
+func (s *SyncBool) Get() bool {
+	var r bool
+	s.RLock()
+	r = s.b
+	s.RUnlock()
+	return r
+}
+
+//Set the value of the bool.
+func (s *SyncBool) Set(b bool) {
+	s.Lock()
+	s.b = b
+	s.Unlock()
+}

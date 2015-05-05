@@ -119,7 +119,7 @@ type GatewayLeaderInterface interface {
 	RpcSyncInterface
 	SetGateway(GatewayInterface)
 	Election(replica RegisterGatewayUserParams, ok *Empty) error
-	IWon(replica RegisterGatewayUserParams, _ *Empty) error
+	IWon(replica RegisterGatewayUserParams, reply *RegisterGatewayUserParams) error
 	Alive(replica RegisterGatewayUserParams, yes *Empty) error
 	StartLeader()
 }
