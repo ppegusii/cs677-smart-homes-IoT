@@ -164,6 +164,7 @@ func RpcAsync(ip, port, rpcName string, args interface{}, reply interface{}, aft
 	}
 	afterFunc(replyCall.Reply, nil)
 }
+
 func LogMsg(msg string, isFatal bool) {
 	if isFatal {
 		log.Fatal(msg)

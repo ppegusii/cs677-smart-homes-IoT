@@ -53,8 +53,12 @@ func (t *TemperatureSensor) start() {
 	}
 	log.Printf("Device id: %d", t.id)
 	logCurrentTemp(t.temperature.GetState())
+
+//Amee: Remove the middleware stuff
+
 	//initialize middleware
 	t.orderMW = ordermw.GetOrderingMiddleware(t.ordering, t.id, t.selfIp, t.selfPort)
+
 
 	//send acknowledgment of registration
 	var empty struct{}
@@ -65,8 +69,11 @@ func (t *TemperatureSensor) start() {
 	}
 	client.Go("Gateway.RegisterAck", t.id, &empty, nil)
 
+//Amee: Add nodeinterface update api.SensorTnterface to nodeinterface.Interface()
+
 	//start RPC server
 	err = rpc.Register(api.SensorInterface(t))
+
 	if err != nil {
 		log.Fatal("rpc.Register error: %s\n", err)
 	}
