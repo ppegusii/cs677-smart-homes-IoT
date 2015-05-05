@@ -31,7 +31,7 @@ type MotionSensor struct {
 }
 
 // create and initialize a new motion sensor
-func newMotionSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *MotionSensor {
+func newMotionSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering, rpcSync api.RpcSyncInterface) *MotionSensor {
 	return &MotionSensor{
 		gatewayIp:    gatewayIp,
 		gatewayPort:  gatewayPort,
