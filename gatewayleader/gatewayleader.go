@@ -72,7 +72,7 @@ func (this *GatewayLeader) StartLeader() {
 }
 
 // Intercept registration requests. Service only if election is not in progress and leader.
-func (this *GatewayLeader) Register(params *api.RegisterParams, reply *int) error {
+func (this *GatewayLeader) Register(params *api.RegisterParams, reply *api.RegisterReturn) error {
 	this.RLock()
 	// Only service request if leader.
 	if !this.isLeader() {

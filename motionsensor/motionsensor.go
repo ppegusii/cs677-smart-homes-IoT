@@ -28,6 +28,8 @@ type MotionSensor struct {
 	selfIp       string
 	selfPort     string
 	state        structs.SyncState
+	gRPCIp 		 string
+	gRPCPort	 string
 }
 
 // create and initialize a new motion sensor
@@ -49,13 +51,14 @@ func (m *MotionSensor) start() {
 
 	var client *rpc.Client
 	var err error
+	var regresponse *api.RegisterReturn
 
 	// Dial to the first gateway
 	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &m.id, nil)
+	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &regresponse, nil)
 	id1 := <-replycall1.Done
 
 	// Dial to the second gateway
@@ -63,7 +66,7 @@ func (m *MotionSensor) start() {
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &m.id, nil)
+	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &regresponse, nil)
 	id2 := <-replycall2.Done
 
 	if (id1 != nil) || (id2 != nil) {
@@ -72,7 +75,10 @@ func (m *MotionSensor) start() {
 		log.Println("Register RPC call return value: ", id1, id2)
 	}
 
-	log.Printf("Device id: %d", m.id)
+	m.id = regresponse.DeviceId
+	m.gRPCIp = regresponse.Address
+	m.gRPCPort = regresponse.Port
+	log.Printf("Device id: %d %s %s", m.id, m.gRPCIp, m.gRPCPort)
 
 	util.LogCurrentState(m.state.GetState())
 	//initialize middleware
@@ -191,4 +197,13 @@ func (m *MotionSensor) sendState() {
 	if err != nil {
 		log.Printf("Error sending state: %+v", err)
 	}
+}
+
+// This is an RPC function that is issued by the gateway to update the address port of the 
+// loadsharing gateway the device is talking to. It returns the device id
+func (m *MotionSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
+	m.gRPCPort = params.Port
+	m.gRPCIp = params.Address
+	*reply = m.id
+	return nil
 }

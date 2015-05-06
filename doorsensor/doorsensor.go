@@ -27,6 +27,8 @@ type DoorSensor struct {
 	selfIp       string
 	selfPort     string
 	state        structs.SyncState
+	gRPCIp 		 string
+	gRPCPort	 string
 }
 
 // initialize a new doorsensor
@@ -47,13 +49,14 @@ func (d *DoorSensor) start() {
 	//register with gateway
 	var client *rpc.Client
 	var err error
+	var regresponse *api.RegisterReturn
 
 	// Dial to the first gateway
 	client, err = rpc.Dial("tcp", d.gatewayIp+":"+d.gatewayPort)
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: d.selfIp, Port: d.selfPort}, &d.id, nil)
+	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: d.selfIp, Port: d.selfPort}, &regresponse, nil)
 	id1 := <-replycall1.Done
 
 	// Dial to the second gateway
@@ -61,7 +64,7 @@ func (d *DoorSensor) start() {
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: d.selfIp, Port: d.selfPort}, &d.id, nil)
+	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: d.selfIp, Port: d.selfPort}, &regresponse, nil)
 	id2 := <-replycall2.Done
 
 	if (id1 != nil) || (id2 != nil) {
@@ -79,7 +82,11 @@ func (d *DoorSensor) start() {
 			log.Fatal("calling error: %+v", err)
 		}
 	*/
-	log.Printf("Device id: %d", d.id)
+	d.id = regresponse.DeviceId
+	d.gRPCIp = regresponse.Address
+	d.gRPCPort = regresponse.Port
+	log.Printf("Device id: %d %s %s", d.id, d.gRPCIp, d.gRPCPort)
+
 	util.LogCurrentState(d.state.GetState())
 	//initialize middleware
 	/*	d.orderMW = ordermw.GetOrderingMiddleware(d.ordering, d.id, d.selfIp, d.selfPort)
@@ -203,4 +210,13 @@ func (d *DoorSensor) sendState() {
 		log.Printf("Error sending state: %+v", err)
 	}
 	*/
+}
+
+// This is an RPC function that is issued by the gateway to update the address port of the 
+// loadsharing gateway the device is talking to. It returns the device id
+func (d *DoorSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
+	d.gRPCPort = params.Port
+	d.gRPCIp = params.Address
+	*reply = d.id
+	return nil
 }

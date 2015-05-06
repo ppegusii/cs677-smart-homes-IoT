@@ -27,6 +27,8 @@ type TemperatureSensor struct {
 	selfIp       string
 	selfPort     string
 	temperature  structs.SyncState
+	gRPCIp 		 string
+	gRPCPort	 string
 }
 
 // create and initialize a new temperature sensor
@@ -47,13 +49,14 @@ func (t *TemperatureSensor) start() {
 	//register with gateway
 	var client *rpc.Client
 	var err error
+	var regresponse *api.RegisterReturn
 
 	// Dial to the first gateway
 	client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &t.id, nil)
+	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &regresponse, nil)
 	id1 := <-replycall1.Done
 
 	// Dial to the second gateway
@@ -61,7 +64,7 @@ func (t *TemperatureSensor) start() {
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &t.id, nil)
+	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &regresponse, nil)
 	id2 := <-replycall2.Done
 
 	if (id1 != nil) || (id2 != nil) {
@@ -69,6 +72,11 @@ func (t *TemperatureSensor) start() {
 	} else {
 		log.Println("Register RPC call return value: ", id1, id2)
 	}
+
+	t.id = regresponse.DeviceId
+	t.gRPCIp = regresponse.Address
+	t.gRPCPort = regresponse.Port
+	log.Printf("Device id: %d %s %s", t.id, t.gRPCIp, t.gRPCPort)
 
 	/*
 		client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
@@ -80,7 +88,7 @@ func (t *TemperatureSensor) start() {
 			log.Fatal("calling error: %+v", err)
 		}
 	*/
-	log.Printf("Device id: %d", t.id)
+//	log.Printf("Device id: %d", t.id)
 	logCurrentTemp(t.temperature.GetState())
 
 	//Amee: Remove the middleware stuff
@@ -172,4 +180,13 @@ func (t *TemperatureSensor) sendState() {
 //Print current temperature to the console
 func logCurrentTemp(t api.State) {
 	log.Printf("Current temp: %d", t)
+}
+
+// This is an RPC function that is issued by the gateway to update the address port of the 
+// loadsharing gateway the device is talking to. It returns the device id
+func (t *TemperatureSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
+	t.gRPCPort = params.Port
+	t.gRPCIp = params.Address
+	*reply = t.id
+	return nil
 }
