@@ -87,7 +87,7 @@ func (this *GatewayLeader) StartLeader() {
 	this.Election(this.ipPort, &api.Empty{})
 }
 
-func (this *GatewayLeader) Register(params *api.RegisterParams, reply *int) error {
+func (this *GatewayLeader) Register(params *api.RegisterParams, reply *api.RegisterReturn) error {
 	this.RLock()
 	// Only service request if leader.
 	if !this.isLeader() {

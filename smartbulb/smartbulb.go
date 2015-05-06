@@ -25,6 +25,8 @@ type SmartBulb struct {
 	selfIp      string
 	selfPort    string
 	state       structs.SyncState
+	gRPCIp 		 string
+	gRPCPort	 string
 }
 
 // create and initialize a new smart bulb
@@ -45,13 +47,14 @@ func (s *SmartBulb) start() {
 	//register with gateway
 	var client *rpc.Client
 	var err error
+	var regresponse *api.RegisterReturn
 
 		// Dial to the first gateway
 		client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
 		if err != nil {
 			log.Fatal("dialing error: %+v", err)
 		}
-	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: s.selfIp, Port: s.selfPort}, &s.id, nil)
+	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: s.selfIp, Port: s.selfPort}, &regresponse, nil)
 	id1 :=  <-replycall1.Done
 
 		// Dial to the second gateway
@@ -59,7 +62,7 @@ func (s *SmartBulb) start() {
 		if err != nil {
 			log.Fatal("dialing error: %+v", err)
 		}
-	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: s.selfIp, Port: s.selfPort}, &s.id, nil)
+	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: s.selfIp, Port: s.selfPort}, &regresponse, nil)
 	id2 :=  <-replycall2.Done
 
 	if((id1 != nil) || (id2 != nil)) {
@@ -68,6 +71,10 @@ func (s *SmartBulb) start() {
 		log.Println("Register RPC call return value: ",id1, id2)
 	}
 
+	s.id = regresponse.DeviceId
+	s.gRPCIp = regresponse.Address
+	s.gRPCPort = regresponse.Port
+	log.Printf("Device id: %d %s %s", s.id, s.gRPCIp, s.gRPCPort)
 
 /*	client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
 	if err != nil {
@@ -78,7 +85,6 @@ func (s *SmartBulb) start() {
 		log.Fatal("calling error: %+v", err)
 	}
 */
-	log.Printf("Device id: %d", s.id)
 	//initialize middleware
 /*	s.orderMW = ordermw.GetOrderingMiddleware(s.ordering, s.id, s.selfIp, s.selfPort)
 

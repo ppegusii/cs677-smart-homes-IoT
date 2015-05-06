@@ -82,7 +82,7 @@ type NodeInterface interface {
 type GatewayInterface interface {
 	// Used for testing
 	Query(params Name, _ *struct{}) error
-	Register(params *RegisterParams, reply *int) error
+	Register(params *RegisterParams, reply *RegisterReturn) error
 	RegisterUser(params *RegisterGatewayUserParams, _ *struct{}) error
 	ReportDoorState(params *StateInfo, _ *struct{}) error
 	ReportMotion(params *StateInfo, _ *struct{}) error
@@ -145,6 +145,12 @@ type RegisterParams struct {
 	Port     string
 	State    State
 	Type     Type
+}
+
+type RegisterReturn struct {
+	DeviceId int
+	Address  string // Gateway Address to send subsequent requests to
+	Port     string // Gateway Port number to send subsequent requests to
 }
 
 //Struct for set and get methods where only IP and port are needed

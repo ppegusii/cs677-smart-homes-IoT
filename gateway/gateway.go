@@ -155,7 +155,7 @@ func (g *Gateway) RegisterUser(params *api.RegisterGatewayUserParams, _ *struct{
 }
 
 // Register devices and sensors to the gateway
-func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
+func (g *Gateway) Register(params *api.RegisterParams, reply *api.RegisterReturn) error {
 	log.Printf("Attempting to register device with this info: %+v", params)
 	var err error = nil
 	var id int
@@ -208,7 +208,9 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	default:
 		err = errors.New(fmt.Sprintf("Invalid Type: %+v", params.Type))
 	}
-	*reply = id
+	reply.DeviceId = id
+	reply.Address = g.ip //This is just for testing: Update it based on loadbalancing values
+	reply.Port = g.port //This is again for testing: Update it based on loadbalancing values
 	params.DeviceId = id
 
 	return err
