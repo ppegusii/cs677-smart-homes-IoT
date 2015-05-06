@@ -198,3 +198,12 @@ func (m *MotionSensor) sendState() {
 		log.Printf("Error sending state: %+v", err)
 	}
 }
+
+// This is an RPC function that is issued by the gateway to update the address port of the 
+// loadsharing gateway the device is talking to. It returns the device id
+func (m *MotionSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
+	m.gRPCPort = params.Port
+	m.gRPCIp = params.Address
+	*reply = m.id
+	return nil
+}

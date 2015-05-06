@@ -211,3 +211,12 @@ func (d *DoorSensor) sendState() {
 	}
 	*/
 }
+
+// This is an RPC function that is issued by the gateway to update the address port of the 
+// loadsharing gateway the device is talking to. It returns the device id
+func (d *DoorSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
+	d.gRPCPort = params.Port
+	d.gRPCIp = params.Address
+	*reply = d.id
+	return nil
+}

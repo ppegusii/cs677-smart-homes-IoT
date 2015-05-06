@@ -140,3 +140,12 @@ func (s *SmartBulb) sendState() {
 	}
 }
 */
+
+// This is an RPC function that is issued by the gateway to update the address port of the 
+// loadsharing gateway the device is talking to. It returns the device id
+func (s *SmartBulb) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
+	s.gRPCPort = params.Port
+	s.gRPCIp = params.Address
+	*reply = s.id
+	return nil
+}

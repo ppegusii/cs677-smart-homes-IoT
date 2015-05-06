@@ -181,3 +181,12 @@ func (t *TemperatureSensor) sendState() {
 func logCurrentTemp(t api.State) {
 	log.Printf("Current temp: %d", t)
 }
+
+// This is an RPC function that is issued by the gateway to update the address port of the 
+// loadsharing gateway the device is talking to. It returns the device id
+func (t *TemperatureSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
+	t.gRPCPort = params.Port
+	t.gRPCIp = params.Address
+	*reply = t.id
+	return nil
+}
