@@ -80,9 +80,15 @@ func (this *GatewayLeader) Register(params *api.RegisterParams, reply *api.Regis
 		this.RUnlock()
 		return err
 	}
-	// TODO load balance by assigning push sensors to one replica and pull sensors to the other
-	// Devices just need an ID. They can be assigned randomly.
 	var err error = this.GatewayInterface.Register(params, reply)
+	if err != nil {
+		this.RUnlock()
+		return err
+	}
+	var assigned *api.RegisterGatewayUserParams = this.replicas.loadBalance(*params, reply.DeviceId)
+	log.Printf("Node %+v assigned to replica: %+v\n", params, assigned)
+	reply.Address = assigned.Address
+	reply.Port = assigned.Port
 	this.RUnlock()
 	return err
 }
@@ -285,6 +291,21 @@ func (this *GatewayLeader) getHandleNonleaderDeath(ipPort string) func() {
 	return func() {
 		log.Printf("Dead replica: %s\n", ipPort)
 		this.replicas.setAlive(ipPort, false)
+		this.rebalanceLoad()
+	}
+}
+
+// Rebalance the load on the replicas.
+// Use the replica data structure to get new assignments.
+// Notify sensors of new assignments.
+func (this *GatewayLeader) rebalanceLoad() {
+	// TODO synchronization to keep queries from going through if election not in progress
+	// Use the replica data structure to get new assignments.
+	var assigns *map[api.RegisterGatewayUserParams][]api.RegisterParams = this.replicas.rebalanceLoad()
+	// Notify sensors of new assignments.
+	//for ipPort, assignees := range *assigns {
+	for ipPort, _ := range *assigns {
+		log.Printf(ipPort.Address)
 	}
 }
 

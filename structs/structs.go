@@ -112,6 +112,27 @@ func (s *SyncMapIntRegParam) GetRegParams(is *map[int]bool) *map[int]*api.Regist
 	return &newM
 }
 
+// Get all values in the map
+func (s *SyncMapIntRegParam) GetAllRegParams() *[]api.RegisterParams {
+	s.RLock()
+	var all []api.RegisterParams = make([]api.RegisterParams, len(s.m))
+	var idx int = 0
+	for _, r := range s.m {
+		all[idx] = *r
+		idx++
+	}
+	s.RUnlock()
+	return &all
+}
+
+// Get the size.
+func (s *SyncMapIntRegParam) Size() int {
+	s.RLock()
+	var z int = len(s.m)
+	s.RUnlock()
+	return z
+}
+
 // Defines the Mode of the system : Home or Away
 type SyncMode struct {
 	sync.RWMutex
