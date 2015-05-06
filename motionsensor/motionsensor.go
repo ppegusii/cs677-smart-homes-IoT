@@ -5,7 +5,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
-	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
+//	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
@@ -31,7 +31,7 @@ type MotionSensor struct {
 }
 
 // create and initialize a new motion sensor
-func newMotionSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering, rpcSync api.RpcSyncInterface) *MotionSensor {
+func newMotionSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *MotionSensor {
 	return &MotionSensor{
 		gatewayIp:    gatewayIp,
 		gatewayPort:  gatewayPort,
@@ -47,28 +47,46 @@ func newMotionSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, ga
 func (m *MotionSensor) start() {
 	//register with gateway
 
-		var client *rpc.Client
-		var err error
-		client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
-		if err != nil {
-			log.Fatal("dialing error: %+v", err)
-		}
-		err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &m.id)
-		if err != nil {
-			log.Fatal("calling error: %+v", err)
-		}
-		log.Printf("Device id: %d", m.id)
-		util.LogCurrentState(m.state.GetState())
-		//initialize middleware
-		m.orderMW = ordermw.GetOrderingMiddleware(m.ordering, m.id, m.selfIp, m.selfPort)
-		//send acknowledgment of registration
-		var empty struct{}
-		client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
-		if err != nil {
-			log.Printf("dialing error: %+v", err)
-			return
-		}
-		client.Go("Gateway.RegisterAck", m.id, &empty, nil)
+	var client *rpc.Client
+	var err error
+
+	// Dial to the first gateway
+	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
+	if err != nil {
+		log.Fatal("dialing error: %+v", err)
+	}
+	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &m.id, nil)
+	id1 := <-replycall1.Done
+
+	// Dial to the second gateway
+	client, err = rpc.Dial("tcp", m.gatewayIp2+":"+m.gatewayPort2)
+	if err != nil {
+		log.Fatal("dialing error: %+v", err)
+	}
+	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &m.id, nil)
+	id2 := <-replycall2.Done
+
+	if (id1 != nil) || (id2 != nil) {
+		log.Println("Registering with the gateway")
+	} else {
+		log.Println("Register RPC call return value: ", id1, id2)
+	}
+
+	log.Printf("Device id: %d", m.id)
+
+	util.LogCurrentState(m.state.GetState())
+	//initialize middleware
+//	m.orderMW = ordermw.GetOrderingMiddleware(m.ordering, m.id, m.selfIp, m.selfPort)
+	//send acknowledgment of registration
+
+	/*		var empty struct{}
+			client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
+			if err != nil {
+				log.Printf("dialing error: %+v", err)
+				return
+			}
+			client.Go("Gateway.RegisterAck", m.id, &empty, nil)
+	*/
 
 	//start RPC server
 	err = rpc.Register(api.SensorInterface(m))

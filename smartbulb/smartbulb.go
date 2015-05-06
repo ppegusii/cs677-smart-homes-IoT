@@ -3,7 +3,7 @@ package main
 
 import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
-	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
+//	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
@@ -18,6 +18,8 @@ type SmartBulb struct {
 	id          int
 	gatewayIp   string
 	gatewayPort string
+	gatewayIp2   string
+	gatewayPort2 string
 	ordering    api.Ordering
 	orderMW     api.OrderingMiddlewareInterface
 	selfIp      string
@@ -26,10 +28,12 @@ type SmartBulb struct {
 }
 
 // create and initialize a new smart bulb
-func newSmartBulb(gatewayIp string, gatewayPort string, selfIp string, selfPort string, ordering api.Ordering) *SmartBulb {
+func newSmartBulb(gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *SmartBulb {
 	return &SmartBulb{
 		gatewayIp:   gatewayIp,
 		gatewayPort: gatewayPort,
+		gatewayIp2:   gatewayIp2,
+		gatewayPort2: gatewayPort2,
 		ordering:    ordering,
 		selfIp:      selfIp,
 		selfPort:    selfPort,
@@ -41,7 +45,31 @@ func (s *SmartBulb) start() {
 	//register with gateway
 	var client *rpc.Client
 	var err error
-	client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
+
+		// Dial to the first gateway
+		client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
+		if err != nil {
+			log.Fatal("dialing error: %+v", err)
+		}
+	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: s.selfIp, Port: s.selfPort}, &s.id, nil)
+	id1 :=  <-replycall1.Done
+
+		// Dial to the second gateway
+		client, err = rpc.Dial("tcp", s.gatewayIp2+":"+s.gatewayPort2)
+		if err != nil {
+			log.Fatal("dialing error: %+v", err)
+		}
+	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: s.selfIp, Port: s.selfPort}, &s.id, nil)
+	id2 :=  <-replycall2.Done
+
+	if((id1 != nil) || (id2 != nil)) {
+		log.Println("Registering with the gateway")
+	} else {
+		log.Println("Register RPC call return value: ",id1, id2)
+	}
+
+
+/*	client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
@@ -49,9 +77,10 @@ func (s *SmartBulb) start() {
 	if err != nil {
 		log.Fatal("calling error: %+v", err)
 	}
+*/
 	log.Printf("Device id: %d", s.id)
 	//initialize middleware
-	s.orderMW = ordermw.GetOrderingMiddleware(s.ordering, s.id, s.selfIp, s.selfPort)
+/*	s.orderMW = ordermw.GetOrderingMiddleware(s.ordering, s.id, s.selfIp, s.selfPort)
 
 	//send acknowledgment of registration
 	var empty struct{}
@@ -61,7 +90,7 @@ func (s *SmartBulb) start() {
 		return
 	}
 	client.Go("Gateway.RegisterAck", s.id, &empty, nil)
-
+*/
 	//start RPC server
 	err = rpc.Register(api.DeviceInterface(s))
 	if err != nil {

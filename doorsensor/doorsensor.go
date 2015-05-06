@@ -5,7 +5,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
-	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
+//	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
@@ -17,25 +17,29 @@ import (
 // This struct contains all the attributes of the door sensor and information needed for
 // ordering for clock synchronization, peer table to keep a track of ip of the peers and reference to its middleware
 type DoorSensor struct {
-	id          int
-	gatewayIp   string
-	gatewayPort string
-	ordering    api.Ordering
-	orderMW     api.OrderingMiddlewareInterface
-	selfIp      string
-	selfPort    string
-	state       structs.SyncState
+	id           int
+	gatewayIp    string
+	gatewayPort  string
+	gatewayIp2   string
+	gatewayPort2 string
+	ordering     api.Ordering
+	orderMW      api.OrderingMiddlewareInterface
+	selfIp       string
+	selfPort     string
+	state        structs.SyncState
 }
 
 // initialize a new doorsensor
-func newDoorSensor(gatewayIp string, gatewayPort string, selfIp string, selfPort string, ordering api.Ordering) *DoorSensor {
+func newDoorSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *DoorSensor {
 	return &DoorSensor{
-		gatewayIp:   gatewayIp,
-		gatewayPort: gatewayPort,
-		ordering:    ordering,
-		selfIp:      selfIp,
-		selfPort:    selfPort,
-		state:       *structs.NewSyncState(api.Closed),
+		gatewayIp:    gatewayIp,
+		gatewayPort:  gatewayPort,
+		gatewayIp2:   gatewayIp2,
+		gatewayPort2: gatewayPort2,
+		ordering:     ordering,
+		selfIp:       selfIp,
+		selfPort:     selfPort,
+		state:        *structs.NewSyncState(api.Closed),
 	}
 }
 
@@ -43,28 +47,53 @@ func (d *DoorSensor) start() {
 	//register with gateway
 	var client *rpc.Client
 	var err error
+
+	// Dial to the first gateway
 	client, err = rpc.Dial("tcp", d.gatewayIp+":"+d.gatewayPort)
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Door, Address: d.selfIp, Port: d.selfPort}, &d.id)
+	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: d.selfIp, Port: d.selfPort}, &d.id, nil)
+	id1 := <-replycall1.Done
+
+	// Dial to the second gateway
+	client, err = rpc.Dial("tcp", d.gatewayIp2+":"+d.gatewayPort2)
 	if err != nil {
-		log.Fatal("calling error: %+v", err)
+		log.Fatal("dialing error: %+v", err)
 	}
+	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: d.selfIp, Port: d.selfPort}, &d.id, nil)
+	id2 := <-replycall2.Done
+
+	if (id1 != nil) || (id2 != nil) {
+		log.Println("Registering with the gateway")
+	} else {
+		log.Println("Register RPC call return value: ", id1, id2)
+	}
+
+	/*	client, err = rpc.Dial("tcp", d.gatewayIp+":"+d.gatewayPort)
+		if err != nil {
+			log.Fatal("dialing error: %+v", err)
+		}
+		err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Door, Address: d.selfIp, Port: d.selfPort}, &d.id)
+		if err != nil {
+			log.Fatal("calling error: %+v", err)
+		}
+	*/
 	log.Printf("Device id: %d", d.id)
 	util.LogCurrentState(d.state.GetState())
 	//initialize middleware
-	d.orderMW = ordermw.GetOrderingMiddleware(d.ordering, d.id, d.selfIp, d.selfPort)
+	/*	d.orderMW = ordermw.GetOrderingMiddleware(d.ordering, d.id, d.selfIp, d.selfPort)
 
-	//send acknowledgment of registration
-	var empty struct{}
-	client, err = rpc.Dial("tcp", d.gatewayIp+":"+d.gatewayPort)
-	if err != nil {
-		log.Printf("dialing error: %+v", err)
-		return
-	}
-	client.Go("Gateway.RegisterAck", d.id, &empty, nil)
+		//send acknowledgment of registration
+		var empty struct{}
+		client, err = rpc.Dial("tcp", d.gatewayIp+":"+d.gatewayPort)
+		if err != nil {
+			log.Printf("dialing error: %+v", err)
+			return
+		}
+		client.Go("Gateway.RegisterAck", d.id, &empty, nil)
 
+	*/
 	//start RPC server
 	err = rpc.Register(api.SensorInterface(d))
 	if err != nil {
@@ -168,8 +197,10 @@ func (d *DoorSensor) QueryState(params *int, reply *api.StateInfo) error {
 // The Door sensor is a push based device and can be polled by the gateway.
 // sendState() is used to report state to the gateway
 func (d *DoorSensor) sendState() {
-	var err error = d.orderMW.SendState(api.StateInfo{DeviceId: d.id, DeviceName: api.Door, State: d.state.GetState()}, d.gatewayIp, d.gatewayPort)
+
+/*	var err error = d.orderMW.SendState(api.StateInfo{DeviceId: d.id, DeviceName: api.Door, State: d.state.GetState()}, d.gatewayIp, d.gatewayPort)
 	if err != nil {
 		log.Printf("Error sending state: %+v", err)
 	}
+	*/
 }

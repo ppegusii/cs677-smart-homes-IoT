@@ -5,7 +5,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
-	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
+//	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"log"
 	"net"
@@ -17,25 +17,29 @@ import (
 // ordering for clock synchronization, peer table to keep a track of ip of the peers
 // and reference to its middleware
 type TemperatureSensor struct {
-	id          int
-	gatewayIp   string
-	gatewayPort string
-	ordering    api.Ordering
-	orderMW     api.OrderingMiddlewareInterface
-	selfIp      string
-	selfPort    string
-	temperature structs.SyncState
+	id           int
+	gatewayIp    string
+	gatewayPort  string
+	gatewayIp2   string
+	gatewayPort2 string
+	ordering     api.Ordering
+	orderMW      api.OrderingMiddlewareInterface
+	selfIp       string
+	selfPort     string
+	temperature  structs.SyncState
 }
 
 // create and initialize a new temperature sensor
-func newTemperatureSensor(temperature api.State, gatewayIp string, gatewayPort string, selfIp string, selfPort string, ordering api.Ordering) *TemperatureSensor {
+func newTemperatureSensor(temperature api.State, gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *TemperatureSensor {
 	return &TemperatureSensor{
-		gatewayIp:   gatewayIp,
-		gatewayPort: gatewayPort,
-		ordering:    ordering,
-		selfIp:      selfIp,
-		selfPort:    selfPort,
-		temperature: *structs.NewSyncState(temperature),
+		gatewayIp:    gatewayIp,
+		gatewayPort:  gatewayPort,
+		gatewayIp2:   gatewayIp2,
+		gatewayPort2: gatewayPort2,
+		ordering:     ordering,
+		selfIp:       selfIp,
+		selfPort:     selfPort,
+		temperature:  *structs.NewSyncState(temperature),
 	}
 }
 
@@ -43,33 +47,57 @@ func (t *TemperatureSensor) start() {
 	//register with gateway
 	var client *rpc.Client
 	var err error
+
+	// Dial to the first gateway
 	client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
 	if err != nil {
 		log.Fatal("dialing error: %+v", err)
 	}
-	err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Temperature, Address: t.selfIp, Port: t.selfPort}, &t.id)
+	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &t.id, nil)
+	id1 := <-replycall1.Done
+
+	// Dial to the second gateway
+	client, err = rpc.Dial("tcp", t.gatewayIp2+":"+t.gatewayPort2)
 	if err != nil {
-		log.Fatal("calling error: %+v", err)
+		log.Fatal("dialing error: %+v", err)
 	}
+	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &t.id, nil)
+	id2 := <-replycall2.Done
+
+	if (id1 != nil) || (id2 != nil) {
+		log.Println("Registering with the gateway")
+	} else {
+		log.Println("Register RPC call return value: ", id1, id2)
+	}
+
+	/*
+		client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
+		if err != nil {
+			log.Fatal("dialing error: %+v", err)
+		}
+		err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Temperature, Address: t.selfIp, Port: t.selfPort}, &t.id)
+		if err != nil {
+			log.Fatal("calling error: %+v", err)
+		}
+	*/
 	log.Printf("Device id: %d", t.id)
 	logCurrentTemp(t.temperature.GetState())
 
-//Amee: Remove the middleware stuff
+	//Amee: Remove the middleware stuff
 
 	//initialize middleware
-	t.orderMW = ordermw.GetOrderingMiddleware(t.ordering, t.id, t.selfIp, t.selfPort)
+/*	t.orderMW = ordermw.GetOrderingMiddleware(t.ordering, t.id, t.selfIp, t.selfPort)
 
-
-	//send acknowledgment of registration
-	var empty struct{}
-	client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
-	if err != nil {
-		log.Printf("dialing error: %+v", err)
-		return
-	}
-	client.Go("Gateway.RegisterAck", t.id, &empty, nil)
-
-//Amee: Add nodeinterface update api.SensorTnterface to nodeinterface.Interface()
+		//send acknowledgment of registration
+		var empty struct{}
+		client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
+		if err != nil {
+			log.Printf("dialing error: %+v", err)
+			return
+		}
+		client.Go("Gateway.RegisterAck", t.id, &empty, nil)
+	*/
+	//Amee: Add nodeinterface update api.SensorTnterface to nodeinterface.Interface()
 
 	//start RPC server
 	err = rpc.Register(api.SensorInterface(t))
