@@ -23,6 +23,7 @@ const (
 	nonleaderAlive   time.Duration = 6 * time.Second // duration leader waits before consider a nonleader dead
 )
 
+// Struct that contains all necessary replica information.
 type replica struct {
 	alive  *structs.SyncBool
 	ipPort api.RegisterGatewayUserParams
@@ -72,21 +73,23 @@ func NewGatewayLeader(ip, port string, replicas []api.RegisterGatewayUserParams)
 	return &g
 }
 
+// Intercept all RPC calls from the gateway application.
 func (this *GatewayLeader) RpcSync(ip, port, rpcName string, args interface{}, reply interface{}, isErrFatal bool) error {
-	log.Printf("Before RPC reply: %+v\n", reply)
 	var err error = util.RpcSync(ip, port, rpcName, args, reply, isErrFatal)
-	log.Printf("After RPC reply: %+v\n", reply)
 	return err
 }
 
+// Set the gateway pointer.
 func (this *GatewayLeader) SetGateway(g api.GatewayInterface) {
 	this.GatewayInterface = g
 }
 
+// Start routines necessary for leader.
 func (this *GatewayLeader) StartLeader() {
 	this.Election(this.ipPort, &api.Empty{})
 }
 
+// Intercept registration requests. Service only if election is not in progress and leader.
 func (this *GatewayLeader) Register(params *api.RegisterParams, reply *int) error {
 	this.RLock()
 	// Only service request if leader.
@@ -102,6 +105,7 @@ func (this *GatewayLeader) Register(params *api.RegisterParams, reply *int) erro
 	return err
 }
 
+// Convenience method for determining if this replica is the leader.
 func (this *GatewayLeader) isLeader() bool {
 	// http://golang.org/ref/spec#Comparison_operators
 	// The equality operators == and != apply to operands that are comparable.
@@ -110,6 +114,7 @@ func (this *GatewayLeader) isLeader() bool {
 	return this.leader.Get() == this.ipPort
 }
 
+// Intercept request. Block service if election is in progress.
 func (this *GatewayLeader) RegisterUser(params *api.RegisterGatewayUserParams, empty *struct{}) error {
 	this.RLock()
 	var err error = this.GatewayInterface.RegisterUser(params, empty)
@@ -117,6 +122,7 @@ func (this *GatewayLeader) RegisterUser(params *api.RegisterGatewayUserParams, e
 	return err
 }
 
+// Intercept request. Block service if election is in progress.
 func (this *GatewayLeader) ReportDoorState(params *api.StateInfo, empty *struct{}) error {
 	this.RLock()
 	var err error = this.GatewayInterface.ReportDoorState(params, empty)
@@ -124,6 +130,7 @@ func (this *GatewayLeader) ReportDoorState(params *api.StateInfo, empty *struct{
 	return err
 }
 
+// Intercept request. Block service if election is in progress.
 func (this *GatewayLeader) ReportMotion(params *api.StateInfo, empty *struct{}) error {
 	this.RLock()
 	var err error = this.GatewayInterface.ReportMotion(params, empty)
@@ -182,7 +189,7 @@ func (this *GatewayLeader) pollLeader() {
 		this.ipPort, &api.Empty{}, this.handleAlive, false)
 }
 
-// Handle alive reply timeout.
+// Handle alive reply timeout by starting an election if its not already in progress.
 func (this *GatewayLeader) handleAliveTimeout() {
 	log.Println("Handling alive timeout")
 	// Do nothing if election in progress.
@@ -195,7 +202,7 @@ func (this *GatewayLeader) handleAliveTimeout() {
 	this.Election(this.ipPort, &api.Empty{})
 }
 
-// Handles alive replies from active replica
+// Handles alive replies from active replicas by restarting a timer to request an alive response from the leader.
 func (this *GatewayLeader) handleAlive(_ interface{}, _ interface{}, err error) {
 	log.Println("Handling alive reply")
 	if err != nil {
@@ -214,6 +221,9 @@ func (this *GatewayLeader) handleAlive(_ interface{}, _ interface{}, err error) 
 	this.aliveRequestTimer.Reset()
 }
 
+// Start an election. Dead replicas will be detected during the election if this replica is elected.
+// This happens because any alive replica with a greater ID would be elected and all replicas with
+// lower IDs must acknowledge the IWon message.
 func (this *GatewayLeader) startElection() {
 	log.Println("Starting election")
 	this.setAllReplicasDead()
@@ -230,7 +240,7 @@ func (this *GatewayLeader) startElection() {
 	}
 }
 
-// Handles OK replies in response to election messages
+// Handles OK replies in response to election messages by stopping the OK timers.
 func (this *GatewayLeader) handleOKs(_ interface{}, _ interface{}, err error) {
 	log.Println("Handling OK")
 	if err != nil {
@@ -241,6 +251,7 @@ func (this *GatewayLeader) handleOKs(_ interface{}, _ interface{}, err error) {
 	this.iWonTimer.Reset()
 }
 
+// Send IWons to replicas with lower IDs and end election.
 func (this *GatewayLeader) sendIWons() {
 	log.Println("Sending IWons")
 	var thisId string = util.RegisterGatewayUserParamsToString(this.ipPort)
@@ -266,12 +277,18 @@ func (this *GatewayLeader) sendIWons() {
 	log.Printf("Elected self: %+v\n", this.ipPort)
 }
 
+// Handle IWon replies by declaring the responding replica alive.
 func (this *GatewayLeader) handleIWonReplies(_, reply interface{}, err error) {
+	if err != nil {
+		return
+	}
 	var key string = util.RegisterGatewayUserParamsToString(
 		*(reply.(*api.RegisterGatewayUserParams))) // last bit is a type assertion
 	this.setReplicaAlive(key)
 }
 
+// Receive alive probes. Reset timer for the requesting replica to detect replica crash
+// faults if leader.
 func (this *GatewayLeader) Alive(replica api.RegisterGatewayUserParams, yes *api.Empty) error {
 	log.Println("Received alive probe")
 	// TODO Determine if other replicas are active.
@@ -280,7 +297,8 @@ func (this *GatewayLeader) Alive(replica api.RegisterGatewayUserParams, yes *api
 	return nil
 }
 
-// Get a closure that sets a replica to dead. Used for timers.
+// Get a closure that sets a replica to dead. Used as callback functions replica alive request
+// timers for detecting dead replicas if leader.
 func (this *GatewayLeader) getHandleNonleaderDeath(ipPort string) func() {
 	return func() {
 		log.Printf("Dead replica: %s\n", ipPort)

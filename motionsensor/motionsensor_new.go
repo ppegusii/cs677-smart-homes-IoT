@@ -1,6 +1,8 @@
 // This file declares all the structs and interfaces needed by motion sensor
 package main
 
+/*
+
 import (
 //	"bufio"
 //	"fmt"
@@ -52,16 +54,16 @@ func (m *MotionSensor) start() {
 
 	//Sending to gateway replica 1
 	util.RpcAsync(m.gatewayIp, m.gatewayPort, "Gateway.Register",
-		&api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, 
+		&api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort},
 		&m.id,
-		this.RPCStart, //Amee: Check the afterfunc to handle 
+		this.RPCStart, //Amee: Check the afterfunc to handle
 		false)
 
 	//Sending to gateway replica 2
 	util.RpcAsync(m.gatewayIp2, m.gatewayPort2, "Gateway.Register",
-		&api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, 
+		&api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort},
 		&m.id,
-		this.RPCStart, //Amee: Check the afterfunc to handle 
+		this.RPCStart, //Amee: Check the afterfunc to handle
 		false)
 }
 
@@ -78,3 +80,4 @@ func (m *MotionSensor) RPCStart() {
 	}
 	rpc.Accept(listener)
 }
+*/

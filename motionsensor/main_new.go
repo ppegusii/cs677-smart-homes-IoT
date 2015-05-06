@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"flag"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
@@ -20,6 +21,7 @@ func main() {
 	flag.Parse()
 
 	//start sensor
+*/
 /*	var ordering api.Ordering
 	var err error
 	ordering, err = util.StringToOrdering(*order)
@@ -27,6 +29,7 @@ func main() {
 		log.Fatal(err)
 	}
 */
+/*
 
 //Amee: Not sure if the below 2 lines are correct. Here, the problem is for newnode the id and state are needed
 // which we still do not have since device has not registered
@@ -36,3 +39,4 @@ func main() {
 	var m api.NodeInterface = newMotionSensor(*gatewayIp, *gatewayPort, *gatewayIp2, *gatewayPort2, *selfIp, *selfPort, ordering, n)
 	m.start()
 }
+*/
