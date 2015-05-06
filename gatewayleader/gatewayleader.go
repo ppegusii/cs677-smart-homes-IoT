@@ -27,8 +27,8 @@ const (
 type replica struct {
 	alive  *structs.SyncBool
 	ipPort api.RegisterGatewayUserParams
-	timer  *structs.SyncTimer
-	nodes  *structs.SyncMapIntRegParam
+	timer  *structs.SyncTimer          // timer used by leader to help determine if replica is dead
+	nodes  *structs.SyncMapIntRegParam // stores the sensors currently serviced by this replica, data structure will probably change
 }
 
 type GatewayLeader struct {
