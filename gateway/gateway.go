@@ -209,8 +209,10 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *api.RegisterReturn
 		err = errors.New(fmt.Sprintf("Invalid Type: %+v", params.Type))
 	}
 	reply.DeviceId = id
+	/* Commenting this out to be sure error occurs if IP and port are not properly assigned in gatewayleader
 	reply.Address = g.ip //This is just for testing: Update it based on loadbalancing values
 	reply.Port = g.port //This is again for testing: Update it based on loadbalancing values
+	*/
 	params.DeviceId = id
 
 	return err
