@@ -65,12 +65,12 @@ type SyncMapIntRegParam struct {
 func NewSyncMapIntRegParam() *SyncMapIntRegParam {
 	return &SyncMapIntRegParam{
 		m: make(map[int]*api.RegisterParams),
-		i: 2,
+		i: 0, //Returning back to zero. Gateways and databases no longer have IDs.
 	}
 }
 
-//Add a new device/sensor
-func (s *SyncMapIntRegParam) AddRegParam(regParam *api.RegisterParams) int {
+//Add a new device/sensor and create an new ID
+func (s *SyncMapIntRegParam) AddNewRegParam(regParam *api.RegisterParams) int {
 	var i int
 	s.Lock()
 	s.m[s.i] = regParam
@@ -78,6 +78,24 @@ func (s *SyncMapIntRegParam) AddRegParam(regParam *api.RegisterParams) int {
 	s.i++
 	s.Unlock()
 	return i
+}
+
+//Add a new device/sensor that already has an ID
+func (s *SyncMapIntRegParam) AddExistingRegParam(regParam *api.RegisterParams, id int) {
+	s.Lock()
+	s.m[id] = regParam
+	// increment the internal ID counter if a higher one is given.
+	if s.i <= id {
+		s.i++
+	}
+	s.Unlock()
+}
+
+//Remove a device/sensor
+func (s *SyncMapIntRegParam) RemoveRegParam(id int) {
+	s.Lock()
+	delete(s.m, id)
+	s.Unlock()
 }
 
 //Fetch the values from the map

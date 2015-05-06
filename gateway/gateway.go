@@ -164,19 +164,19 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 	case api.Sensor:
 		switch params.Name {
 		case api.Door:
-			id = g.senAndDev.AddRegParam(params)
+			id = g.senAndDev.AddNewRegParam(params)
 			g.doorSen.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
 			break
 		case api.Motion:
-			id = g.senAndDev.AddRegParam(params)
+			id = g.senAndDev.AddNewRegParam(params)
 			g.motionSen.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
 			break
 		case api.Temperature:
-			id = g.senAndDev.AddRegParam(params)
+			id = g.senAndDev.AddNewRegParam(params)
 			g.tempSen.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
@@ -190,13 +190,13 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *int) error {
 		//Register Device
 		switch params.Name {
 		case api.Bulb:
-			id = g.senAndDev.AddRegParam(params)
+			id = g.senAndDev.AddNewRegParam(params)
 			g.bulbDev.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
 			break
 		case api.Outlet:
-			id = g.senAndDev.AddRegParam(params)
+			id = g.senAndDev.AddNewRegParam(params)
 			g.outletDev.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
