@@ -16,20 +16,12 @@ import (
 )
 
 const (
-	iWonWait         time.Duration = 5 * time.Second // duration to wait for IWon replies
-	okWait           time.Duration = 2 * time.Second // duration to wait for OKs
-	aliveReplyWait   time.Duration = 2 * time.Second // duration to wait for are you alive replies
-	aliveRequestWait time.Duration = 5 * time.Second // duration to wait before sending next are you alive probe
-	nonleaderAlive   time.Duration = 6 * time.Second // duration leader waits before consider a nonleader dead
+	iWonWait           time.Duration = 5 * time.Second // duration to wait for IWon replies
+	okWait             time.Duration = 2 * time.Second // duration to wait for OKs
+	aliveReplyWait     time.Duration = 2 * time.Second // duration to wait for are you alive replies
+	aliveRequestWait   time.Duration = 5 * time.Second // duration to wait before sending next are you alive probe
+	nonleaderAliveWait time.Duration = 6 * time.Second // duration leader waits before consider a nonleader dead
 )
-
-// Struct that contains all necessary replica information.
-type replica struct {
-	alive  *structs.SyncBool
-	ipPort api.RegisterGatewayUserParams
-	timer  *structs.SyncTimer          // timer used by leader to help determine if replica is dead
-	nodes  *structs.SyncMapIntRegParam // stores the sensors currently serviced by this replica, data structure will probably change
-}
 
 type GatewayLeader struct {
 	aliveReplyTimer   *structs.SyncTimer
@@ -41,7 +33,7 @@ type GatewayLeader struct {
 	iWonTimer          *structs.SyncTimer
 	leader             *structs.SyncRegGatewayUserParam
 	okTimer            *structs.SyncTimer
-	replicas           map[string]replica
+	replicas           *syncMapStringReplica
 	sync.RWMutex       // Used to wait before sending application messages during an election.
 }
 
@@ -59,17 +51,7 @@ func NewGatewayLeader(ip, port string, replicas []api.RegisterGatewayUserParams)
 	g.aliveReplyTimer = structs.NewSyncTimer(aliveReplyWait, g.handleAliveTimeout)
 	g.aliveRequestTimer = structs.NewSyncTimer(aliveRequestWait, g.pollLeader)
 	// create data structure for replica info
-	var replicaMap map[string]replica = make(map[string]replica)
-	for _, ipPort := range replicas {
-		var key string = util.RegisterGatewayUserParamsToString(ipPort)
-		replicaMap[key] = replica{
-			alive:  structs.NewSyncBool(false),
-			ipPort: ipPort,
-			timer:  structs.NewSyncTimer(nonleaderAlive, g.getHandleNonleaderDeath(key)),
-			nodes:  structs.NewSyncMapIntRegParam(),
-		}
-	}
-	g.replicas = replicaMap
+	g.replicas = newSyncMapStringReplica(replicas, &g)
 	return &g
 }
 
@@ -226,15 +208,15 @@ func (this *GatewayLeader) handleAlive(_ interface{}, _ interface{}, err error) 
 // lower IDs must acknowledge the IWon message.
 func (this *GatewayLeader) startElection() {
 	log.Println("Starting election")
-	this.setAllReplicasDead()
+	this.replicas.setAllReplicasDead()
 	var thisId string = util.RegisterGatewayUserParamsToString(this.ipPort)
 	// Start a timer that when duration elapses sends IWon.
 	this.okTimer.Reset()
 	// Send election notice to each replica with a higher id (async RPC).
-	for _, replica := range this.replicas {
-		var id string = util.RegisterGatewayUserParamsToString(replica.ipPort)
+	for _, ipPort := range this.replicas.getIpPorts() {
+		var id string = util.RegisterGatewayUserParamsToString(ipPort)
 		if id > thisId {
-			util.RpcAsync(replica.ipPort.Address, replica.ipPort.Port, "Gateway.Election",
+			util.RpcAsync(ipPort.Address, ipPort.Port, "Gateway.Election",
 				this.ipPort, &api.Empty{}, this.handleOKs, false)
 		}
 	}
@@ -258,10 +240,10 @@ func (this *GatewayLeader) sendIWons() {
 	// Declare self leader
 	this.leader.Set(this.ipPort)
 	// Send IWon messages to all replicas with lower id
-	for _, replica := range this.replicas {
-		var id string = util.RegisterGatewayUserParamsToString(replica.ipPort)
+	for _, ipPort := range this.replicas.getIpPorts() {
+		var id string = util.RegisterGatewayUserParamsToString(ipPort)
 		if id < thisId {
-			util.RpcAsync(replica.ipPort.Address, replica.ipPort.Port,
+			util.RpcAsync(ipPort.Address, ipPort.Port,
 				"Gateway.IWon", this.ipPort, &api.RegisterGatewayUserParams{},
 				this.handleIWonReplies, false)
 		}
@@ -284,7 +266,7 @@ func (this *GatewayLeader) handleIWonReplies(_, reply interface{}, err error) {
 	}
 	var key string = util.RegisterGatewayUserParamsToString(
 		*(reply.(*api.RegisterGatewayUserParams))) // last bit is a type assertion
-	this.setReplicaAlive(key)
+	this.replicas.setAlive(key, true)
 }
 
 // Receive alive probes. Reset timer for the requesting replica to detect replica crash
@@ -293,7 +275,7 @@ func (this *GatewayLeader) Alive(replica api.RegisterGatewayUserParams, yes *api
 	log.Println("Received alive probe")
 	// TODO Determine if other replicas are active.
 	var key string = util.RegisterGatewayUserParamsToString(replica)
-	this.replicas[key].timer.Reset()
+	this.replicas.ResetTimer(key)
 	return nil
 }
 
@@ -302,23 +284,12 @@ func (this *GatewayLeader) Alive(replica api.RegisterGatewayUserParams, yes *api
 func (this *GatewayLeader) getHandleNonleaderDeath(ipPort string) func() {
 	return func() {
 		log.Printf("Dead replica: %s\n", ipPort)
-		this.replicas[ipPort].alive.Set(false)
-	}
-}
-
-// Set all replicas to dead.
-func (this *GatewayLeader) setAllReplicasDead() {
-	for _, replica := range this.replicas {
-		replica.alive.Set(false)
-		replica.timer.Stop()
+		this.replicas.setAlive(ipPort, false)
 	}
 }
 
 // Set a sinle replica to alive.
 func (this *GatewayLeader) setReplicaAlive(key string) {
-	replica, ok := this.replicas[key]
-	if ok {
-		log.Printf("Alive replica: %s\n", key)
-		replica.alive.Set(true)
-	}
+	log.Printf("Alive replica: %s\n", key)
+	this.replicas.setAlive(key, true)
 }
