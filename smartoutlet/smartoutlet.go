@@ -14,7 +14,7 @@ import (
 // ordering for clock synchronization, peer table to keep a track of ip of the peers
 // and reference to its middleware
 type SmartOutlet struct {
-	id          int
+	id          *structs.SyncInt
 	gatewayIp   string
 	gatewayPort string
 	gatewayIp2   string
@@ -24,13 +24,13 @@ type SmartOutlet struct {
 	selfIp      string
 	selfPort    string
 	state       structs.SyncState
-	gRPCIp 		 string
-	gRPCPort	 string
+	greplica 	*structs.SyncRegGatewayUserParam // This is the gateway replica assigned for load balancing
 }
 
 // create and initialize a new smart outlet
 func newSmartOutlet(gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *SmartOutlet {
 	return &SmartOutlet{
+		id:			 structs.NewSyncInt(api.UNREGISTERED),
 		gatewayIp:   gatewayIp,
 		gatewayPort: gatewayPort,
 		gatewayIp2:   gatewayIp2,
@@ -39,6 +39,7 @@ func newSmartOutlet(gatewayIp string, gatewayPort string, gatewayIp2 string, gat
 		selfIp:      selfIp,
 		selfPort:    selfPort,
 		state:       *structs.NewSyncState(api.Off),
+		greplica:	 structs.NewSyncRegGatewayUserParam(),
 	}
 }
 
@@ -70,10 +71,10 @@ func (s *SmartOutlet) start() {
 		log.Println("Register RPC call return value: ",id1, id2)
 	}
 
-	s.id = regresponse.DeviceId
-	s.gRPCIp = regresponse.Address
-	s.gRPCPort = regresponse.Port
-	log.Printf("Device id: %d %s %s", s.id, s.gRPCIp, s.gRPCPort)
+	s.id.Set(regresponse.DeviceId)
+	s.greplica.Set(api.RegisterGatewayUserParams{Address: regresponse.Address, Port: regresponse.Port})
+	replica := s.greplica.Get()
+	log.Printf("Device id: %d %s %s", s.id.Get(), replica.Address, replica.Port)
 
 /*	client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
 	if err != nil {
@@ -114,7 +115,7 @@ func (s *SmartOutlet) start() {
 //This is an RPC function that is issued by the gateway to get the state of the Smart Outlet
 func (s *SmartOutlet) QueryState(params *int, reply *api.StateInfo) error {
 	//this will not be called in practice
-	reply.DeviceId = s.id
+	reply.DeviceId = s.id.Get()
 	reply.State = s.state.GetState()
 	//go s.sendState()
 	return nil
@@ -126,7 +127,7 @@ func (s *SmartOutlet) ChangeState(params *api.StateInfo, reply *api.StateInfo) e
 	log.Printf("Received change state request with info: %+v", params)
 	s.state.SetState(params.State)
 	util.LogCurrentState(s.state.GetState())
-	reply.DeviceId = s.id
+	reply.DeviceId = s.id.Get()
 	reply.State = params.State
 	//go s.sendState()
 	return nil
@@ -145,8 +146,7 @@ func (s *SmartOutlet) sendState() {
 // This is an RPC function that is issued by the gateway to update the address port of the 
 // loadsharing gateway the device is talking to. It returns the device id
 func (s *SmartOutlet) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
-	s.gRPCPort = params.Port
-	s.gRPCIp = params.Address
-	*reply = s.id
+	s.greplica.Set(api.RegisterGatewayUserParams{Address: params.Address, Port: params.Port})
+	*reply = s.id.Get()
 	return nil
 }

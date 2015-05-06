@@ -17,7 +17,7 @@ import (
 // ordering for clock synchronization, peer table to keep a track of ip of the peers
 // and reference to its middleware
 type TemperatureSensor struct {
-	id           int
+	id           *structs.SyncInt
 	gatewayIp    string
 	gatewayPort  string
 	gatewayIp2   string
@@ -27,13 +27,13 @@ type TemperatureSensor struct {
 	selfIp       string
 	selfPort     string
 	temperature  structs.SyncState
-	gRPCIp 		 string
-	gRPCPort	 string
+	greplica 	 *structs.SyncRegGatewayUserParam // This is the gateway replica assigned for load balancing
 }
 
 // create and initialize a new temperature sensor
 func newTemperatureSensor(temperature api.State, gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *TemperatureSensor {
 	return &TemperatureSensor{
+		id:			  structs.NewSyncInt(api.UNREGISTERED),
 		gatewayIp:    gatewayIp,
 		gatewayPort:  gatewayPort,
 		gatewayIp2:   gatewayIp2,
@@ -42,6 +42,7 @@ func newTemperatureSensor(temperature api.State, gatewayIp string, gatewayPort s
 		selfIp:       selfIp,
 		selfPort:     selfPort,
 		temperature:  *structs.NewSyncState(temperature),
+		greplica:	  structs.NewSyncRegGatewayUserParam(),
 	}
 }
 
@@ -73,39 +74,11 @@ func (t *TemperatureSensor) start() {
 		log.Println("Register RPC call return value: ", id1, id2)
 	}
 
-	t.id = regresponse.DeviceId
-	t.gRPCIp = regresponse.Address
-	t.gRPCPort = regresponse.Port
-	log.Printf("Device id: %d %s %s", t.id, t.gRPCIp, t.gRPCPort)
-
-	/*
-		client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
-		if err != nil {
-			log.Fatal("dialing error: %+v", err)
-		}
-		err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Temperature, Address: t.selfIp, Port: t.selfPort}, &t.id)
-		if err != nil {
-			log.Fatal("calling error: %+v", err)
-		}
-	*/
-//	log.Printf("Device id: %d", t.id)
+	t.id.Set(regresponse.DeviceId)
+	t.greplica.Set(api.RegisterGatewayUserParams{Address: regresponse.Address, Port: regresponse.Port})
+	replica := t.greplica.Get()
+	log.Printf("Device id: %d %s %s", t.id.Get(), replica.Address, replica.Port)
 	logCurrentTemp(t.temperature.GetState())
-
-	//Amee: Remove the middleware stuff
-
-	//initialize middleware
-/*	t.orderMW = ordermw.GetOrderingMiddleware(t.ordering, t.id, t.selfIp, t.selfPort)
-
-		//send acknowledgment of registration
-		var empty struct{}
-		client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
-		if err != nil {
-			log.Printf("dialing error: %+v", err)
-			return
-		}
-		client.Go("Gateway.RegisterAck", t.id, &empty, nil)
-	*/
-	//Amee: Add nodeinterface update api.SensorTnterface to nodeinterface.Interface()
 
 	//start RPC server
 	err = rpc.Register(api.SensorInterface(t))
@@ -160,7 +133,7 @@ func (t *TemperatureSensor) getInput() {
 
 //This is an RPC function that is issued by the gateway to get the state of the Temperature sensor
 func (t *TemperatureSensor) QueryState(params *int, reply *api.StateInfo) error {
-	reply.DeviceId = t.id
+	reply.DeviceId = t.id.Get()
 	reply.DeviceName = api.Temperature
 	reply.State = t.temperature.GetState()
 	//go t.sendState()
@@ -185,8 +158,7 @@ func logCurrentTemp(t api.State) {
 // This is an RPC function that is issued by the gateway to update the address port of the 
 // loadsharing gateway the device is talking to. It returns the device id
 func (t *TemperatureSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
-	t.gRPCPort = params.Port
-	t.gRPCIp = params.Address
-	*reply = t.id
+	t.greplica.Set(api.RegisterGatewayUserParams{Address: params.Address, Port: params.Port})
+	*reply = t.id.Get()
 	return nil
 }

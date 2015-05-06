@@ -17,7 +17,7 @@ import (
 // This struct contains all the attributes of the door sensor and information needed for
 // ordering for clock synchronization, peer table to keep a track of ip of the peers and reference to its middleware
 type DoorSensor struct {
-	id           int
+	id           *structs.SyncInt
 	gatewayIp    string
 	gatewayPort  string
 	gatewayIp2   string
@@ -27,13 +27,13 @@ type DoorSensor struct {
 	selfIp       string
 	selfPort     string
 	state        structs.SyncState
-	gRPCIp 		 string
-	gRPCPort	 string
+	greplica 	 *structs.SyncRegGatewayUserParam // This is the gateway replica assigned for load balancing
 }
 
 // initialize a new doorsensor
 func newDoorSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *DoorSensor {
 	return &DoorSensor{
+		id:			  structs.NewSyncInt(api.UNREGISTERED),
 		gatewayIp:    gatewayIp,
 		gatewayPort:  gatewayPort,
 		gatewayIp2:   gatewayIp2,
@@ -42,6 +42,7 @@ func newDoorSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, gate
 		selfIp:       selfIp,
 		selfPort:     selfPort,
 		state:        *structs.NewSyncState(api.Closed),
+		greplica:	  structs.NewSyncRegGatewayUserParam(),
 	}
 }
 
@@ -82,10 +83,10 @@ func (d *DoorSensor) start() {
 			log.Fatal("calling error: %+v", err)
 		}
 	*/
-	d.id = regresponse.DeviceId
-	d.gRPCIp = regresponse.Address
-	d.gRPCPort = regresponse.Port
-	log.Printf("Device id: %d %s %s", d.id, d.gRPCIp, d.gRPCPort)
+	d.id.Set(regresponse.DeviceId)
+	d.greplica.Set(api.RegisterGatewayUserParams{Address: regresponse.Address, Port: regresponse.Port})
+	replica := d.greplica.Get()
+	log.Printf("Device id: %d %s %s", d.id.Get(), replica.Address, replica.Port)
 
 	util.LogCurrentState(d.state.GetState())
 	//initialize middleware
@@ -143,7 +144,7 @@ func (d *DoorSensor) ChangeState(params *api.StateInfo, reply *api.StateInfo) er
 		break
 	}
 	reply = &api.StateInfo{
-		DeviceId:   d.id,
+		DeviceId:   d.id.Get(),
 		DeviceName: api.Door,
 		State:      d.state.GetState(),
 	}
@@ -194,7 +195,7 @@ func (d *DoorSensor) getInput() {
 
 //This is an RPC function that is issued by the gateway to get the state of the door sensor
 func (d *DoorSensor) QueryState(params *int, reply *api.StateInfo) error {
-	reply.DeviceId = d.id
+	reply.DeviceId = d.id.Get()
 	reply.DeviceName = api.Door
 	reply.State = d.state.GetState()
 	//go d.sendState()
@@ -215,8 +216,7 @@ func (d *DoorSensor) sendState() {
 // This is an RPC function that is issued by the gateway to update the address port of the 
 // loadsharing gateway the device is talking to. It returns the device id
 func (d *DoorSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
-	d.gRPCPort = params.Port
-	d.gRPCIp = params.Address
-	*reply = d.id
+	d.greplica.Set(api.RegisterGatewayUserParams{Address: params.Address, Port: params.Port})
+	*reply = d.id.Get()
 	return nil
 }

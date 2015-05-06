@@ -4,6 +4,8 @@ package api
 
 import ()
 
+const UNREGISTERED = -10
+
 type Type int
 
 // Device types
