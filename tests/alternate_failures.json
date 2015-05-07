@@ -1,0 +1,52 @@
+{
+  "Instructions": [
+    {
+      "Time": 1000,
+      "Command": "KillProcess",
+      "Target": "gateway2",
+      "State": 0
+    },
+    {
+      "Time": 1001,
+      "Command": "KillProcess",
+      "Target": "database2",
+      "State": 0
+    },
+    {
+      "Time": 10000,
+      "Command": "StartProcess",
+      "Target": "database2",
+      "State": 0
+    },
+    {
+      "Time": 10001,
+      "Command": "StartProcess",
+      "Target": "gateway2",
+      "State": 0
+    },
+    {
+      "Time": 20000,
+      "Command": "KillProcess",
+      "Target": "gateway1",
+      "State": 0
+    },
+    {
+      "Time": 20001,
+      "Command": "KillProcess",
+      "Target": "database1",
+      "State": 0
+    },
+    {
+      "Time": 30000,
+      "Command": "StartProcess",
+      "Target": "database1",
+      "State": 0
+    },
+    {
+      "Time": 30001,
+      "Command": "StartProcess",
+      "Target": "gateway1",
+      "State": 0
+    }
+  ]
+}

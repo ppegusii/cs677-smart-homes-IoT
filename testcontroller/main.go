@@ -14,5 +14,5 @@ func main() {
 	tc.startProcesses()
 	tc.runTestCase()
 	tc.requestEnd()
-	tc.killLocalProcesses()
+	tc.killAllLocalProcesses()
 }
