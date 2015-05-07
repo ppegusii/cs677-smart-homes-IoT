@@ -80,11 +80,6 @@ type ModeAndClock struct {
 	Mode  Mode
 }
 
-//This shouldn't be here, but oh well.
-func (this *ModeAndClock) GetClock() int {
-	return this.Clock
-}
-
 // Interfaces provided by the Database layer
 type DatabaseInterface interface {
 	AddDeviceOrSensor(params *RegisterParams, _ *struct{}) error
@@ -161,11 +156,6 @@ type UserInterface interface {
 	TextMessage(params *string, _ *struct{}) error
 }
 
-// Any struct that has a clock should implement this interface
-type ClockInterface interface {
-	GetClock() int
-}
-
 //Structure used during device registration,
 //it is send as one of the parameters during RPC Register call to gateway
 type RegisterParams struct {
@@ -176,11 +166,6 @@ type RegisterParams struct {
 	Port     string
 	State    State
 	Type     Type
-}
-
-//This shouldn't be here, but oh well.
-func (this *RegisterParams) GetClock() int {
-	return this.Clock
 }
 
 type RegisterReturn struct {
@@ -203,10 +188,13 @@ type StateInfo struct {
 	State      State
 }
 
-//This shouldn't be here, but oh well.
-func (this *StateInfo) GetClock() int {
-	return this.Clock
-}
-
 // Used for no arguments or replies in RPCs
 type Empty struct{}
+
+// Sent during synchronization RPCs
+type Data struct {
+	RegisteredNodes []RegisterParams
+	AssignedNodes   map[RegisterGatewayUserParams]int
+	User            RegisterGatewayUserParams
+	StateInfos      []StateInfo
+}

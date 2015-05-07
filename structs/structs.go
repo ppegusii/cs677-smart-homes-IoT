@@ -337,7 +337,7 @@ func (s *SyncFile) GetRegParamsSince(startTime int) (*[]api.RegisterParams, erro
 			log.Println(err)
 			return nil, err
 		}
-		if thing.GetClock() > startTime {
+		if thing.Clock > startTime {
 			things = append(things, thing)
 		}
 	}
@@ -363,7 +363,7 @@ func (s *SyncFile) GetStateInfoSince(startTime int) (*[]api.StateInfo, error) {
 			log.Println(err)
 			return nil, err
 		}
-		if thing.GetClock() > startTime {
+		if thing.Clock > startTime {
 			things = append(things, thing)
 		}
 	}
