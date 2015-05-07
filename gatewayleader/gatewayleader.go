@@ -248,20 +248,24 @@ func (this *GatewayLeader) sendIWons() {
 	// Declare self leader
 	this.leader.Set(this.ipPort)
 	var ipPorts []api.RegisterGatewayUserParams = this.replicas.getIpPorts()
-	// Create a buffered channel for pausing until all IWon replies received
-	this.iWonReplies = make(chan int, len(ipPorts))
-	// Send IWon messages to all replicas with lower id
-	for _, ipPort := range ipPorts {
-		var id string = util.RegisterGatewayUserParamsToString(ipPort)
-		if id < thisId {
-			util.RpcAsync(ipPort.Address, ipPort.Port,
-				"Gateway.IWon", this.ipPort, &api.RegisterGatewayUserParams{},
-				this.handleIWonReplies, false)
+	if len(ipPorts) > 0 {
+		// Create a buffered channel for pausing until all IWon replies received
+		this.iWonReplies = make(chan int, len(ipPorts))
+		// Send IWon messages to all replicas with lower id
+		for _, ipPort := range ipPorts {
+			var id string = util.RegisterGatewayUserParamsToString(ipPort)
+			if id < thisId {
+				util.RpcAsync(ipPort.Address, ipPort.Port,
+					"Gateway.IWon", this.ipPort, &api.RegisterGatewayUserParams{},
+					this.handleIWonReplies, false)
+			} else {
+				this.iWonReplies <- 1
+			}
 		}
-	}
-	// Wait for all IWon replies
-	for i := 0; i < len(ipPorts); i++ {
-		<-this.iWonReplies
+		// Wait for all IWon replies
+		for i := 0; i < len(ipPorts); i++ {
+			<-this.iWonReplies
+		}
 	}
 	// Rebalance load
 	this.rebalanceLoad()
@@ -316,6 +320,7 @@ func (this *GatewayLeader) getHandleNonleaderDeath(ipPort string) func() {
 func (this *GatewayLeader) rebalanceLoad() {
 	// Use the replica data structure to get new assignments.
 	var assigns *map[api.RegisterGatewayUserParams][]api.RegisterParams = this.replicas.rebalanceLoad()
+	log.Printf("new assignments: %+v\n", assigns)
 	// Notify sensors of new assignments.
 	for ipPort, assignees := range *assigns {
 		for _, assignee := range assignees {

@@ -5,8 +5,9 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
-//	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
+	//	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
+	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
 	"net"
 	"net/rpc"
@@ -27,13 +28,13 @@ type TemperatureSensor struct {
 	selfIp       string
 	selfPort     string
 	temperature  structs.SyncState
-	greplica 	 *structs.SyncRegGatewayUserParam // This is the gateway replica assigned for load balancing
+	greplica     *structs.SyncRegGatewayUserParam // This is the gateway replica assigned for load balancing
 }
 
 // create and initialize a new temperature sensor
 func newTemperatureSensor(temperature api.State, gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *TemperatureSensor {
 	return &TemperatureSensor{
-		id:			  structs.NewSyncInt(api.UNREGISTERED),
+		id:           structs.NewSyncInt(api.UNREGISTERED),
 		gatewayIp:    gatewayIp,
 		gatewayPort:  gatewayPort,
 		gatewayIp2:   gatewayIp2,
@@ -42,37 +43,53 @@ func newTemperatureSensor(temperature api.State, gatewayIp string, gatewayPort s
 		selfIp:       selfIp,
 		selfPort:     selfPort,
 		temperature:  *structs.NewSyncState(temperature),
-		greplica:	  structs.NewSyncRegGatewayUserParam(),
+		greplica:     structs.NewSyncRegGatewayUserParam(),
 	}
 }
 
 func (t *TemperatureSensor) start() {
 	//register with gateway
-	var client *rpc.Client
 	var err error
-	var regresponse *api.RegisterReturn
+	var regparam *api.RegisterParams = &api.RegisterParams{
+		Address: t.selfIp,
+		Name:    api.Temperature,
+		Port:    t.selfPort,
+		Type:    api.Sensor,
+	}
+	var regresponse api.RegisterReturn
 
 	// Dial to the first gateway
-	client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
+	err = util.RpcSync(t.gatewayIp, t.gatewayPort,
+		"Gateway.Register", regparam, &regresponse, false)
 	if err != nil {
-		log.Fatal("dialing error: %+v", err)
+		err = util.RpcSync(t.gatewayIp2, t.gatewayPort2,
+			"Gateway.Register", regparam, &regresponse, false)
+		if err != nil {
+			log.Fatal("Could not register with a gateway.\n")
+		}
 	}
-	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &regresponse, nil)
-	id1 := <-replycall1.Done
+	/*
+			client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
+			if err != nil {
+				log.Printf("dialing error: %+v", err)
+			}
+			replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &regresponse, nil)
+			id1 := <-replycall1.Done
 
-	// Dial to the second gateway
-	client, err = rpc.Dial("tcp", t.gatewayIp2+":"+t.gatewayPort2)
-	if err != nil {
-		log.Fatal("dialing error: %+v", err)
-	}
-	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &regresponse, nil)
-	id2 := <-replycall2.Done
+			// Dial to the second gateway
+			client, err = rpc.Dial("tcp", t.gatewayIp2+":"+t.gatewayPort2)
+			if err != nil {
+				log.Fatal("dialing error: %+v", err)
+			}
+			replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &regresponse, nil)
+			id2 := <-replycall2.Done
 
-	if (id1 != nil) || (id2 != nil) {
-		log.Println("Registering with the gateway")
-	} else {
-		log.Println("Register RPC call return value: ", id1, id2)
-	}
+		if (id1 != nil) || (id2 != nil) {
+			log.Println("Registering with the gateway")
+		} else {
+			log.Println("Register RPC call return value: ", id1, id2)
+		}
+	*/
 
 	t.id.Set(regresponse.DeviceId)
 	t.greplica.Set(api.RegisterGatewayUserParams{Address: regresponse.Address, Port: regresponse.Port})
@@ -155,9 +172,10 @@ func logCurrentTemp(t api.State) {
 	log.Printf("Current temp: %d", t)
 }
 
-// This is an RPC function that is issued by the gateway to update the address port of the 
+// This is an RPC function that is issued by the gateway to update the address port of the
 // loadsharing gateway the device is talking to. It returns the device id
 func (t *TemperatureSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
+	log.Printf("Changing gateway to: %+v\n", *params)
 	t.greplica.Set(api.RegisterGatewayUserParams{Address: params.Address, Port: params.Port})
 	*reply = t.id.Get()
 	return nil
