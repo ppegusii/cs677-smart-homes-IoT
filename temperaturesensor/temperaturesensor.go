@@ -69,28 +69,6 @@ func (t *TemperatureSensor) start() {
 			log.Fatal("Could not register with a gateway.\n")
 		}
 	}
-	/*
-			client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
-			if err != nil {
-				log.Fatal("dialing error: %+v", err)
-			}
-			replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &regresponse, nil)
-			id1 := <-replycall1.Done
-
-			// Dial to the second gateway
-			client, err = rpc.Dial("tcp", t.gatewayIp2+":"+t.gatewayPort2)
-			if err != nil {
-				log.Fatal("dialing error: %+v", err)
-			}
-			replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &regresponse, nil)
-			id2 := <-replycall2.Done
-
-		if (id1 != nil) || (id2 != nil) {
-			log.Println("Registering with the gateway")
-		} else {
-			log.Println("Register RPC call return value: ", id1, id2)
-		}
-	*/
 
 	t.id.Set(regresponse.DeviceId)
 	t.greplica.Set(api.RegisterGatewayUserParams{Address: regresponse.Address, Port: regresponse.Port})

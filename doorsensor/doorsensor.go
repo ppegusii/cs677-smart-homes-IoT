@@ -28,6 +28,7 @@ type DoorSensor struct {
 	selfPort     string
 	state        structs.SyncState
 	greplica 	 *structs.SyncRegGatewayUserParam // This is the gateway replica assigned for load balancing
+	rpcSync      api.RpcSyncInterface
 }
 
 // initialize a new doorsensor
@@ -48,60 +49,34 @@ func newDoorSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, gate
 
 func (d *DoorSensor) start() {
 	//register with gateway
-	var client *rpc.Client
 	var err error
-	var regresponse *api.RegisterReturn
+	var regparam *api.RegisterParams = &api.RegisterParams{
+		Address: d.selfIp,
+		Name:    api.Door,
+		Port:    d.selfPort,
+		Type:    api.Sensor,
+	}
+	var regresponse api.RegisterReturn
 
 	// Dial to the first gateway
-	client, err = rpc.Dial("tcp", d.gatewayIp+":"+d.gatewayPort)
+	err = util.RpcSync(d.gatewayIp, d.gatewayPort,
+		"Gateway.Register", regparam, &regresponse, false)
 	if err != nil {
-		log.Fatal("dialing error: %+v", err)
-	}
-	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: d.selfIp, Port: d.selfPort}, &regresponse, nil)
-	id1 := <-replycall1.Done
-
-	// Dial to the second gateway
-	client, err = rpc.Dial("tcp", d.gatewayIp2+":"+d.gatewayPort2)
-	if err != nil {
-		log.Fatal("dialing error: %+v", err)
-	}
-	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: d.selfIp, Port: d.selfPort}, &regresponse, nil)
-	id2 := <-replycall2.Done
-
-	if (id1 != nil) || (id2 != nil) {
-		log.Println("Registering with the gateway")
-	} else {
-		log.Println("Register RPC call return value: ", id1, id2)
-	}
-
-	/*	client, err = rpc.Dial("tcp", d.gatewayIp+":"+d.gatewayPort)
+		// Dial to the second gateway
+		err = util.RpcSync(d.gatewayIp2, d.gatewayPort2,
+			"Gateway.Register", regparam, &regresponse, false)
 		if err != nil {
-			log.Fatal("dialing error: %+v", err)
+			log.Fatal("Could not register with a gateway.\n")
 		}
-		err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Door, Address: d.selfIp, Port: d.selfPort}, &d.id)
-		if err != nil {
-			log.Fatal("calling error: %+v", err)
-		}
-	*/
+	}
+
 	d.id.Set(regresponse.DeviceId)
 	d.greplica.Set(api.RegisterGatewayUserParams{Address: regresponse.Address, Port: regresponse.Port})
 	replica := d.greplica.Get()
 	log.Printf("Device id: %d %s %s", d.id.Get(), replica.Address, replica.Port)
 
 	util.LogCurrentState(d.state.GetState())
-	//initialize middleware
-	/*	d.orderMW = ordermw.GetOrderingMiddleware(d.ordering, d.id, d.selfIp, d.selfPort)
 
-		//send acknowledgment of registration
-		var empty struct{}
-		client, err = rpc.Dial("tcp", d.gatewayIp+":"+d.gatewayPort)
-		if err != nil {
-			log.Printf("dialing error: %+v", err)
-			return
-		}
-		client.Go("Gateway.RegisterAck", d.id, &empty, nil)
-
-	*/
 	//start RPC server
 	err = rpc.Register(api.SensorInterface(d))
 	if err != nil {
@@ -205,12 +180,10 @@ func (d *DoorSensor) QueryState(params *int, reply *api.StateInfo) error {
 // The Door sensor is a push based device and can be polled by the gateway.
 // sendState() is used to report state to the gateway
 func (d *DoorSensor) sendState() {
-
-/*	var err error = d.orderMW.SendState(api.StateInfo{DeviceId: d.id, DeviceName: api.Door, State: d.state.GetState()}, d.gatewayIp, d.gatewayPort)
-	if err != nil {
-		log.Printf("Error sending state: %+v", err)
-	}
-	*/
+	replica := d.greplica.Get()
+	d.rpcSync.RpcSync(replica.Address, replica.Port,
+		"Gateway.ReportDoorState",
+		d.state.GetState(), &api.Empty{}, false)
 }
 
 // This is an RPC function that is issued by the gateway to update the address port of the 

@@ -46,30 +46,25 @@ func newSmartBulb(gatewayIp string, gatewayPort string, gatewayIp2 string, gatew
 
 func (s *SmartBulb) start() {
 	//register with gateway
-	var client *rpc.Client
 	var err error
-	var regresponse *api.RegisterReturn
+	var regparam *api.RegisterParams = &api.RegisterParams{
+		Address: s.selfIp,
+		Name:    api.Bulb,
+		Port:    s.selfPort,
+		Type:    api.Device,
+	}
+	var regresponse api.RegisterReturn
 
-		// Dial to the first gateway
-		client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
-		if err != nil {
-			log.Fatal("dialing error: %+v", err)
-		}
-	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: s.selfIp, Port: s.selfPort}, &regresponse, nil)
-	id1 :=  <-replycall1.Done
-
+	// Dial to the first gateway
+	err = util.RpcSync(s.gatewayIp, s.gatewayPort,
+		"Gateway.Register", regparam, &regresponse, false)
+	if err != nil {
 		// Dial to the second gateway
-		client, err = rpc.Dial("tcp", s.gatewayIp2+":"+s.gatewayPort2)
+		err = util.RpcSync(s.gatewayIp2, s.gatewayPort2,
+			"Gateway.Register", regparam, &regresponse, false)
 		if err != nil {
-			log.Fatal("dialing error: %+v", err)
+			log.Fatal("Could not register with a gateway.\n")
 		}
-	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: s.selfIp, Port: s.selfPort}, &regresponse, nil)
-	id2 :=  <-replycall2.Done
-
-	if((id1 != nil) || (id2 != nil)) {
-		log.Println("Registering with the gateway")
-	} else {
-		log.Println("Register RPC call return value: ",id1, id2)
 	}
 
 	s.id.Set(regresponse.DeviceId)
@@ -110,16 +105,6 @@ func (s *SmartBulb) ChangeState(params *api.StateInfo, reply *api.StateInfo) err
 	//go s.sendState()
 	return nil
 }
-
-// sendState() is used to report state to the middleware
-/*
-func (s *SmartBulb) sendState() {
-	var err error = s.orderMW.SendState(api.StateInfo{DeviceId: s.id, DeviceName: api.Bulb, State: s.state.GetState()}, s.gatewayIp, s.gatewayPort)
-	if err != nil {
-		log.Printf("Error sending state: %+v", err)
-	}
-}
-*/
 
 // This is an RPC function that is issued by the gateway to update the address port of the 
 // loadsharing gateway the device is talking to. It returns the device id

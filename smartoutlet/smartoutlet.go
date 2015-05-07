@@ -45,30 +45,25 @@ func newSmartOutlet(gatewayIp string, gatewayPort string, gatewayIp2 string, gat
 
 func (s *SmartOutlet) start() {
 	//register with gateway
-	var client *rpc.Client
 	var err error
-	var regresponse *api.RegisterReturn
+	var regparam *api.RegisterParams = &api.RegisterParams{
+		Address: s.selfIp,
+		Name:    api.Outlet,
+		Port:    s.selfPort,
+		Type:    api.Device,
+	}
+	var regresponse api.RegisterReturn
 
-		// Dial to the first gateway
-		client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
-		if err != nil {
-			log.Fatal("dialing error: %+v", err)
-		}
-	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: s.selfIp, Port: s.selfPort}, &regresponse, nil)
-	id1 :=  <-replycall1.Done
-
+	// Dial to the first gateway
+	err = util.RpcSync(s.gatewayIp, s.gatewayPort,
+		"Gateway.Register", regparam, &regresponse, false)
+	if err != nil {
 		// Dial to the second gateway
-		client, err = rpc.Dial("tcp", s.gatewayIp2+":"+s.gatewayPort2)
+		err = util.RpcSync(s.gatewayIp2, s.gatewayPort2,
+			"Gateway.Register", regparam, &regresponse, false)
 		if err != nil {
-			log.Fatal("dialing error: %+v", err)
+			log.Fatal("Could not register with a gateway.\n")
 		}
-	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: s.selfIp, Port: s.selfPort}, &regresponse, nil)
-	id2 :=  <-replycall2.Done
-
-	if((id1 != nil) || (id2 != nil)) {
-		log.Println("Registering with the gateway")
-	} else {
-		log.Println("Register RPC call return value: ",id1, id2)
 	}
 
 	s.id.Set(regresponse.DeviceId)
@@ -76,28 +71,6 @@ func (s *SmartOutlet) start() {
 	replica := s.greplica.Get()
 	log.Printf("Device id: %d %s %s", s.id.Get(), replica.Address, replica.Port)
 
-/*	client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
-	if err != nil {
-		log.Fatal("dialing error: %+v", err)
-	}
-	err = client.Call("Gateway.Register", &api.RegisterParams{Type: api.Device, Name: api.Outlet, Address: s.selfIp, Port: s.selfPort}, &s.id)
-	if err != nil {
-		log.Fatal("calling error: %+v", err)
-	}
-*/
-//	log.Printf("Device id: %d", s.id)
-	//initialize middleware
-/*	s.orderMW = ordermw.GetOrderingMiddleware(s.ordering, s.id, s.selfIp, s.selfPort)
-
-	//send acknowledgment of registration
-	var empty struct{}
-	client, err = rpc.Dial("tcp", s.gatewayIp+":"+s.gatewayPort)
-	if err != nil {
-		log.Printf("dialing error: %+v", err)
-		return
-	}
-	client.Go("Gateway.RegisterAck", s.id, &empty, nil)
-*/
 	//start RPC server
 	err = rpc.Register(api.DeviceInterface(s))
 	if err != nil {

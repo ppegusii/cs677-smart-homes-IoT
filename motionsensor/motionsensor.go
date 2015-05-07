@@ -29,6 +29,7 @@ type MotionSensor struct {
 	selfPort     string
 	state        structs.SyncState
 	greplica 	 *structs.SyncRegGatewayUserParam // This is the gateway replica assigned for load balancing
+	rpcSync      api.RpcSyncInterface
 }
 
 // create and initialize a new motion sensor
@@ -49,38 +50,30 @@ func newMotionSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, ga
 
 func (m *MotionSensor) start() {
 	//register with gateway
-
-	var client *rpc.Client
 	var err error
-	var regresponse *api.RegisterReturn
+	var regparam *api.RegisterParams = &api.RegisterParams{
+		Address: m.selfIp,
+		Name:    api.Motion,
+		Port:    m.selfPort,
+		Type:    api.Sensor,
+	}
+	var regresponse api.RegisterReturn
 
 	// Dial to the first gateway
-	client, err = rpc.Dial("tcp", m.gatewayIp+":"+m.gatewayPort)
+	err = util.RpcSync(m.gatewayIp, m.gatewayPort,
+		"Gateway.Register", regparam, &regresponse, false)
 	if err != nil {
-		log.Fatal("dialing error: %+v", err)
-	}
-	replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &regresponse, nil)
-	id1 := <-replycall1.Done
-
-	// Dial to the second gateway
-	client, err = rpc.Dial("tcp", m.gatewayIp2+":"+m.gatewayPort2)
-	if err != nil {
-		log.Fatal("dialing error: %+v", err)
-	}
-	replycall2 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: m.selfIp, Port: m.selfPort}, &regresponse, nil)
-	id2 := <-replycall2.Done
-
-	if (id1 != nil) || (id2 != nil) {
-		log.Println("Registering with the gateway")
-	} else {
-		log.Println("Register RPC call return value: ", id1, id2)
+		// Dial to the second gateway
+		err = util.RpcSync(m.gatewayIp2, m.gatewayPort2,
+			"Gateway.Register", regparam, &regresponse, false)
+		if err != nil {
+			log.Fatal("Could not register with a gateway.\n")
+		}
 	}
 
 	m.id.Set(regresponse.DeviceId)
 	m.greplica.Set(api.RegisterGatewayUserParams{Address: regresponse.Address, Port: regresponse.Port})
 	replica := m.greplica.Get()
-//	m.gRPCIp.Set(regresponse.Address)
-//	m.gRPCPort.Set(regresponse.Port)
 	log.Printf("Device id: %d %s %s", m.id.Get(), replica.Address, replica.Port)
 
 	util.LogCurrentState(m.state.GetState())
@@ -196,11 +189,17 @@ func (m *MotionSensor) QueryState(params *int, reply *api.StateInfo) error {
 
 // The motion sensor is a push based device; sendState() is used to report state to the middleware
 func (m *MotionSensor) sendState() {
+	replica := m.greplica.Get()
+	m.rpcSync.RpcSync(replica.Address, replica.Port,
+		"Gateway.ReportMotion",
+		m.state.GetState(), &api.Empty{}, false)
+}
+/*
 	var err error = m.orderMW.SendState(api.StateInfo{DeviceId: m.id.Get(), DeviceName: api.Motion, State: m.state.GetState()}, m.gatewayIp, m.gatewayPort)
 	if err != nil {
 		log.Printf("Error sending state: %+v", err)
 	}
-}
+*/
 
 // This is an RPC function that is issued by the gateway to update the address port of the 
 // loadsharing gateway the device is talking to. It returns the device id
