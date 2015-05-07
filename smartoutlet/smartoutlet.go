@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/rpc"
+	"time"
 )
 
 // This struct contains all the attributes of the smart outlet and information needed for
@@ -102,6 +103,7 @@ func (s *SmartOutlet) ChangeState(params *api.StateInfo, reply *api.StateInfo) e
 	util.LogCurrentState(s.state.GetState())
 	reply.DeviceId = s.id.Get()
 	reply.State = params.State
+	reply.Clock = int(time.Now().Unix()) //current timestamp for event ordering
 	//go s.sendState()
 	return nil
 }
