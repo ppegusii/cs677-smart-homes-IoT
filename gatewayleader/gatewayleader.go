@@ -30,6 +30,7 @@ type GatewayLeader struct {
 	electionCheckLock  sync.Mutex
 	electionInProgress bool
 	ipPort             api.RegisterGatewayUserParams
+	iWonReplies        chan int // Used to wait for all IWon replies
 	iWonTimer          *structs.SyncTimer
 	leader             *structs.SyncRegGatewayUserParam
 	okTimer            *structs.SyncTimer
@@ -127,6 +128,7 @@ func (this *GatewayLeader) ReportMotion(params *api.StateInfo, empty *struct{}) 
 }
 
 // Receive election msg from self or another replica.
+// Only entry into election process.
 func (this *GatewayLeader) Election(replica api.RegisterGatewayUserParams, ok *api.Empty) error {
 	log.Printf("Received election msg from: %+v\n", replica)
 	// Ensure no parallel elections.
@@ -245,8 +247,11 @@ func (this *GatewayLeader) sendIWons() {
 	var thisId string = util.RegisterGatewayUserParamsToString(this.ipPort)
 	// Declare self leader
 	this.leader.Set(this.ipPort)
+	var ipPorts []api.RegisterGatewayUserParams = this.replicas.getIpPorts()
+	// Create a buffered channel for pausing until all IWon replies received
+	this.iWonReplies = make(chan int, len(ipPorts))
 	// Send IWon messages to all replicas with lower id
-	for _, ipPort := range this.replicas.getIpPorts() {
+	for _, ipPort := range ipPorts {
 		var id string = util.RegisterGatewayUserParamsToString(ipPort)
 		if id < thisId {
 			util.RpcAsync(ipPort.Address, ipPort.Port,
@@ -254,6 +259,12 @@ func (this *GatewayLeader) sendIWons() {
 				this.handleIWonReplies, false)
 		}
 	}
+	// Wait for all IWon replies
+	for i := 0; i < len(ipPorts); i++ {
+		<-this.iWonReplies
+	}
+	// Rebalance load
+	this.rebalanceLoad()
 	// End election.
 	this.electionCheckLock.Lock()
 	if this.electionInProgress {
@@ -267,6 +278,7 @@ func (this *GatewayLeader) sendIWons() {
 
 // Handle IWon replies by declaring the responding replica alive.
 func (this *GatewayLeader) handleIWonReplies(_, reply interface{}, err error) {
+	this.iWonReplies <- 1
 	if err != nil {
 		return
 	}
@@ -291,21 +303,44 @@ func (this *GatewayLeader) getHandleNonleaderDeath(ipPort string) func() {
 	return func() {
 		log.Printf("Dead replica: %s\n", ipPort)
 		this.replicas.setAlive(ipPort, false)
-		this.rebalanceLoad()
+		// Starting an election to load balance. Election is not necessary, but elections already
+		// have the nice property that they block request processing.
+		this.Election(this.ipPort, &api.Empty{})
 	}
 }
 
 // Rebalance the load on the replicas.
 // Use the replica data structure to get new assignments.
 // Notify sensors of new assignments.
+// This will only be called within elections.
 func (this *GatewayLeader) rebalanceLoad() {
-	// TODO synchronization to keep queries from going through if election not in progress
 	// Use the replica data structure to get new assignments.
 	var assigns *map[api.RegisterGatewayUserParams][]api.RegisterParams = this.replicas.rebalanceLoad()
 	// Notify sensors of new assignments.
-	//for ipPort, assignees := range *assigns {
-	for ipPort, _ := range *assigns {
-		log.Printf(ipPort.Address)
+	for ipPort, assignees := range *assigns {
+		for _, assignee := range assignees {
+			var rpcName string
+			//Need to map Type to RPC name
+			switch assignee.Name {
+			case api.Door:
+				rpcName = "DoorSensor"
+				break
+			case api.Motion:
+				rpcName = "MotionSensor"
+				break
+			case api.Temperature:
+				rpcName = "TemperatureSensor"
+				break
+			default:
+				log.Printf("Assignee not a sensor: %+v\n", assignee)
+				continue
+			}
+			rpcName += ".ChangeGateway"
+			// Calling a synchronous RPC in a new routine.
+			// Don't care if the sensor is dead or other communication error.
+			var id int
+			go util.RpcSync(assignee.Address, assignee.Port, rpcName, ipPort, &id, false)
+		}
 	}
 }
 
