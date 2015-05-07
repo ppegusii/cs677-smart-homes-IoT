@@ -110,7 +110,12 @@ func (this *TestController) startProcesses() {
 	}
 	//make sure all processes are up and registered
 	//extra time for replica election
-	waitFor(6 * time.Second)
+	fmt.Printf("Waiting for elections and registrations to complete")
+	for i := 0; i < 6; i++ {
+		waitFor(time.Second)
+		fmt.Printf(".")
+	}
+	fmt.Println()
 }
 
 //Starts a local process.

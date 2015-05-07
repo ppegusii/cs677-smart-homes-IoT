@@ -6,25 +6,38 @@ import ()
 
 const UNREGISTERED = -10
 
-type Type int
+//type Type int
+type Type string
 
 // Device types
 const (
-	InvalidType Type = iota
-	Sensor      Type = iota
-	Device      Type = iota
+	/*
+		InvalidType Type = iota
+		Sensor      Type = iota
+		Device      Type = iota
+	*/
+	Sensor Type = "sensor"
+	Device Type = "device"
 )
 
-type Name int
+//type Name int
+type Name string
 
 //Device Names
 const (
-	InvalidName Name = iota
-	Bulb        Name = iota
-	Door        Name = iota
-	Motion      Name = iota
-	Outlet      Name = iota
-	Temperature Name = iota
+	/*
+		InvalidName Name = iota
+		Bulb        Name = iota
+		Door        Name = iota
+		Motion      Name = iota
+		Outlet      Name = iota
+		Temperature Name = iota
+	*/
+	Bulb        Name = "bulb"
+	Door        Name = "door"
+	Motion      Name = "motion"
+	Outlet      Name = "outlet"
+	Temperature Name = "temp"
 )
 
 type State int
@@ -40,24 +53,36 @@ const (
 	Open         State = iota //6
 )
 
-type Mode int
+//type Mode int
+type Mode string
 
 const (
-	InvalidMode Mode = iota
-	Away        Mode = iota
-	Home        Mode = iota
-	// ***These modes should be replaced with cache queries.***
-	//These states indicate whether the
-	//gateway believes smart outlets are
-	//on or off.
-	OutletsOn  Mode = iota
-	OutletsOff Mode = iota
+	/*
+		InvalidMode Mode = iota
+		Away        Mode = iota
+		Home        Mode = iota
+		// ***These modes should be replaced with cache queries.***
+		//These states indicate whether the
+		//gateway believes smart outlets are
+		//on or off.
+		OutletsOn  Mode = iota
+		OutletsOff Mode = iota
+	*/
+	Away       Mode = "away"
+	Home       Mode = "home"
+	OutletsOn  Mode = "outletson"
+	OutletsOff Mode = "outletsoff"
 )
 
 // Used to log gateway state in database.
 type ModeAndClock struct {
 	Clock int
 	Mode  Mode
+}
+
+//This shouldn't be here, but oh well.
+func (this *ModeAndClock) GetClock() int {
+	return this.Clock
 }
 
 // Interfaces provided by the Database layer
@@ -138,7 +163,7 @@ type UserInterface interface {
 
 // Any struct that has a clock should implement this interface
 type ClockInterface interface {
-	Clock() int
+	GetClock() int
 }
 
 //Structure used during device registration,
@@ -154,7 +179,7 @@ type RegisterParams struct {
 }
 
 //This shouldn't be here, but oh well.
-func (this *RegisterParams) Clock() int {
+func (this *RegisterParams) GetClock() int {
 	return this.Clock
 }
 
@@ -179,7 +204,7 @@ type StateInfo struct {
 }
 
 //This shouldn't be here, but oh well.
-func (this *StateInfo) Clock() int {
+func (this *StateInfo) GetClock() int {
 	return this.Clock
 }
 

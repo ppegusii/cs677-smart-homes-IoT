@@ -12,7 +12,7 @@ import (
 	"log"
 	"net"
 	"net/rpc"
-	"strconv"
+	//"strconv"
 )
 
 // This struct contains all the attributes of the database and information needed for
@@ -98,10 +98,17 @@ func (d *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) er
 			params.Address,
 			params.Port))
 	*/
+	/*
+		var clock interface{} = *params
+		clock.(jj
+		clock.GetClock()
+	*/
 	err = d.devSen.WriteJson(*params)
 	if err != nil {
 		return err
 	}
+	unm, _ := d.devSen.GetRegParamsSince(-1)
+	log.Printf("unmarshaled = %+v\n", unm)
 	//Creates tables to track object states and events.
 	var f *structs.SyncFile
 	f, err = structs.NewSyncFile(fmt.Sprintf("%d_%s_events.tbl",
@@ -160,20 +167,24 @@ func (d *Database) RegisterGateway(params *api.RegisterGatewayUserParams, _ *str
 }
 
 func (d *Database) writeStateInfo(stateInfo *api.StateInfo, f *structs.SyncFile) (int, error) {
-	var line string
-	var i int
-	var err error
-	var stateStr string
-	if stateInfo.DeviceName == api.Temperature {
-		stateStr = strconv.Itoa(int(stateInfo.State))
-	} else {
-		stateStr = util.StateToString(stateInfo.State)
-	}
-	line = fmt.Sprintf("%d,%d,%s,%s\n",
-		stateInfo.Clock,
-		stateInfo.DeviceId,
-		util.NameToString(stateInfo.DeviceName),
-		stateStr)
-	i, err = f.WriteString(line)
-	return i, err
+	/*
+			var line string
+			var i int
+			var err error
+			var stateStr string
+			if stateInfo.DeviceName == api.Temperature {
+				stateStr = strconv.Itoa(int(stateInfo.State))
+			} else {
+				stateStr = util.StateToString(stateInfo.State)
+			}
+				line = fmt.Sprintf("%d,%d,%s,%s\n",
+					stateInfo.Clock,
+					stateInfo.DeviceId,
+					util.NameToString(stateInfo.DeviceName),
+					stateStr)
+				i, err = f.WriteString(line)
+		return i, err
+	*/
+	var err error = f.WriteJson(stateInfo)
+	return 0, err
 }

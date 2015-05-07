@@ -319,12 +319,55 @@ func (s *SyncFile) WriteJson(o interface{}) error {
 }
 
 // Unmarshal all lines into structs
-// Put them into a priority queue
 // Return the lines that have times greater than the given clock
-// Structs must implement the Clock interface
-// Very efficient! ;)
-func (s *SyncFile) GetObjectsSince(clock int, structPtr interface{}) []interface{} {
-	//var reader *bufio.Reader =
+func (s *SyncFile) GetRegParamsSince(startTime int) (*[]api.RegisterParams, error) {
+	s.Lock()
+	defer s.Unlock()
+	s.f.Seek(0, 0)
+	var scanner *bufio.Scanner = bufio.NewScanner(s.f)
+	var err error
+	var b []byte
+	var things []api.RegisterParams = make([]api.RegisterParams, 0)
+	// http://stackoverflow.com/questions/8757389/reading-file-line-by-line-in-go
+	for scanner.Scan() {
+		b = []byte(scanner.Text())
+		var thing api.RegisterParams
+		err = json.Unmarshal(b, &thing)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		if thing.GetClock() > startTime {
+			things = append(things, thing)
+		}
+	}
+	return &things, nil
+}
+
+// Unmarshal all lines into structs
+// Return the lines that have times greater than the given clock
+func (s *SyncFile) GetStateInfoSince(startTime int) (*[]api.StateInfo, error) {
+	s.Lock()
+	defer s.Unlock()
+	s.f.Seek(0, 0)
+	var scanner *bufio.Scanner = bufio.NewScanner(s.f)
+	var err error
+	var b []byte
+	var things []api.StateInfo = make([]api.StateInfo, 0)
+	// http://stackoverflow.com/questions/8757389/reading-file-line-by-line-in-go
+	for scanner.Scan() {
+		b = []byte(scanner.Text())
+		var thing api.StateInfo
+		err = json.Unmarshal(b, &thing)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		if thing.GetClock() > startTime {
+			things = append(things, thing)
+		}
+	}
+	return &things, nil
 }
 
 type SyncMapIntStateInfo struct {
