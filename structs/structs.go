@@ -3,6 +3,8 @@
 package structs
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"github.com/nu7hatch/gouuid"
 	"github.com/oleiade/lane"
@@ -300,6 +302,29 @@ func (s *SyncFile) WriteString(str string) (int, error) {
 	n, err = s.f.WriteString(str)
 	s.Unlock()
 	return n, err
+}
+
+func (s *SyncFile) WriteJson(o interface{}) error {
+	var err error
+	var b []byte
+	var str string
+	b, err = json.Marshal(o)
+	if err != nil {
+		return err
+	}
+	str = string(b)
+	str += "\n"
+	_, err = s.WriteString(str)
+	return err
+}
+
+// Unmarshal all lines into structs
+// Put them into a priority queue
+// Return the lines that have times greater than the given clock
+// Structs must implement the Clock interface
+// Very efficient! ;)
+func (s *SyncFile) GetObjectsSince(clock int, structPtr interface{}) []interface{} {
+	//var reader *bufio.Reader =
 }
 
 type SyncMapIntStateInfo struct {

@@ -82,15 +82,13 @@ type NodeInterface interface {
 // have meaningful returns to node RPC calls.***
 // Interface provided by the Gateway
 type GatewayInterface interface {
-	// Used for testing
-	Query(params Name, _ *struct{}) error
+	Query(params Name, _ *struct{}) error // Used for testing
 	Register(params *RegisterParams, reply *RegisterReturn) error
 	RegisterUser(params *RegisterGatewayUserParams, _ *struct{}) error
 	ReportDoorState(params *StateInfo, _ *struct{}) error
 	ReportMotion(params *StateInfo, _ *struct{}) error
-	//RegisterAck(id int, _ *struct{}) error
-	// Initialize the gateway and start routines
-	Start()
+	Start() // Initialize the gateway and start routines
+	//UpdateSensorAssignments(params []api.RegisterParams, _ *Empty) error
 }
 
 // A dummy wrapper of GatewayInterface to test
@@ -138,15 +136,26 @@ type UserInterface interface {
 	TextMessage(params *string, _ *struct{}) error
 }
 
+// Any struct that has a clock should implement this interface
+type ClockInterface interface {
+	Clock() int
+}
+
 //Structure used during device registration,
 //it is send as one of the parameters during RPC Register call to gateway
 type RegisterParams struct {
 	Address  string
+	Clock    int
 	DeviceId int
 	Name     Name
 	Port     string
 	State    State
 	Type     Type
+}
+
+//This shouldn't be here, but oh well.
+func (this *RegisterParams) Clock() int {
+	return this.Clock
 }
 
 type RegisterReturn struct {
@@ -167,6 +176,11 @@ type StateInfo struct {
 	DeviceId   int
 	DeviceName Name
 	State      State
+}
+
+//This shouldn't be here, but oh well.
+func (this *StateInfo) Clock() int {
+	return this.Clock
 }
 
 // Used for no arguments or replies in RPCs

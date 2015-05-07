@@ -90,12 +90,15 @@ func (d *Database) LogMode(params api.ModeAndClock, _ *struct{}) error {
 func (d *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) error {
 	var err error
 	//Writes object information to table.
-	_, err = d.devSen.WriteString(fmt.Sprintf("%d,%s,%s,%s,%s\n",
-		params.DeviceId,
-		util.TypeToString(params.Type),
-		util.NameToString(params.Name),
-		params.Address,
-		params.Port))
+	/*
+		_, err = d.devSen.WriteString(fmt.Sprintf("%d,%s,%s,%s,%s\n",
+			params.DeviceId,
+			util.TypeToString(params.Type),
+			util.NameToString(params.Name),
+			params.Address,
+			params.Port))
+	*/
+	err = d.devSen.WriteJson(*params)
 	if err != nil {
 		return err
 	}
