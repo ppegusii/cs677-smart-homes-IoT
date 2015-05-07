@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/rpc"
 	"os"
+	"time"
 )
 
 // This struct contains all the attributes of the door sensor and information needed for
@@ -181,9 +182,15 @@ func (d *DoorSensor) QueryState(params *int, reply *api.StateInfo) error {
 // sendState() is used to report state to the gateway
 func (d *DoorSensor) sendState() {
 	replica := d.greplica.Get()
-	d.rpcSync.RpcSync(replica.Address, replica.Port,
+	var stateInfo *api.StateInfo = &api.StateInfo{
+		Clock:      int(time.Now().Unix()), //current timestamp for event ordering
+		DeviceId:   d.id.Get(),
+		DeviceName: api.Door,
+		State:      d.state.GetState(),
+	}
+	util.RpcSync(replica.Address, replica.Port,
 		"Gateway.ReportDoorState",
-		d.state.GetState(), &api.Empty{}, false)
+		stateInfo, &api.Empty{}, false)
 }
 
 // This is an RPC function that is issued by the gateway to update the address port of the 
