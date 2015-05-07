@@ -62,6 +62,7 @@ func (t *TemperatureSensor) start() {
 	err = util.RpcSync(t.gatewayIp, t.gatewayPort,
 		"Gateway.Register", regparam, &regresponse, false)
 	if err != nil {
+		// Dial to the second gateway
 		err = util.RpcSync(t.gatewayIp2, t.gatewayPort2,
 			"Gateway.Register", regparam, &regresponse, false)
 		if err != nil {
@@ -71,7 +72,7 @@ func (t *TemperatureSensor) start() {
 	/*
 			client, err = rpc.Dial("tcp", t.gatewayIp+":"+t.gatewayPort)
 			if err != nil {
-				log.Printf("dialing error: %+v", err)
+				log.Fatal("dialing error: %+v", err)
 			}
 			replycall1 := client.Go("Gateway.Register", &api.RegisterParams{Type: api.Sensor, Name: api.Motion, Address: t.selfIp, Port: t.selfPort}, &regresponse, nil)
 			id1 := <-replycall1.Done
