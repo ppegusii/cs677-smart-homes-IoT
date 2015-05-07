@@ -18,7 +18,7 @@ import (
 // ordering for clock synchronization, peer table to keep a track of ip of the peers
 // and reference to its middleware
 type MotionSensor struct {
-	id           int
+	id           *structs.SyncInt
 	gatewayIp    string
 	gatewayPort  string
 	gatewayIp2   string
@@ -28,13 +28,13 @@ type MotionSensor struct {
 	selfIp       string
 	selfPort     string
 	state        structs.SyncState
-	gRPCIp 		 string
-	gRPCPort	 string
+	greplica 	 *structs.SyncRegGatewayUserParam // This is the gateway replica assigned for load balancing
 }
 
 // create and initialize a new motion sensor
 func newMotionSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *MotionSensor {
 	return &MotionSensor{
+		id:			  structs.NewSyncInt(api.UNREGISTERED),
 		gatewayIp:    gatewayIp,
 		gatewayPort:  gatewayPort,
 		gatewayIp2:   gatewayIp2,
@@ -43,6 +43,7 @@ func newMotionSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, ga
 		selfIp:       selfIp,
 		selfPort:     selfPort,
 		state:        *structs.NewSyncState(api.MotionStop),
+		greplica:	  structs.NewSyncRegGatewayUserParam(),
 	}
 }
 
@@ -75,10 +76,12 @@ func (m *MotionSensor) start() {
 		log.Println("Register RPC call return value: ", id1, id2)
 	}
 
-	m.id = regresponse.DeviceId
-	m.gRPCIp = regresponse.Address
-	m.gRPCPort = regresponse.Port
-	log.Printf("Device id: %d %s %s", m.id, m.gRPCIp, m.gRPCPort)
+	m.id.Set(regresponse.DeviceId)
+	m.greplica.Set(api.RegisterGatewayUserParams{Address: regresponse.Address, Port: regresponse.Port})
+	replica := m.greplica.Get()
+//	m.gRPCIp.Set(regresponse.Address)
+//	m.gRPCPort.Set(regresponse.Port)
+	log.Printf("Device id: %d %s %s", m.id.Get(), replica.Address, replica.Port)
 
 	util.LogCurrentState(m.state.GetState())
 	//initialize middleware
@@ -183,7 +186,7 @@ func (m *MotionSensor) getInput() {
 
 //This is an RPC function that is issued by the gateway to get the state of the motion sensor
 func (m *MotionSensor) QueryState(params *int, reply *api.StateInfo) error {
-	reply.DeviceId = m.id
+	reply.DeviceId = m.id.Get()
 	reply.DeviceName = api.Motion
 	reply.State = m.state.GetState()
 	// ***Commented out gateway will get state from reply***
@@ -193,7 +196,7 @@ func (m *MotionSensor) QueryState(params *int, reply *api.StateInfo) error {
 
 // The motion sensor is a push based device; sendState() is used to report state to the middleware
 func (m *MotionSensor) sendState() {
-	var err error = m.orderMW.SendState(api.StateInfo{DeviceId: m.id, DeviceName: api.Motion, State: m.state.GetState()}, m.gatewayIp, m.gatewayPort)
+	var err error = m.orderMW.SendState(api.StateInfo{DeviceId: m.id.Get(), DeviceName: api.Motion, State: m.state.GetState()}, m.gatewayIp, m.gatewayPort)
 	if err != nil {
 		log.Printf("Error sending state: %+v", err)
 	}
@@ -202,8 +205,7 @@ func (m *MotionSensor) sendState() {
 // This is an RPC function that is issued by the gateway to update the address port of the 
 // loadsharing gateway the device is talking to. It returns the device id
 func (m *MotionSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
-	m.gRPCPort = params.Port
-	m.gRPCIp = params.Address
-	*reply = m.id
+	m.greplica.Set(api.RegisterGatewayUserParams{Address: params.Address, Port: params.Port})
+	*reply = m.id.Get()
 	return nil
 }
