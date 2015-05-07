@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/rpc"
 	"os"
+	"time"
 )
 
 // This struct contains all the attributes of the temperature sensor and information needed for
@@ -132,6 +133,7 @@ func (t *TemperatureSensor) QueryState(params *int, reply *api.StateInfo) error 
 	reply.DeviceId = t.id.Get()
 	reply.DeviceName = api.Temperature
 	reply.State = t.temperature.GetState()
+	reply.Clock = int(time.Now().Unix()) //current timestamp for event ordering
 	//go t.sendState()
 	return nil
 }
