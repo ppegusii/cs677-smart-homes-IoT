@@ -81,7 +81,7 @@ func (this *GatewayLeader) Register(params *api.RegisterParams, reply *api.Regis
 		this.RUnlock()
 		return err
 	}
-	var start int = util.GetTime()
+	var start int64 = util.GetTime()
 	var err error = this.GatewayInterface.Register(params, reply)
 	if err != nil {
 		this.RUnlock()
@@ -93,12 +93,19 @@ func (this *GatewayLeader) Register(params *api.RegisterParams, reply *api.Regis
 	reply.Address = assigned.Address
 	reply.Port = assigned.Port
 	// Release consistency.
+	this.sendDataToAllReplicas(start)
+	this.RUnlock()
+	return err
+}
+
+// Multicast local data to all replicas.
+func (this *GatewayLeader) sendDataToAllReplicas(start int64) {
 	// Get local data.
 	var data api.ConsistencyData
 	this.GatewayInterface.PullData(start, &data)
 	// Add sensor assignments.
 	data.AssignedNodes = *(this.replicas.getAssignments())
-	// Send local data.
+	// Send data.
 	var thisId string = util.RegisterGatewayUserParamsToString(this.ipPort)
 	for _, ipPort := range this.replicas.getIpPorts() {
 		var id string = util.RegisterGatewayUserParamsToString(ipPort)
@@ -107,8 +114,6 @@ func (this *GatewayLeader) Register(params *api.RegisterParams, reply *api.Regis
 				"Gateway.PushData", &data, &api.Empty{}, false)
 		}
 	}
-	this.RUnlock()
-	return err
 }
 
 // Convenience method for determining if this replica is the leader.
@@ -145,7 +150,7 @@ func (this *GatewayLeader) ReportMotion(params *api.StateInfo, empty *struct{}) 
 }
 
 // Data requested by another replica
-func (this *GatewayLeader) PullData(clock int, data *api.ConsistencyData) error {
+func (this *GatewayLeader) PullData(clock int64, data *api.ConsistencyData) error {
 	var err error = this.GatewayInterface.PullData(clock, data)
 	log.Printf("Sending data: %+v\n", data)
 	// Add sensor assignments.

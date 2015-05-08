@@ -12,33 +12,30 @@ import (
 	"log"
 	"net"
 	"net/rpc"
-	//"strconv"
 )
 
 // This struct contains all the attributes of the database and information needed for
 // ordering for clock synchronization, peer table to keep a track of ip of the peers and reference to its middleware
 type Database struct {
-	devSen      *structs.SyncFile
-	events      *structs.SyncMapIntSyncFile
-	gateway     *structs.SyncRegGatewayUserParam
-	gwMode      *structs.SyncFile
-	ip          string
-	orderMW     api.OrderingMiddlewareInterface
-	port        string
-	stateCaches *structs.SyncMapIntSyncLatestStateInfos
-	states      *structs.SyncMapIntSyncFile
+	devSen  *structs.SyncFile
+	events  *structs.SyncMapIntSyncFile
+	gateway *structs.SyncRegGatewayUserParam
+	gwMode  *structs.SyncFile
+	ip      string
+	orderMW api.OrderingMiddlewareInterface
+	port    string
+	states  *structs.SyncMapIntSyncFile
 }
 
 // initialize a new database
 func newDatabase(ip string, port string, ordering api.Ordering) *Database {
 	return &Database{
-		events:      structs.NewSyncMapIntSyncFile(),
-		gateway:     structs.NewSyncRegGatewayUserParam(),
-		ip:          ip,
-		orderMW:     ordermw.GetOrderingMiddleware(ordering, int(api.DatabaseOID), ip, port),
-		port:        port,
-		stateCaches: structs.NewSyncMapIntSyncLatestStateInfos(2),
-		states:      structs.NewSyncMapIntSyncFile(),
+		events:  structs.NewSyncMapIntSyncFile(),
+		gateway: structs.NewSyncRegGatewayUserParam(),
+		ip:      ip,
+		orderMW: ordermw.GetOrderingMiddleware(ordering, int(api.DatabaseOID), ip, port),
+		port:    port,
+		states:  structs.NewSyncMapIntSyncFile(),
 	}
 }
 
@@ -98,21 +95,11 @@ func (d *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) er
 			params.Address,
 			params.Port))
 	*/
-	/*
-		var clock interface{} = *params
-		clock.(jj
-		clock.GetClock()
-	*/
-	//err = d.devSen.WriteJson(*params)
 	var s []api.RegisterParams = []api.RegisterParams{*params}
 	err = d.devSen.WriteRegParam(&s)
 	if err != nil {
 		return err
 	}
-	/*
-		unm, _ := d.devSen.GetRegParamsSince(-1)
-		log.Printf("unmarshaled = %+v\n", unm)
-	*/
 	//Creates tables to track object states and events.
 	var f *structs.SyncFile
 	f, err = structs.NewSyncFile(fmt.Sprintf("%d_%s_events.tbl",
@@ -149,13 +136,16 @@ func (d *Database) AddState(params *api.StateInfo, _ *struct{}) error {
 		return errors.New(fmt.Sprintf("Invalid device ID: %d", params.DeviceId))
 	}
 	_, err := d.writeStateInfo(params, f)
-	d.stateCaches.Get(params.DeviceId).AddStateInfo(*params)
 	return err
 }
 
 //Given a clock value and device id, return the cached state info that happened just before
 func (d *Database) GetHappensBefore(params api.StateInfo, reply *api.StateInfo) error {
-	var before, _ *api.StateInfo = d.stateCaches.Get(params.DeviceId).GetBeforeAndAfter(params.Clock)
+	f, ok := d.states.Get(params.DeviceId)
+	if !ok {
+		return errors.New(fmt.Sprintf("Invalid device ID: %d", params.DeviceId))
+	}
+	var before *api.StateInfo = f.GetStateInfoHappensBefore(params.Clock)
 	log.Printf("before = %+v\n", before)
 	if before == nil {
 		return nil
@@ -189,13 +179,12 @@ func (d *Database) writeStateInfo(stateInfo *api.StateInfo, f *structs.SyncFile)
 				i, err = f.WriteString(line)
 		return i, err
 	*/
-	//var err error = f.WriteJson(stateInfo)
 	var s []api.StateInfo = []api.StateInfo{*stateInfo}
 	var err error = f.WriteStateInfo(&s)
 	return 0, err
 }
 
-func (d *Database) GetDataSince(clock int, data *api.ConsistencyData) error {
+func (d *Database) GetDataSince(clock int64, data *api.ConsistencyData) error {
 	var err error
 	var rp *[]api.RegisterParams
 	var si []api.StateInfo

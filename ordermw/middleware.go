@@ -2,6 +2,8 @@
 
 package ordermw
 
+/*
+
 import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
@@ -52,14 +54,6 @@ func (this *Middleware) start() {
 	if err != nil {
 		log.Fatal("rpc.Register error: %s\n", err)
 	}
-	/*
-		var listener net.Listener
-		listener, err = net.Listen("tcp", this.ip+":"+this.port)
-		if err != nil {
-			log.Fatal("net.Listen error: %s\n", err)
-		}
-		rpc.Accept(listener)
-	*/
 }
 
 
@@ -92,20 +86,6 @@ func (this *Middleware) SendNewNodeNotify(o api.OrderingNode) error {
 //Called only by other ordering implementations.
 func (this *Middleware) ReceiveNewNodesNotify(params map[int]api.OrderingNode, _ *struct{}) error {
 	//Check is the peer already exists in the peertable
-	/*
-		for key, value := range this.peers {
-			if this.Exists(params.ID) {
-				//Do nothing; peer exists
-			} else {
-				this.peers[params.ID] = params.Address + ":" + params.Port
-			}
-		}
-		// Testing code
-		for key, value := range this.peers {
-			fmt.Println(this.peers[key], key, value)
-		}
-		// Testing code ends
-	*/
 	return nil
 }
 
@@ -240,11 +220,6 @@ func (this *Middleware) Bully() {
 						log.Println("error dialing from Bully : %+v", key, err)
 						delete(this.peers, key)
 
-						/* Code for testing
-						for key, value := range this.peers {
-							fmt.Println(key, value)
-						}
-						*/
 					} else {
 						this.leaderElection = true
 						//						fmt.Println("Sending an Election Message from Device ID to device ID", this.id, key)
@@ -281,10 +256,6 @@ func (this *Middleware) Bully() {
 				}
 			}
 		}
-		/*		if(this.id == this.currentLeader){
-							go this.GetTime()
-				}
-		*/
 	} //end of ticker code
 }
 
@@ -307,11 +278,6 @@ func (this *Middleware) Election(id int, _ *struct{}) error {
 			if err != nil {
 				log.Println("error Calling RPC Okay from Election() : %+v", id, err)
 				delete(this.peers, id)
-				/* Code for testing
-				for key, value := range this.peers {
-					fmt.Println(key, value)
-				}
-				*/
 			}
 		}
 	}
@@ -345,11 +311,6 @@ func (this *Middleware) GetTime() {
 		var timestamp *api.BTimeStamp
 		leadertime := int32(time.Now().Unix())
 		fmt.Println("LeaderTime", leadertime)
-		/* Code for testing
-		for key, value := range this.peers {
-			fmt.Println(key, value)
-		}
-		*/
 		for key, value := range this.peers {
 			if key > -1 {
 				//					fmt.Println("Values of key and value are", key, value)
@@ -369,22 +330,10 @@ func (this *Middleware) GetTime() {
 						//Enter the timestamp in the map
 						//					fmt.Println(timestamp)
 						PeerTimestamps[timestamp.DeviceId] = timestamp.Timestamp
-						/* Code for testing
-						fmt.Println("The PeerTimestamps map looks as below after entering the timestamp:")
-						for key, value := range PeerTimestamps {
-							fmt.Println(key, value)
-						}
-						*/
 					}
 				}
 			}
 		}
-		/* Code for testing the values of peertimestamps
-		fmt.Println("The PeerTimestamps map looks as below:")
-		for key, value := range PeerTimestamps {
-			fmt.Println(key, value)
-		}
-		*/
 		//Now, that we have all timestamps take average of all the timestamps
 		for _, value := range PeerTimestamps {
 			count++
@@ -436,3 +385,4 @@ func (this *Middleware) SendTime(id int, timestamp *api.BTimeStamp) error {
 	//	fmt.Println("Unix timestamp is", timestamp.DeviceId, timestamp.Timestamp)
 	return nil
 }
+*/

@@ -2,6 +2,8 @@
 
 package ordermw
 
+/*
+
 import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
@@ -52,14 +54,16 @@ func (this *BClockDummy) start() {
 	if err != nil {
 		log.Fatal("rpc.Register error: %s\n", err)
 	}
-	/*
-		var listener net.Listener
-		listener, err = net.Listen("tcp", this.ip+":"+this.port)
-		if err != nil {
-			log.Fatal("net.Listen error: %s\n", err)
-		}
-		rpc.Accept(listener)
-	*/
+*/
+/*
+	var listener net.Listener
+	listener, err = net.Listen("tcp", this.ip+":"+this.port)
+	if err != nil {
+		log.Fatal("net.Listen error: %s\n", err)
+	}
+	rpc.Accept(listener)
+*/
+/*
 }
 
 // ShowPeer() is mainly used for testing if the peertable is updated correctly
@@ -86,20 +90,22 @@ func (this *BClockDummy) SendNewNodeNotify(o api.OrderingNode) error {
 //Called only by other ordering implementations.
 func (this *BClockDummy) ReceiveNewNodesNotify(params map[int]api.OrderingNode, _ *struct{}) error {
 	//Check is the peer already exists in the peertable
-	/*
-		for key, value := range this.peers {
-			if this.Exists(params.ID) {
-				//Do nothing; peer exists
-			} else {
-				this.peers[params.ID] = params.Address + ":" + params.Port
-			}
+*/
+/*
+	for key, value := range this.peers {
+		if this.Exists(params.ID) {
+			//Do nothing; peer exists
+		} else {
+			this.peers[params.ID] = params.Address + ":" + params.Port
 		}
-		// Testing code
-		for key, value := range this.peers {
-			fmt.Println(this.peers[key], key, value)
-		}
-		// Testing code ends
-	*/
+	}
+	// Testing code
+	for key, value := range this.peers {
+		fmt.Println(this.peers[key], key, value)
+	}
+	// Testing code ends
+*/
+/*
 	return nil
 }
 
@@ -233,52 +239,56 @@ func (this *BClockDummy) Bully() {
 					if err != nil {
 						log.Println("error dialing from Bully : %+v", key, err)
 						delete(this.peers, key)
+*/
 
-						/* Code for testing
-						for key, value := range this.peers {
-							fmt.Println(key, value)
-						}
-						*/
-					} else {
-						this.leaderElection = true
-						//						fmt.Println("Sending an Election Message from Device ID to device ID", this.id, key)
-						err = client.Call("BClockDummy.Election", this.id, &empty)
-						if err != nil {
-							log.Println("calling error: %+v", err)
-							delete(this.peers, key)
-						}
+/* Code for testing
+for key, value := range this.peers {
+	fmt.Println(key, value)
+}
+*/
+/*
+				} else {
+					this.leaderElection = true
+					//						fmt.Println("Sending an Election Message from Device ID to device ID", this.id, key)
+					err = client.Call("BClockDummy.Election", this.id, &empty)
+					if err != nil {
+						log.Println("calling error: %+v", err)
+						delete(this.peers, key)
 					}
 				}
-				//				client.Close()
 			}
-			time.Sleep(time.Second * 1)
-			//Check if no OK was send
-			if this.leaderElection == true {
-				//Send IWIN notifications to everyone
-				fmt.Println("Sending an IWIN Message from Leader to other deviceIDs")
-				for key, value := range this.peers {
-					if key > -1 {
-						client, err = rpc.Dial("tcp", value)
-						if err != nil {
-							log.Println("error dialing from Bully IWIN part: %+v", err)
-							delete(this.peers, i)
-						}
-						defer client.Close()
-						//						fmt.Println("Sending an IWIN Message from Device ID to deviceID", this.id, key)
-						this.currentLeader = this.id
-						err = client.Call("BClockDummy.IWIN", this.id, &empty)
-						if err != nil {
-							log.Println("calling error: %+v", err)
-							delete(this.peers, key)
-						}
+			//				client.Close()
+		}
+		time.Sleep(time.Second * 1)
+		//Check if no OK was send
+		if this.leaderElection == true {
+			//Send IWIN notifications to everyone
+			fmt.Println("Sending an IWIN Message from Leader to other deviceIDs")
+			for key, value := range this.peers {
+				if key > -1 {
+					client, err = rpc.Dial("tcp", value)
+					if err != nil {
+						log.Println("error dialing from Bully IWIN part: %+v", err)
+						delete(this.peers, i)
+					}
+					defer client.Close()
+					//						fmt.Println("Sending an IWIN Message from Device ID to deviceID", this.id, key)
+					this.currentLeader = this.id
+					err = client.Call("BClockDummy.IWIN", this.id, &empty)
+					if err != nil {
+						log.Println("calling error: %+v", err)
+						delete(this.peers, key)
 					}
 				}
 			}
 		}
-		/*		if(this.id == this.currentLeader){
-							go this.GetTime()
-				}
-		*/
+	}
+*/
+/*		if(this.id == this.currentLeader){
+					go this.GetTime()
+		}
+*/
+/*
 	} //end of ticker code
 }
 
@@ -301,11 +311,13 @@ func (this *BClockDummy) Election(id int, _ *struct{}) error {
 			if err != nil {
 				log.Println("error Calling RPC Okay from Election() : %+v", id, err)
 				delete(this.peers, id)
-				/* Code for testing
-				for key, value := range this.peers {
-					fmt.Println(key, value)
-				}
-				*/
+*/
+/* Code for testing
+for key, value := range this.peers {
+	fmt.Println(key, value)
+}
+*/
+/*
 			}
 		}
 	}
@@ -339,46 +351,52 @@ func (this *BClockDummy) GetTime() {
 		var timestamp *api.BTimeStamp
 		leadertime := int32(time.Now().Unix())
 		fmt.Println("LeaderTime", leadertime)
-		/* Code for testing
-		for key, value := range this.peers {
-			fmt.Println(key, value)
-		}
-		*/
-		for key, value := range this.peers {
-			if key > -1 {
-				//					fmt.Println("Values of key and value are", key, value)
-				client, err = rpc.Dial("tcp", value)
+*/
+/* Code for testing
+for key, value := range this.peers {
+	fmt.Println(key, value)
+}
+*/
+/*
+	for key, value := range this.peers {
+		if key > -1 {
+			//					fmt.Println("Values of key and value are", key, value)
+			client, err = rpc.Dial("tcp", value)
+			if err != nil {
+				log.Println("error dialing from GetTime: %+v", err)
+				delete(this.peers, key)
+				defer client.Close()
+			} else {
+				defer client.Close()
+				//						fmt.Println("Sending a GetTimestamp request to Device ID ", key)
+				err = client.Call("BClockDummy.SendTime", this.id, &timestamp)
 				if err != nil {
-					log.Println("error dialing from GetTime: %+v", err)
+					log.Println("calling error: %+v", err)
 					delete(this.peers, key)
-					defer client.Close()
 				} else {
-					defer client.Close()
-					//						fmt.Println("Sending a GetTimestamp request to Device ID ", key)
-					err = client.Call("BClockDummy.SendTime", this.id, &timestamp)
-					if err != nil {
-						log.Println("calling error: %+v", err)
-						delete(this.peers, key)
-					} else {
-						//Enter the timestamp in the map
-						//					fmt.Println(timestamp)
-						PeerTimestamps[timestamp.DeviceId] = timestamp.Timestamp
-						/* Code for testing
-						fmt.Println("The PeerTimestamps map looks as below after entering the timestamp:")
-						for key, value := range PeerTimestamps {
-							fmt.Println(key, value)
-						}
-						*/
-					}
+					//Enter the timestamp in the map
+					//					fmt.Println(timestamp)
+					PeerTimestamps[timestamp.DeviceId] = timestamp.Timestamp
+*/
+/* Code for testing
+fmt.Println("The PeerTimestamps map looks as below after entering the timestamp:")
+for key, value := range PeerTimestamps {
+	fmt.Println(key, value)
+}
+*/
+/*
 				}
 			}
 		}
-		/* Code for testing the values of peertimestamps
-		fmt.Println("The PeerTimestamps map looks as below:")
-		for key, value := range PeerTimestamps {
-			fmt.Println(key, value)
-		}
-		*/
+	}
+*/
+/* Code for testing the values of peertimestamps
+fmt.Println("The PeerTimestamps map looks as below:")
+for key, value := range PeerTimestamps {
+	fmt.Println(key, value)
+}
+*/
+/*
 		//Now, that we have all timestamps take average of all the timestamps
 		for _, value := range PeerTimestamps {
 			count++
@@ -430,3 +448,4 @@ func (this *BClockDummy) SendTime(id int, timestamp *api.BTimeStamp) error {
 	//	fmt.Println("Unix timestamp is", timestamp.DeviceId, timestamp.Timestamp)
 	return nil
 }
+*/

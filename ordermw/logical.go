@@ -1,6 +1,8 @@
 // This file declares all the structs and interfaces needed by logical clock
 package ordermw
 
+/*
+
 import (
 	"github.com/nu7hatch/gouuid"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
@@ -198,3 +200,4 @@ func (this *Logical) RegisterReportState(name api.Name, reportState api.ReportSt
 
 //Send PeerTable to other middlewares
 func (this *Logical) SendPeertableNotification(i int) {}
+*/

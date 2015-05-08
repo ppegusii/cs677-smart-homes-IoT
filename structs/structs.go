@@ -6,13 +6,13 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/nu7hatch/gouuid"
-	"github.com/oleiade/lane"
+	//"github.com/nu7hatch/gouuid"
+	//"github.com/oleiade/lane"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"log"
 	"math"
 	"os"
-	"sort"
+	//"sort"
 	"sync"
 	"time"
 )
@@ -332,7 +332,7 @@ func (s *SyncFile) writeJson(o interface{}) error {
 func (s *SyncFile) WriteRegParam(things *[]api.RegisterParams) error {
 	s.Lock()
 	defer s.Unlock()
-	var m map[int]api.RegisterParams = make(map[int]api.RegisterParams)
+	var m map[int64]api.RegisterParams = make(map[int64]api.RegisterParams)
 	old, _ := s.getRegParamsSince(-1)
 	for _, thing := range append(*old, *things...) {
 		m[thing.Clock] = thing
@@ -346,7 +346,7 @@ func (s *SyncFile) WriteRegParam(things *[]api.RegisterParams) error {
 }
 
 // Locking wrapper to internal function
-func (s *SyncFile) GetRegParamsSince(startTime int) (*[]api.RegisterParams, error) {
+func (s *SyncFile) GetRegParamsSince(startTime int64) (*[]api.RegisterParams, error) {
 	s.Lock()
 	defer s.Unlock()
 	return s.getRegParamsSince(startTime)
@@ -354,7 +354,7 @@ func (s *SyncFile) GetRegParamsSince(startTime int) (*[]api.RegisterParams, erro
 
 // Unmarshal all lines into structs
 // Return the lines that have times >= the given clock
-func (s *SyncFile) getRegParamsSince(startTime int) (*[]api.RegisterParams, error) {
+func (s *SyncFile) getRegParamsSince(startTime int64) (*[]api.RegisterParams, error) {
 	s.f.Seek(0, 0)
 	var scanner *bufio.Scanner = bufio.NewScanner(s.f)
 	var err error
@@ -383,7 +383,7 @@ func (s *SyncFile) getRegParamsSince(startTime int) (*[]api.RegisterParams, erro
 func (s *SyncFile) WriteStateInfo(things *[]api.StateInfo) error {
 	s.Lock()
 	defer s.Unlock()
-	var m map[int]api.StateInfo = make(map[int]api.StateInfo)
+	var m map[int64]api.StateInfo = make(map[int64]api.StateInfo)
 	old, _ := s.getStateInfoSince(-1)
 	for _, thing := range append(*old, *things...) {
 		m[thing.Clock] = thing
@@ -397,7 +397,7 @@ func (s *SyncFile) WriteStateInfo(things *[]api.StateInfo) error {
 }
 
 // Locking wrapper to internal function
-func (s *SyncFile) GetStateInfoSince(startTime int) (*[]api.StateInfo, error) {
+func (s *SyncFile) GetStateInfoSince(startTime int64) (*[]api.StateInfo, error) {
 	s.Lock()
 	defer s.Unlock()
 	return s.getStateInfoSince(startTime)
@@ -405,7 +405,7 @@ func (s *SyncFile) GetStateInfoSince(startTime int) (*[]api.StateInfo, error) {
 
 // Unmarshal all lines into structs
 // Return the lines that have times >= the given clock
-func (s *SyncFile) getStateInfoSince(startTime int) (*[]api.StateInfo, error) {
+func (s *SyncFile) getStateInfoSince(startTime int64) (*[]api.StateInfo, error) {
 	s.f.Seek(0, 0)
 	var scanner *bufio.Scanner = bufio.NewScanner(s.f)
 	var err error
@@ -425,6 +425,28 @@ func (s *SyncFile) getStateInfoSince(startTime int) (*[]api.StateInfo, error) {
 		}
 	}
 	return &things, nil
+}
+
+//Get the last state info recorded just before "when".
+func (s *SyncFile) GetStateInfoHappensBefore(when int64) *api.StateInfo {
+	s.Lock()
+	defer s.Unlock()
+	var stateInfos *[]api.StateInfo
+	var err error
+	stateInfos, err = s.getStateInfoSince(-1)
+	if err != nil {
+		log.Printf("Error getting state infos: %+v\n", err)
+		return nil
+	}
+	var before int64 = math.MinInt64
+	var beforeSI *api.StateInfo = nil
+	for _, si := range *stateInfos {
+		if si.Clock > before && si.Clock < when {
+			beforeSI = &si
+			before = si.Clock
+		}
+	}
+	return beforeSI
 }
 
 /*
@@ -643,6 +665,7 @@ func (s *SyncInt) Set(n int) {
 	s.Unlock()
 }
 
+/*
 type SyncLogicalEventContainer struct {
 	//maps event ID to a map of device id to booleans
 	//true indicates the device has acknowledge the event
@@ -823,6 +846,7 @@ func (this *SyncMapIntSyncLatestStateInfos) Get(i int) *SyncLatestStateInfos {
 	this.Unlock()
 	return latest
 }
+*/
 
 //Synchronizes concurrent access to an bool.
 type SyncBool struct {

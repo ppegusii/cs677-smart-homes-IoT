@@ -3,45 +3,44 @@ package main
 
 import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
-//	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
+	//	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
 	"net"
 	"net/rpc"
-	"time"
 )
 
 // This struct contains all the attributes of the smart bulb and information needed for
 // ordering for clock synchronization, peer table to keep a track of ip of the peers
 // and reference to its middleware
 type SmartBulb struct {
-	id          *structs.SyncInt
-	gatewayIp   string
-	gatewayPort string
+	id           *structs.SyncInt
+	gatewayIp    string
+	gatewayPort  string
 	gatewayIp2   string
 	gatewayPort2 string
-	ordering    api.Ordering
-	orderMW     api.OrderingMiddlewareInterface
-	selfIp      string
-	selfPort    string
-	state       structs.SyncState
-	greplica 	*structs.SyncRegGatewayUserParam // This is the gateway replica assigned for load balancing
+	ordering     api.Ordering
+	orderMW      api.OrderingMiddlewareInterface
+	selfIp       string
+	selfPort     string
+	state        structs.SyncState
+	greplica     *structs.SyncRegGatewayUserParam // This is the gateway replica assigned for load balancing
 }
 
 // create and initialize a new smart bulb
 func newSmartBulb(gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *SmartBulb {
 	return &SmartBulb{
-		id:			  structs.NewSyncInt(api.UNREGISTERED),
-		gatewayIp:   gatewayIp,
-		gatewayPort: gatewayPort,
+		id:           structs.NewSyncInt(api.UNREGISTERED),
+		gatewayIp:    gatewayIp,
+		gatewayPort:  gatewayPort,
 		gatewayIp2:   gatewayIp2,
 		gatewayPort2: gatewayPort2,
-		ordering:    ordering,
-		selfIp:      selfIp,
-		selfPort:    selfPort,
-		state:       *structs.NewSyncState(api.Off),
-		greplica:	  structs.NewSyncRegGatewayUserParam(),
+		ordering:     ordering,
+		selfIp:       selfIp,
+		selfPort:     selfPort,
+		state:        *structs.NewSyncState(api.Off),
+		greplica:     structs.NewSyncRegGatewayUserParam(),
 	}
 }
 
@@ -103,12 +102,12 @@ func (s *SmartBulb) ChangeState(params *api.StateInfo, reply *api.StateInfo) err
 	util.LogCurrentState(s.state.GetState())
 	reply.DeviceId = s.id.Get()
 	reply.State = params.State
-	reply.Clock = int(time.Now().Unix()) //current timestamp for event ordering
+	reply.Clock = util.GetTime() //current timestamp for event ordering
 	//go s.sendState()
 	return nil
 }
 
-// This is an RPC function that is issued by the gateway to update the address port of the 
+// This is an RPC function that is issued by the gateway to update the address port of the
 // loadsharing gateway the device is talking to. It returns the device id
 func (s *SmartBulb) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
 	s.greplica.Set(api.RegisterGatewayUserParams{Address: params.Address, Port: params.Port})

@@ -119,8 +119,8 @@ func TypeToString(t api.Type) string {
 	}
 }
 
-func GetTime() int {
-	return int(time.Now().Unix())
+func GetTime() int64 {
+	return time.Now().UnixNano()
 }
 
 func RegisterGatewayUserParamsToString(p api.RegisterGatewayUserParams) string {

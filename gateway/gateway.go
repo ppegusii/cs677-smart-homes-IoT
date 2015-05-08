@@ -479,12 +479,13 @@ func (g *Gateway) Query(params api.Name, _ *struct{}) error {
 func (g *Gateway) PushData(data *api.ConsistencyData, _ *api.Empty) error {
 	//TODO do stuff with RegisteredNodes
 	//TODO do stuff with User
+	//TODO do stuff with Mode
 	//TODO write StateInfos to cache
 	return nil
 }
 
 // Retrieve all date necessary for consistency since a given time
-func (g *Gateway) PullData(clock int, data *api.ConsistencyData) error {
+func (g *Gateway) PullData(clock int64, data *api.ConsistencyData) error {
 	var db api.RegisterGatewayUserParams = g.database.Get()
 	var err error = g.rpcSync.RpcSync(db.Address, db.Port,
 		"Database.GetDataSince", clock, data, true)
@@ -492,5 +493,6 @@ func (g *Gateway) PullData(clock int, data *api.ConsistencyData) error {
 		return err
 	}
 	//TODO add User
+	//TODO add Mode
 	return nil
 }
