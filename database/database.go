@@ -90,7 +90,7 @@ func (d *Database) LogMode(params api.ModeAndClock, _ *struct{}) error {
 
 //Writes object information to table.
 //Creates tables to track assigned sensors
-func (d *Database) LogLoad(params map[api.RegisterGatewayUserParams][]api.RegisterParams, _ *api.Empty) error {
+func (d *Database) LogLoad(params *map[api.RegisterGatewayUserParams][]api.RegisterParams, _ *api.Empty) error {
 	var err error = nil
 	//Write object information to table.
 	_, err = d.gwLoad.WriteString(fmt.Sprintf("%d,%+v\n",
@@ -168,6 +168,21 @@ func (d *Database) GetHappensBefore(params api.StateInfo, reply *api.StateInfo) 
 		return nil
 	}
 	*reply = *before
+	return nil
+}
+
+// Give the latest state of the sensor/device with the given id
+func (d *Database) GetLatestStateInfo(id int, reply *api.StateInfo) error {
+	f, ok := d.states.Get(id)
+	if !ok {
+		return errors.New(fmt.Sprintf("Invalid device ID: %d", id))
+	}
+	var latest *api.StateInfo = f.GetLatestStateInfo()
+	log.Printf("latest = %+v\n", latest)
+	if latest == nil {
+		return nil
+	}
+	*reply = *latest
 	return nil
 }
 

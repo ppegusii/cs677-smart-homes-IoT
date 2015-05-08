@@ -471,6 +471,28 @@ func (s *SyncFile) GetStateInfoHappensBefore(when int64) *api.StateInfo {
 	return beforeSI
 }
 
+//Get the latest state info recorded.
+func (s *SyncFile) GetLatestStateInfo() *api.StateInfo {
+	s.Lock()
+	defer s.Unlock()
+	var stateInfos *[]api.StateInfo
+	var err error
+	stateInfos, err = s.getStateInfoSince(-1)
+	if err != nil {
+		log.Printf("Error getting state infos: %+v\n", err)
+		return nil
+	}
+	var stateInfo *api.StateInfo
+	var latest int64 = math.MinInt64
+	for _, si := range *stateInfos {
+		if si.Clock > latest {
+			stateInfo = &si
+			latest = si.Clock
+		}
+	}
+	return stateInfo
+}
+
 /*
 // Locking wrapper to internal function
 func (s *SyncFile) GetThingSince(startTime int, t api.ClockInterface) (*[]api.ClockInterface, error) {

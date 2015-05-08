@@ -44,7 +44,7 @@ func main() {
 		Port:    *replicaPort,
 	}
 	var replicas = []api.RegisterGatewayUserParams{replica}
-	var gl api.GatewayLeaderInterface = gatewayleader.NewGatewayLeader(*ip, *port, replicas)
+	var gl api.GatewayLeaderInterface = gatewayleader.NewGatewayLeader(*ip, *port, *dbIP, *dbPort, replicas)
 	var g api.GatewayInterface = newGateway(*dbIP, *dbPort, *ip, mode, *pollingInterval, *port, gl)
 	gl.SetGateway(g)
 	util.RpcRegister(gl, *ip, *port, "Gateway", false)

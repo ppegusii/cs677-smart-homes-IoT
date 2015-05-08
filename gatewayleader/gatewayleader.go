@@ -29,6 +29,7 @@ type GatewayLeader struct {
 	aliveReplyTimer   *structs.SyncTimer
 	aliveRequestTimer *structs.SyncTimer
 	api.GatewayInterface
+	dbIpPort           api.RegisterGatewayUserParams
 	electionCheckLock  sync.Mutex
 	electionInProgress bool
 	ipPort             api.RegisterGatewayUserParams
@@ -40,9 +41,13 @@ type GatewayLeader struct {
 	sync.RWMutex       // Used to wait before sending application messages during an election.
 }
 
-func NewGatewayLeader(ip, port string, replicas []api.RegisterGatewayUserParams) api.GatewayLeaderInterface {
+func NewGatewayLeader(ip, port, dbIp, dbPort string, replicas []api.RegisterGatewayUserParams) api.GatewayLeaderInterface {
 	var g GatewayLeader = GatewayLeader{
 		leader: structs.NewSyncRegGatewayUserParam(),
+		dbIpPort: api.RegisterGatewayUserParams{
+			Address: dbIp,
+			Port:    dbPort,
+		},
 		ipPort: api.RegisterGatewayUserParams{
 			Address: ip,
 			Port:    port,
@@ -231,8 +236,16 @@ func (this *GatewayLeader) PushData(data *api.ConsistencyData, e *api.Empty) err
 	//if not leader and data from leader update node assignments
 	if !this.isLeader() && data.Replica == this.leader.Get() {
 		this.replicas.setAssignments(&(data.AssignedNodes))
+		this.logAssignments(&(data.AssignedNodes))
 	}
 	return this.GatewayInterface.PushData(data, e)
+}
+
+// Log assignments in the database
+func (this *GatewayLeader) logAssignments(assigns *map[api.RegisterGatewayUserParams][]api.RegisterParams) {
+	go util.RpcSync(this.dbIpPort.Address,
+		this.dbIpPort.Port, "Database.LogLoad",
+		assigns, &api.Empty{}, false)
 }
 
 // Receive election msg from self or another replica.
@@ -377,6 +390,7 @@ func (this *GatewayLeader) sendIWons() {
 	}
 	// Rebalance load
 	this.rebalanceLoad()
+	this.logAssignments(this.replicas.getAssignments())
 	// Release consistency
 	this.sendDataToAllReplicas()
 	// End election.
