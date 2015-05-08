@@ -1046,6 +1046,7 @@ func (c *Cache) Gettimestamp(key int) int64 {
 	return (c.evictlist[key])
 }
 
+//Check if entry exists in the cachemap
 func (c *Cache) Exists(key int) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
@@ -1058,6 +1059,8 @@ func (c *Cache) Exists(key int) bool {
 	}
 }
 
+//Call AddEntry to add new stateinfo in cache...
+// No need to check if the device record exists in cache... AddEntry will handle it all
 func (cachemap *Cache) AddEntry(d *api.StateInfo) {
 	var Zindex, evict int = -1, - 1
 	//Check if the Cache already contains this device info
@@ -1078,7 +1081,7 @@ func (cachemap *Cache) AddEntry(d *api.StateInfo) {
 		} else {
 			// The cache entries seem to be used but wait there might be holes inside,
 			//So, let us use the timestamp field to find any 0's inside indicating the corresponding index is free
-			// due to a prio delete request of a particular block
+			// due to a prior delete request of a particular block
 			Zindex = cachemap.Get0timestamp()
 			if Zindex != -1 {
 				//Yea, we found a hole in the cache map. Now, get that damn new entry at this spot.
@@ -1115,6 +1118,7 @@ func (c *Cache) LookupDeviceID(id int) int {
 }
 
 // To retrive the StateInfo of a device for cache
+//If GetEntry returns a nil it means cache does not have that value, fetch it from the database
 func (c *Cache) GetEntry(id int) *api.StateInfo {
 	var Zindex int = -1
 	//Check if the Cache already contains this device info
