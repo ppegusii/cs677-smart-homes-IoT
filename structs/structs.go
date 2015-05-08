@@ -843,3 +843,59 @@ func (s *SyncBool) Set(b bool) {
 	s.b = b
 	s.Unlock()
 }
+
+//Main Cache structure
+type Cache struct {
+    lock sync.RWMutex
+    datamap map[int]api.StateInfo
+    size int //size of cache
+    evictlist map[int]int // key is the index of record of datamap and value is the reference count
+}
+
+//Create new cache
+func NewCache(maxEntries int) *Cache {
+	return &Cache{
+		size: 		maxEntries,
+		datamap:    make(map[int]api.StateInfo),
+		evictlist:	make(map[int]int),
+	}
+}
+
+//Get a specific record from the cache
+func (c *Cache) Get(key int) (*api.StateInfo, error) {
+    c.lock.RLock()
+    defer c.lock.RUnlock()
+    data := c.datamap[key]
+    c.evictlist[key] += 1 
+    return &data, nil
+}
+
+//Add a new record in the cache
+func (c *Cache) Set(key int, d *api.StateInfo) {
+    c.lock.Lock()
+    defer c.lock.Unlock()
+    c.datamap[key] = *d
+}
+
+// Delete a cache entry
+func (c *Cache) Delete(key int) bool{
+	var s bool
+    c.lock.Lock()
+    defer c.lock.Unlock()
+    //Check if cache has non zero length
+    if(c.LenCache() > 0) {
+        delete(c.datamap, key)
+        s = true	
+    } else {
+    	s = false
+    }
+    return s
+}
+
+//Find the length of the cache
+func (c *Cache) LenCache() int {
+	c.lock.RLock()
+    defer c.lock.RUnlock()
+    r := len(c.datamap)
+    return r
+}
