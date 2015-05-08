@@ -1059,7 +1059,7 @@ func (c *Cache) Exists(key int) bool {
 }
 
 func (cachemap *Cache) AddEntry(d *api.StateInfo) {
-	var Zindex, evict int = -1 - 1
+	var Zindex, evict int = -1, - 1
 	//Check if the Cache already contains this device info
 	Zindex = cachemap.LookupDeviceID(d.DeviceId)
 	if Zindex > -1 {
