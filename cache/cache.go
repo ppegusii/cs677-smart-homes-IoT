@@ -17,7 +17,7 @@ func main(){
 	for i := 0; i <10; i++{
 	stateInfo = &api.StateInfo{
 		Clock:      int64(time.Now().Unix()), //current timestamp for event ordering
-		DeviceId:   10,
+		DeviceId:   i,
 		DeviceName: api.Motion,
 		State:      api.MotionStart,
 		}
@@ -83,5 +83,8 @@ func main(){
 		}
 
 	cachemap.AddEntry(stateInfo) 
+
+	d := cachemap.GetEntry(100)
+	fmt.Println("StateInfo for device 100 is as below \n",d)
 
 }

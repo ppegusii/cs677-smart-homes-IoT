@@ -1113,3 +1113,16 @@ func (c *Cache) LookupDeviceID(id int) int {
 	}
 	return (devindex)
 }
+
+// To retrive the StateInfo of a device for cache
+func (c *Cache) GetEntry(id int) *api.StateInfo {
+	var Zindex int = -1
+	//Check if the Cache already contains this device info
+	Zindex = c.LookupDeviceID(id)
+	if (Zindex > -1){
+		fmt.Println("Device information exists")
+		return c.Get(Zindex)
+	} else {
+		return nil
+	}
+}
