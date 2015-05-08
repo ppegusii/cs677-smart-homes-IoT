@@ -6,13 +6,13 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	//"github.com/nu7hatch/gouuid"
-	//"github.com/oleiade/lane"
+	"github.com/nu7hatch/gouuid"
+	"github.com/oleiade/lane"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"log"
 	"math"
 	"os"
-	//"sort"
+	"sort"
 	"sync"
 	"time"
 )
@@ -93,20 +93,6 @@ func (s *SyncMapIntRegParam) AddExistingRegParam(regParam *api.RegisterParams, i
 	s.Unlock()
 }
 
-// Get device/sensor info
-func (s *SyncMapIntRegParam) GetRegParam(id int) (*api.RegisterParams, bool) {
-	s.RLock()
-	defer s.RUnlock()
-	var r *api.RegisterParams
-	var ok bool
-	r, ok = s.m[id]
-	if !ok {
-		return nil, false
-	}
-	var ret api.RegisterParams = *r
-	return &ret, true
-}
-
 //Remove a device/sensor
 func (s *SyncMapIntRegParam) RemoveRegParam(id int) {
 	s.Lock()
@@ -150,38 +136,30 @@ func (s *SyncMapIntRegParam) Size() int {
 }
 
 // Defines the Mode of the system : Home or Away
-type SyncModeClock struct {
+type SyncMode struct {
 	sync.RWMutex
-	mc api.ModeAndClock
+	m api.Mode
 }
 
 //create new SyncMode
-func NewSyncModeClock(modeClock api.ModeAndClock) *SyncModeClock {
-	return &SyncModeClock{
-		mc: modeClock,
+func NewSyncMode(mode api.Mode) *SyncMode {
+	return &SyncMode{
+		m: mode,
 	}
 }
 
 //fetch the current mode value
-func (s *SyncModeClock) GetModeClock() api.ModeAndClock {
+func (s *SyncMode) GetMode() api.Mode {
 	s.RLock()
-	var mc api.ModeAndClock = s.mc
+	var mode api.Mode = s.m
 	s.RUnlock()
-	return mc
+	return mode
 }
 
 //assign a value to the mode
-func (s *SyncModeClock) SetModeAndClock(mc api.ModeAndClock) {
+func (s *SyncMode) SetMode(mode api.Mode) {
 	s.Lock()
-	s.mc = mc
-	s.Unlock()
-}
-
-//assign a value to the mode
-func (s *SyncModeClock) SetModeClock(m api.Mode, c int64) {
-	s.Lock()
-	s.mc.Mode = m
-	s.mc.Clock = c
+	s.m = mode
 	s.Unlock()
 }
 
@@ -293,13 +271,6 @@ func (s *SyncMapIntSyncFile) Get(i int) (*SyncFile, bool) {
 	return f, ok
 }
 
-func (s *SyncMapIntSyncFile) GetAll() map[int]*SyncFile {
-	s.RLock()
-	r := s.m
-	s.RUnlock()
-	return r
-}
-
 func (s *SyncMapIntSyncFile) Set(i int, f *SyncFile) {
 	s.Lock()
 	s.m[i] = f
@@ -333,7 +304,7 @@ func (s *SyncFile) WriteString(str string) (int, error) {
 	return n, err
 }
 
-func (s *SyncFile) writeJson(o interface{}) error {
+func (s *SyncFile) WriteJson(o interface{}) error {
 	var err error
 	var b []byte
 	var str string
@@ -343,40 +314,15 @@ func (s *SyncFile) writeJson(o interface{}) error {
 	}
 	str = string(b)
 	str += "\n"
-	_, err = s.f.WriteString(str)
+	_, err = s.WriteString(str)
 	return err
-}
-
-// This is bad.
-// Assume clock values are unique
-// Read all structs into a map of clock to struct
-// Write structs back to file
-func (s *SyncFile) WriteRegParam(things *[]api.RegisterParams) error {
-	s.Lock()
-	defer s.Unlock()
-	var m map[int64]api.RegisterParams = make(map[int64]api.RegisterParams)
-	old, _ := s.getRegParamsSince(-1)
-	for _, thing := range append(*old, *things...) {
-		m[thing.Clock] = thing
-	}
-	s.f.Seek(0, 0)
-	var err error
-	for _, thing := range m {
-		err = s.writeJson(thing)
-	}
-	return err
-}
-
-// Locking wrapper to internal function
-func (s *SyncFile) GetRegParamsSince(startTime int64) (*[]api.RegisterParams, error) {
-	s.Lock()
-	defer s.Unlock()
-	return s.getRegParamsSince(startTime)
 }
 
 // Unmarshal all lines into structs
-// Return the lines that have times >= the given clock
-func (s *SyncFile) getRegParamsSince(startTime int64) (*[]api.RegisterParams, error) {
+// Return the lines that have times greater than the given clock
+func (s *SyncFile) GetRegParamsSince(startTime int) (*[]api.RegisterParams, error) {
+	s.Lock()
+	defer s.Unlock()
 	s.f.Seek(0, 0)
 	var scanner *bufio.Scanner = bufio.NewScanner(s.f)
 	var err error
@@ -391,43 +337,18 @@ func (s *SyncFile) getRegParamsSince(startTime int64) (*[]api.RegisterParams, er
 			log.Println(err)
 			return nil, err
 		}
-		if thing.Clock >= startTime {
+		if thing.Clock > startTime {
 			things = append(things, thing)
 		}
 	}
 	return &things, nil
 }
 
-// This is bad.
-// Assume clock values are unique
-// Read all structs into a map of clock to struct
-// Write structs back to file
-func (s *SyncFile) WriteStateInfo(things *[]api.StateInfo) error {
-	s.Lock()
-	defer s.Unlock()
-	var m map[int64]api.StateInfo = make(map[int64]api.StateInfo)
-	old, _ := s.getStateInfoSince(-1)
-	for _, thing := range append(*old, *things...) {
-		m[thing.Clock] = thing
-	}
-	s.f.Seek(0, 0)
-	var err error
-	for _, thing := range m {
-		err = s.writeJson(thing)
-	}
-	return err
-}
-
-// Locking wrapper to internal function
-func (s *SyncFile) GetStateInfoSince(startTime int64) (*[]api.StateInfo, error) {
-	s.Lock()
-	defer s.Unlock()
-	return s.getStateInfoSince(startTime)
-}
-
 // Unmarshal all lines into structs
-// Return the lines that have times >= the given clock
-func (s *SyncFile) getStateInfoSince(startTime int64) (*[]api.StateInfo, error) {
+// Return the lines that have times greater than the given clock
+func (s *SyncFile) GetStateInfoSince(startTime int) (*[]api.StateInfo, error) {
+	s.Lock()
+	defer s.Unlock()
 	s.f.Seek(0, 0)
 	var scanner *bufio.Scanner = bufio.NewScanner(s.f)
 	var err error
@@ -442,68 +363,12 @@ func (s *SyncFile) getStateInfoSince(startTime int64) (*[]api.StateInfo, error) 
 			log.Println(err)
 			return nil, err
 		}
-		if thing.Clock >= startTime {
+		if thing.Clock > startTime {
 			things = append(things, thing)
 		}
 	}
 	return &things, nil
 }
-
-//Get the last state info recorded just before "when".
-func (s *SyncFile) GetStateInfoHappensBefore(when int64) *api.StateInfo {
-	s.Lock()
-	defer s.Unlock()
-	var stateInfos *[]api.StateInfo
-	var err error
-	stateInfos, err = s.getStateInfoSince(-1)
-	if err != nil {
-		log.Printf("Error getting state infos: %+v\n", err)
-		return nil
-	}
-	var before int64 = math.MinInt64
-	var beforeSI *api.StateInfo = nil
-	for _, si := range *stateInfos {
-		if si.Clock > before && si.Clock < when {
-			beforeSI = &si
-			before = si.Clock
-		}
-	}
-	return beforeSI
-}
-
-/*
-// Locking wrapper to internal function
-func (s *SyncFile) GetThingSince(startTime int, t api.ClockInterface) (*[]api.ClockInterface, error) {
-	s.Lock()
-	defer s.Unlock()
-	return s.getThingSince(startTime, t)
-}
-
-// Unmarshal all lines into structs
-// Return the lines that have times greater than the given clock
-func (s *SyncFile) getThingSince(startTime int, t api.ClockInterface) (*[]api.ClockInterface, error) {
-	s.f.Seek(0, 0)
-	var scanner *bufio.Scanner = bufio.NewScanner(s.f)
-	var err error
-	var b []byte
-	var things []api.ClockInterface = make([]api.ClockInterface, 0)
-	// http://stackoverflow.com/questions/8757389/reading-file-line-by-line-in-go
-	for scanner.Scan() {
-		b = []byte(scanner.Text())
-		sw
-		var thing api.ClockInterface
-		err = json.Unmarshal(b, &thing)
-		if err != nil {
-			log.Println(err)
-			return nil, err
-		}
-		if thing.GetClock() > startTime {
-			things = append(things, thing)
-		}
-	}
-	return &things, nil
-}
-*/
 
 type SyncMapIntStateInfo struct {
 	sync.RWMutex
@@ -687,34 +552,6 @@ func (s *SyncInt) Set(n int) {
 	s.Unlock()
 }
 
-//Synchronizes concurrent access to an int64.
-type SyncInt64 struct {
-	i int64
-	sync.RWMutex
-}
-
-//Creates an new instance of the struct.
-func NewSyncInt64(i int64) *SyncInt64 {
-	return &SyncInt64{i: i}
-}
-
-//Returns the int.
-func (s *SyncInt64) Get() int64 {
-	var r int64
-	s.RLock()
-	r = s.i
-	s.RUnlock()
-	return r
-}
-
-//Set the value of the int.
-func (s *SyncInt64) Set(n int64) {
-	s.Lock()
-	s.i = n
-	s.Unlock()
-}
-
-/*
 type SyncLogicalEventContainer struct {
 	//maps event ID to a map of device id to booleans
 	//true indicates the device has acknowledge the event
@@ -895,7 +732,6 @@ func (this *SyncMapIntSyncLatestStateInfos) Get(i int) *SyncLatestStateInfos {
 	this.Unlock()
 	return latest
 }
-*/
 
 //Synchronizes concurrent access to an bool.
 type SyncBool struct {
@@ -927,27 +763,38 @@ func (s *SyncBool) Set(b bool) {
 //Main Cache structure
 type Cache struct {
 	lock      sync.RWMutex
+	used      int
 	datamap   map[int]api.StateInfo
-	size      int         //size of cache
-	evictlist map[int]int // key is the index of record of datamap and value is the reference count
+	size      int           //size of cache
+	evictlist map[int]int64 // key is the index of record of datamap and value is the reference count
 }
 
 //Create new cache
 func NewCache(maxEntries int) *Cache {
 	return &Cache{
+		used:      api.EMPTY,
 		size:      maxEntries,
 		datamap:   make(map[int]api.StateInfo),
-		evictlist: make(map[int]int),
+		evictlist: make(map[int]int64),
 	}
 }
 
 //Get a specific record from the cache
-func (c *Cache) Get(key int) (*api.StateInfo, error) {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-	data := c.datamap[key]
-	c.evictlist[key] += 1
-	return &data, nil
+func (c *Cache) Get(key int) *api.StateInfo {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	//Check that the cache is non-Empty
+	if c.used == api.EMPTY {
+		return nil
+	} else {
+		data, exists := c.datamap[key]
+		if exists == false {
+			return nil
+		} else {
+			c.evictlist[key] = int64(time.Now().Unix()) //set the reference time to current timestamp
+			return &data
+		}
+	}
 }
 
 //Add a new record in the cache
@@ -955,6 +802,8 @@ func (c *Cache) Set(key int, d *api.StateInfo) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.datamap[key] = *d
+	c.evictlist[key] = int64(time.Now().Unix())
+	c.used++
 }
 
 // Delete a cache entry
@@ -963,8 +812,10 @@ func (c *Cache) Delete(key int) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	//Check if cache has non zero length
-	if c.LenCache() > 0 {
+	if c.used > 0 {
 		delete(c.datamap, key)
+		c.evictlist[key] = 0
+		c.used-- //Decrement the number of cache entries in the cache map
 		s = true
 	} else {
 		s = false
@@ -972,10 +823,80 @@ func (c *Cache) Delete(key int) bool {
 	return s
 }
 
-//Find the length of the cache
+//Find the length of the cache; returns the number of entries in the cache
+func (c *Cache) UsedCache() int {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.used
+}
+
+//Find the size of the cache; returns the max number of entries the cache can hold
 func (c *Cache) LenCache() int {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	r := len(c.datamap)
-	return r
+	return c.size
+}
+
+//Find the oldest entry in the Cache for eviction, returns the index of map to be evicted
+func (c *Cache) OldCache() int {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	min := c.evictlist[0]
+	minindex := 0
+	for index, value := range c.evictlist {
+		if value < min && value > 0 {
+			min = value
+			minindex = index
+		}
+	}
+	fmt.Println("Evicting page with index number %d and timestamp is %d", minindex, min)
+	return (minindex)
+}
+
+//search for index with timestamp as 0
+func (c *Cache) Get0timestamp() int {
+	var Zindex int = -1
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	for index, value := range c.evictlist {
+		if value == 0 {
+			Zindex = index
+			break
+		}
+	}
+	fmt.Println("Hole found at index number %d and timestamp", Zindex)
+	return Zindex
+}
+
+//this function is for testing the reference timestamp
+//search for index with timestamp as 0
+func (c *Cache) Gettimestamp(key int) int64 {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	return (c.evictlist[key])
+}
+
+func (cachemap *Cache) AddEntry(d *api.StateInfo){
+	var Zindex, evict int
+	//Check if the Cache is full
+	if cachemap.UsedCache() < cachemap.LenCache() {
+		//Since there are indices not inserted into the cache map use 
+		// c.used value to find the index to add the value at
+		cachemap.Set(cachemap.UsedCache(), d)
+	} else {
+		// The cache entries seem to be used but wait there might be holes inside,
+		//So, let us use the timestamp field to find any 0's inside indicating the corresponding index is free
+		// due to a prio delete request of a particular block
+		Zindex = cachemap.Get0timestamp()
+		if (Zindex != -1){
+		//Yea, we found a hole in the cache map. Now, get that damn new entry at this spot.
+			cachemap.Set(Zindex, d)
+			} else {
+				//Ok, so no hole found in the cachemap. I command you to evict an entry based on LRU
+				evict = cachemap.OldCache()
+				cachemap.Set(evict, d)
+			}		
+	}
 }

@@ -5,6 +5,7 @@ package api
 import ()
 
 const UNREGISTERED = -10
+const EMPTY = 0
 
 //type Type int
 type Type string
