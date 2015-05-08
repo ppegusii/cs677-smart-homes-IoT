@@ -93,6 +93,20 @@ func (s *SyncMapIntRegParam) AddExistingRegParam(regParam *api.RegisterParams, i
 	s.Unlock()
 }
 
+// Get device/sensor info
+func (s *SyncMapIntRegParam) GetRegParam(id int) (*api.RegisterParams, bool) {
+	s.RLock()
+	defer s.RUnlock()
+	var r *api.RegisterParams
+	var ok bool
+	r, ok = s.m[id]
+	if !ok {
+		return nil, false
+	}
+	var ret api.RegisterParams = *r
+	return &ret, true
+}
+
 //Remove a device/sensor
 func (s *SyncMapIntRegParam) RemoveRegParam(id int) {
 	s.Lock()
@@ -136,30 +150,38 @@ func (s *SyncMapIntRegParam) Size() int {
 }
 
 // Defines the Mode of the system : Home or Away
-type SyncMode struct {
+type SyncModeClock struct {
 	sync.RWMutex
-	m api.Mode
+	mc api.ModeAndClock
 }
 
 //create new SyncMode
-func NewSyncMode(mode api.Mode) *SyncMode {
-	return &SyncMode{
-		m: mode,
+func NewSyncModeClock(modeClock api.ModeAndClock) *SyncModeClock {
+	return &SyncModeClock{
+		mc: modeClock,
 	}
 }
 
 //fetch the current mode value
-func (s *SyncMode) GetMode() api.Mode {
+func (s *SyncModeClock) GetModeClock() api.ModeAndClock {
 	s.RLock()
-	var mode api.Mode = s.m
+	var mc api.ModeAndClock = s.mc
 	s.RUnlock()
-	return mode
+	return mc
 }
 
 //assign a value to the mode
-func (s *SyncMode) SetMode(mode api.Mode) {
+func (s *SyncModeClock) SetModeAndClock(mc api.ModeAndClock) {
 	s.Lock()
-	s.m = mode
+	s.mc = mc
+	s.Unlock()
+}
+
+//assign a value to the mode
+func (s *SyncModeClock) SetModeClock(m api.Mode, c int64) {
+	s.Lock()
+	s.mc.Mode = m
+	s.mc.Clock = c
 	s.Unlock()
 }
 
@@ -660,6 +682,33 @@ func (s *SyncInt) IncThenGet() int {
 
 //Set the value of the int.
 func (s *SyncInt) Set(n int) {
+	s.Lock()
+	s.i = n
+	s.Unlock()
+}
+
+//Synchronizes concurrent access to an int64.
+type SyncInt64 struct {
+	i int64
+	sync.RWMutex
+}
+
+//Creates an new instance of the struct.
+func NewSyncInt64(i int64) *SyncInt64 {
+	return &SyncInt64{i: i}
+}
+
+//Returns the int.
+func (s *SyncInt64) Get() int64 {
+	var r int64
+	s.RLock()
+	r = s.i
+	s.RUnlock()
+	return r
+}
+
+//Set the value of the int.
+func (s *SyncInt64) Set(n int64) {
 	s.Lock()
 	s.i = n
 	s.Unlock()

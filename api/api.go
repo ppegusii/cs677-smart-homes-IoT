@@ -74,6 +74,8 @@ const (
 	OutletsOff Mode = "outletsoff"
 )
 
+const EarliestTime int64 = 0
+
 // Interfaces provided by the Database layer
 type DatabaseInterface interface {
 	AddDeviceOrSensor(params *RegisterParams, _ *struct{}) error
@@ -218,8 +220,9 @@ type Empty struct{}
 type ConsistencyData struct {
 	AssignedNodes   map[RegisterGatewayUserParams][]RegisterParams
 	Clock           int64
-	HomeAway        Mode
+	HomeAway        ModeAndClock
 	RegisteredNodes []RegisterParams
+	Replica         RegisterGatewayUserParams // data source
 	StateInfos      []StateInfo
 	User            RegisterGatewayUserParams
 }

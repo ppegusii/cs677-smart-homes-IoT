@@ -21,10 +21,10 @@ type Gateway struct {
 	database        structs.SyncRegGatewayUserParam
 	doorSen         structs.SyncMapIntBool
 	ip              string
-	mode            structs.SyncMode
+	mode            structs.SyncModeClock
 	motionSen       structs.SyncMapIntBool
 	outletDev       structs.SyncMapIntBool
-	outletMode      structs.SyncMode
+	outletMode      structs.SyncModeClock
 	pollingInterval int
 	port            string
 	rpcSync         api.RpcSyncInterface
@@ -36,14 +36,22 @@ type Gateway struct {
 // create and initialize the fields of gateway
 func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInterval int, port string, rpcSync api.RpcSyncInterface) api.GatewayInterface {
 	var g *Gateway = &Gateway{
-		bulbDev:         *structs.NewSyncMapIntBool(),
-		database:        *structs.NewSyncRegGatewayUserParam(),
-		doorSen:         *structs.NewSyncMapIntBool(),
-		ip:              ip,
-		mode:            *structs.NewSyncMode(mode),
-		motionSen:       *structs.NewSyncMapIntBool(),
-		outletDev:       *structs.NewSyncMapIntBool(),
-		outletMode:      *structs.NewSyncMode(api.OutletsOff),
+		bulbDev:  *structs.NewSyncMapIntBool(),
+		database: *structs.NewSyncRegGatewayUserParam(),
+		doorSen:  *structs.NewSyncMapIntBool(),
+		ip:       ip,
+		mode: *structs.NewSyncModeClock(
+			api.ModeAndClock{
+				Mode:  mode,
+				Clock: util.GetTime(),
+			}),
+		motionSen: *structs.NewSyncMapIntBool(),
+		outletDev: *structs.NewSyncMapIntBool(),
+		outletMode: *structs.NewSyncModeClock(
+			api.ModeAndClock{
+				Mode:  api.OutletsOff,
+				Clock: util.GetTime(),
+			}),
 		pollingInterval: pollingInterval,
 		port:            port,
 		rpcSync:         rpcSync,
@@ -57,24 +65,7 @@ func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInt
 }
 
 func (g *Gateway) Start() {
-	// TODO RPC server will no longer be started here
-	//start RPC server
-	//The interface cast only checks that the implementation satisfies
-	//the interface. Only implementations can be registered.
-	/*
-		var err error = rpc.Register(api.GatewayInterface(g))
-		if err != nil {
-			log.Fatal("rpc.Register error: %s\n", err)
-		}
-		var listener net.Listener
-		listener, err = net.Listen("tcp", g.ip+":"+g.port)
-		if err != nil {
-			log.Fatal("net.Listen error: %s\n", err)
-		}
-		logCurrentMode(g.mode.GetMode())
-		go rpc.Accept(listener)
-	*/
-	logCurrentMode(g.mode.GetMode())
+	logCurrentMode(g.mode.GetModeClock().Mode)
 	//register with database
 	var db api.RegisterGatewayUserParams = g.database.Get()
 	var empty struct{}
@@ -111,14 +102,14 @@ func (g *Gateway) pollTempSensors() {
 // Based on the temperature reported by the temperature sensor send a notification to the smartoutlet
 func (g *Gateway) updateOutlets(tempVal api.State) {
 	var s api.State
-	var outletState api.Mode = g.outletMode.GetMode()
+	var outletState api.Mode = g.outletMode.GetModeClock().Mode
 	// Ensure that the outlet is On only if the temperarture is between 1 and 2 else the smartoutlet is Off
 	if tempVal < 1 && outletState == api.OutletsOff {
 		s = api.On
-		g.outletMode.SetMode(api.OutletsOn)
+		g.outletMode.SetModeClock(api.OutletsOn, util.GetTime())
 	} else if tempVal > 2 && outletState == api.OutletsOn {
 		s = api.Off
-		g.outletMode.SetMode(api.OutletsOff)
+		g.outletMode.SetModeClock(api.OutletsOff, util.GetTime())
 	} else {
 		switch outletState {
 		case api.OutletsOff:
@@ -155,30 +146,53 @@ func (g *Gateway) RegisterUser(params *api.RegisterGatewayUserParams, _ *struct{
 	return nil
 }
 
-// Register devices and sensors to the gateway
+// Register new devices and sensors to the gateway.
+// External wrapper.
 func (g *Gateway) Register(params *api.RegisterParams, reply *api.RegisterReturn) error {
-	params.Clock = util.GetTime()
+	return g.addNode(params, reply, false)
+}
+
+// Internal addition of a node. existing means this node already has an ID.
+func (g *Gateway) addNode(params *api.RegisterParams, reply *api.RegisterReturn, existing bool) error {
+	if !existing {
+		params.Clock = util.GetTime()
+	}
 	log.Printf("Attempting to register device with this info: %+v", params)
 	var err error = nil
 	var id int
+	if existing {
+		id = params.DeviceId
+	}
 	switch params.Type {
 	//Register Sensors
 	case api.Sensor:
 		switch params.Name {
 		case api.Door:
-			id = g.senAndDev.AddNewRegParam(params)
+			if !existing {
+				id = g.senAndDev.AddNewRegParam(params)
+			} else {
+				g.senAndDev.AddExistingRegParam(params, id)
+			}
 			g.doorSen.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
 			break
 		case api.Motion:
-			id = g.senAndDev.AddNewRegParam(params)
+			if !existing {
+				id = g.senAndDev.AddNewRegParam(params)
+			} else {
+				g.senAndDev.AddExistingRegParam(params, id)
+			}
 			g.motionSen.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
 			break
 		case api.Temperature:
-			id = g.senAndDev.AddNewRegParam(params)
+			if !existing {
+				id = g.senAndDev.AddNewRegParam(params)
+			} else {
+				g.senAndDev.AddExistingRegParam(params, id)
+			}
 			g.tempSen.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
@@ -192,13 +206,21 @@ func (g *Gateway) Register(params *api.RegisterParams, reply *api.RegisterReturn
 		//Register Device
 		switch params.Name {
 		case api.Bulb:
-			id = g.senAndDev.AddNewRegParam(params)
+			if !existing {
+				id = g.senAndDev.AddNewRegParam(params)
+			} else {
+				g.senAndDev.AddExistingRegParam(params, id)
+			}
 			g.bulbDev.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
 			break
 		case api.Outlet:
-			id = g.senAndDev.AddNewRegParam(params)
+			if !existing {
+				id = g.senAndDev.AddNewRegParam(params)
+			} else {
+				g.senAndDev.AddExistingRegParam(params, id)
+			}
 			g.outletDev.AddInt(id)
 			params.DeviceId = id
 			g.writeRegInfo(params)
@@ -228,7 +250,7 @@ func (g *Gateway) ReportMotion(params *api.StateInfo, _ *struct{}) error {
 		return errors.New(fmt.Sprintf("Device with following id not motion sensor or not registered: %+v", params.DeviceId))
 	}
 	g.writeStateInfo("Database.AddState", params)
-	switch g.mode.GetMode() {
+	switch g.mode.GetModeClock().Mode {
 	case api.Home:
 		switch params.State {
 		case api.MotionStart:
@@ -296,22 +318,22 @@ func (g *Gateway) ChangeMode(params *api.Mode, _ *struct{}) error {
 	var err error = nil
 	switch *params {
 	case api.Home:
-		if g.mode.GetMode() == api.Home {
+		if g.mode.GetModeClock().Mode == api.Home {
 			break
 		}
-		g.mode.SetMode(*params)
-		logCurrentMode(g.mode.GetMode())
+		g.mode.SetModeClock(*params, util.GetTime())
+		logCurrentMode(g.mode.GetModeClock().Mode)
 		var anyMotion bool = g.checkForMotion()
 		if anyMotion {
 			g.turnBulbsOn()
 		}
 		break
 	case api.Away:
-		if g.mode.GetMode() == api.Away {
+		if g.mode.GetModeClock().Mode == api.Away {
 			break
 		}
-		g.mode.SetMode(*params)
-		logCurrentMode(g.mode.GetMode())
+		g.mode.SetModeClock(*params, util.GetTime())
+		logCurrentMode(g.mode.GetModeClock().Mode)
 		g.bulbTimer.Stop()
 		g.turnBulbsOff()
 		break
@@ -393,7 +415,7 @@ func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	var empty struct{}
 	var newMode api.Mode
 	log.Printf("before = %+v\n", before)
-	if before.State == api.MotionStart && g.mode.GetMode() != api.Away {
+	if before.State == api.MotionStart && g.mode.GetModeClock().Mode != api.Away {
 		newMode = api.Away
 		g.ChangeMode(&newMode, &empty)
 		g.writeMode(api.ModeAndClock{
@@ -403,7 +425,7 @@ func (g *Gateway) ReportDoorState(params *api.StateInfo, _ *struct{}) error {
 	}
 	//if no motion happens before door opening
 	//change mode to home
-	if before.State == api.MotionStop && g.mode.GetMode() != api.Home {
+	if before.State == api.MotionStop && g.mode.GetModeClock().Mode != api.Home {
 		newMode = api.Home
 		g.ChangeMode(&newMode, &empty)
 		g.writeMode(api.ModeAndClock{
@@ -477,10 +499,23 @@ func (g *Gateway) Query(params api.Name, _ *struct{}) error {
 
 // Push date necessary for consistency
 func (g *Gateway) PushData(data *api.ConsistencyData, _ *api.Empty) error {
-	//TODO do stuff with RegisteredNodes
-	//TODO do stuff with User
-	//TODO do stuff with Mode
-	//TODO write StateInfos to cache
+	// do stuff with RegisteredNodes just need to add them as existing
+	for _, regParam := range data.RegisteredNodes {
+		g.addNode(&regParam, &api.RegisterReturn{}, true)
+	}
+	// do stuff with User only update if user is blank
+	if g.user.Get().Address == "" {
+		g.user.Set(data.User)
+	}
+	// do stuff with Mode only update if time stamp is newer
+	// and modes differ
+	var mc api.ModeAndClock = g.mode.GetModeClock()
+	var empty *struct{}
+	if mc.Mode != data.HomeAway.Mode &&
+		data.HomeAway.Clock > mc.Clock {
+		g.ChangeMode(&(data.HomeAway.Mode), empty)
+	}
+	// TODO write StateInfos to cache
 	return nil
 }
 
@@ -492,7 +527,9 @@ func (g *Gateway) PullData(clock int64, data *api.ConsistencyData) error {
 	if err != nil {
 		return err
 	}
-	//TODO add User
-	//TODO add Mode
+	// add User
+	data.User = g.user.Get()
+	// add Mode
+	data.HomeAway = g.mode.GetModeClock()
 	return nil
 }
