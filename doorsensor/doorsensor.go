@@ -5,14 +5,13 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
-//	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
+	//	"github.com/ppegusii/cs677-smart-homes-IoT/ordermw"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
 	"net"
 	"net/rpc"
 	"os"
-	"time"
 )
 
 // This struct contains all the attributes of the door sensor and information needed for
@@ -28,14 +27,14 @@ type DoorSensor struct {
 	selfIp       string
 	selfPort     string
 	state        structs.SyncState
-	greplica 	 *structs.SyncRegGatewayUserParam // This is the gateway replica assigned for load balancing
+	greplica     *structs.SyncRegGatewayUserParam // This is the gateway replica assigned for load balancing
 	rpcSync      api.RpcSyncInterface
 }
 
 // initialize a new doorsensor
 func newDoorSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, gatewayPort2 string, selfIp string, selfPort string, ordering api.Ordering) *DoorSensor {
 	return &DoorSensor{
-		id:			  structs.NewSyncInt(api.UNREGISTERED),
+		id:           structs.NewSyncInt(api.UNREGISTERED),
 		gatewayIp:    gatewayIp,
 		gatewayPort:  gatewayPort,
 		gatewayIp2:   gatewayIp2,
@@ -44,7 +43,7 @@ func newDoorSensor(gatewayIp string, gatewayPort string, gatewayIp2 string, gate
 		selfIp:       selfIp,
 		selfPort:     selfPort,
 		state:        *structs.NewSyncState(api.Closed),
-		greplica:	  structs.NewSyncRegGatewayUserParam(),
+		greplica:     structs.NewSyncRegGatewayUserParam(),
 	}
 }
 
@@ -183,7 +182,7 @@ func (d *DoorSensor) QueryState(params *int, reply *api.StateInfo) error {
 func (d *DoorSensor) sendState() {
 	replica := d.greplica.Get()
 	var stateInfo *api.StateInfo = &api.StateInfo{
-		Clock:      int(time.Now().Unix()), //current timestamp for event ordering
+		Clock:      util.GetTime(),
 		DeviceId:   d.id.Get(),
 		DeviceName: api.Door,
 		State:      d.state.GetState(),
@@ -193,7 +192,7 @@ func (d *DoorSensor) sendState() {
 		stateInfo, &api.Empty{}, false)
 }
 
-// This is an RPC function that is issued by the gateway to update the address port of the 
+// This is an RPC function that is issued by the gateway to update the address port of the
 // loadsharing gateway the device is talking to. It returns the device id
 func (d *DoorSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
 	d.greplica.Set(api.RegisterGatewayUserParams{Address: params.Address, Port: params.Port})

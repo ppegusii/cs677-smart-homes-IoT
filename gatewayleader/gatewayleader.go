@@ -11,16 +11,18 @@ import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
+	"math"
 	"sync"
 	"time"
 )
 
 const (
-	iWonWait           time.Duration = 5 * time.Second // duration to wait for IWon replies
-	okWait             time.Duration = 2 * time.Second // duration to wait for OKs
-	aliveReplyWait     time.Duration = 2 * time.Second // duration to wait for are you alive replies
-	aliveRequestWait   time.Duration = 5 * time.Second // duration to wait before sending next are you alive probe
-	nonleaderAliveWait time.Duration = 6 * time.Second // duration leader waits before consider a nonleader dead
+	iWonWait           time.Duration = 5 * time.Second  // duration to wait for IWon replies
+	okWait             time.Duration = 2 * time.Second  // duration to wait for OKs
+	aliveReplyWait     time.Duration = 2 * time.Second  // duration to wait for are you alive replies
+	aliveRequestWait   time.Duration = 5 * time.Second  // duration to wait before sending next are you alive probe
+	nonleaderAliveWait time.Duration = 6 * time.Second  // duration leader waits before consider a nonleader dead
+	syncWait           time.Duration = 10 * time.Second // duration to wait before pulling data from all replicas
 )
 
 type GatewayLeader struct {
@@ -58,6 +60,21 @@ func NewGatewayLeader(ip, port string, replicas []api.RegisterGatewayUserParams)
 
 // Intercept all RPC calls from the gateway application.
 func (this *GatewayLeader) RpcSync(ip, port, rpcName string, args interface{}, reply interface{}, isErrFatal bool) error {
+	// add filtering as needed
+	// if call is to sensor and sensor not assigned to this replica, return an error
+	var id string = util.RegisterGatewayUserParamsToString(this.ipPort)
+	var nodeId int
+	var ok bool
+	//type assertion
+	nodeId, ok = args.(int)
+	if ok && (rpcName == "TemperatureSensor.QueryState" ||
+		rpcName == "MotionSensor.QueryState" ||
+		rpcName == "DoorSensor.QueryState") &&
+		!this.replicas.isNodeIsAssignedToMe(id, nodeId) {
+		var msg string = "Filtering temp sensor query"
+		log.Println(msg)
+		return errors.New(msg)
+	}
 	var err error = util.RpcSync(ip, port, rpcName, args, reply, isErrFatal)
 	return err
 }
@@ -70,9 +87,12 @@ func (this *GatewayLeader) SetGateway(g api.GatewayInterface) {
 // Start routines necessary for leader.
 func (this *GatewayLeader) StartLeader() {
 	this.Election(this.ipPort, &api.Empty{})
+	// Get all possible data.
+	this.getDataFromAllReplicas()
 }
 
-// Intercept registration requests. Service only if election is not in progress and leader.
+// Intercept registration requests. Hold incoming requests during an election.
+// Service only if leader. Enforce release consistency.
 func (this *GatewayLeader) Register(params *api.RegisterParams, reply *api.RegisterReturn) error {
 	this.RLock()
 	// Only service request if leader.
@@ -86,12 +106,67 @@ func (this *GatewayLeader) Register(params *api.RegisterParams, reply *api.Regis
 		this.RUnlock()
 		return err
 	}
+	// Assign the node to a replica.
 	var assigned *api.RegisterGatewayUserParams = this.replicas.loadBalance(*params, reply.DeviceId)
 	log.Printf("Node %+v assigned to replica: %+v\n", params, assigned)
 	reply.Address = assigned.Address
 	reply.Port = assigned.Port
+	// Release consistency.
+	this.sendDataToAllReplicas()
 	this.RUnlock()
 	return err
+}
+
+// Multicast local data to all replicas.
+// Must be a blocking call to maintain consistency.
+func (this *GatewayLeader) sendDataToAllReplicas() {
+	// Last sync definitely occured within 2*sync wait times
+	// of the earliest sync time of all replicas so get earliest
+	var earliest int64 = math.MaxInt64
+	for _, ipPort := range this.replicas.getIpPorts() {
+		var lastSync = this.replicas.getReplicaLastSyncTime(
+			util.RegisterGatewayUserParamsToString(ipPort))
+		if earliest > lastSync {
+			earliest = lastSync
+		}
+	}
+	earliest -= int64(2 * syncWait)
+	// Get local data.
+	var data api.ConsistencyData
+	this.GatewayInterface.PullData(earliest, &data)
+	// Add sensor assignments.
+	data.AssignedNodes = *(this.replicas.getAssignments())
+	// Set the data source
+	data.Replica = this.ipPort
+	// Send data.
+	for _, ipPort := range this.replicas.getIpPorts() {
+		go util.RpcSync(ipPort.Address, ipPort.Port,
+			"Gateway.PushData", &data, &api.Empty{}, false)
+	}
+}
+
+// Get data from all replicas.
+func (this *GatewayLeader) getDataFromAllReplicas() {
+	for _, ipPort := range this.replicas.getIpPorts() {
+		this.getDataFromReplica(&ipPort)
+	}
+}
+
+// Get data from a replica.
+// Must block to maintain consistency.
+func (this *GatewayLeader) getDataFromReplica(ipPort *api.RegisterGatewayUserParams) {
+	var data api.ConsistencyData
+	var err error
+	var id string = util.RegisterGatewayUserParamsToString(*ipPort)
+	var lastSync int64 = this.replicas.getReplicaLastSyncTime(id)
+	// Using sync here for convenience but blocking
+	// at until end of all async calls would be better.
+	err = util.RpcSync(ipPort.Address, ipPort.Port,
+		"Gateway.PullData", lastSync, &data, false)
+	if err != nil {
+		return
+	}
+	this.PushData(&data, &api.Empty{})
 }
 
 // Convenience method for determining if this replica is the leader.
@@ -104,17 +179,25 @@ func (this *GatewayLeader) isLeader() bool {
 }
 
 // Intercept request. Block service if election is in progress.
+// Enforce release consistency.
 func (this *GatewayLeader) RegisterUser(params *api.RegisterGatewayUserParams, empty *struct{}) error {
 	this.RLock()
 	var err error = this.GatewayInterface.RegisterUser(params, empty)
+	// Release consistency.
+	this.sendDataToAllReplicas()
 	this.RUnlock()
 	return err
 }
 
 // Intercept request. Block service if election is in progress.
+// Enforce entry and release consistency.
 func (this *GatewayLeader) ReportDoorState(params *api.StateInfo, empty *struct{}) error {
 	this.RLock()
+	// Entry consistency.
+	this.getDataFromAllReplicas()
 	var err error = this.GatewayInterface.ReportDoorState(params, empty)
+	// Release consistency.
+	this.sendDataToAllReplicas()
 	this.RUnlock()
 	return err
 }
@@ -125,6 +208,31 @@ func (this *GatewayLeader) ReportMotion(params *api.StateInfo, empty *struct{}) 
 	var err error = this.GatewayInterface.ReportMotion(params, empty)
 	this.RUnlock()
 	return err
+}
+
+// Data requested by another replica
+func (this *GatewayLeader) PullData(clock int64, data *api.ConsistencyData) error {
+	var err error = this.GatewayInterface.PullData(clock, data)
+	log.Printf("Sending data: %+v\n", data)
+	// Add sensor assignments.
+	data.AssignedNodes = *(this.replicas.getAssignments())
+	// Set the data source.
+	data.Replica = this.ipPort
+	return err
+}
+
+// Data sent from another replica
+// All incoming data directly or indirectly sent through this function.
+func (this *GatewayLeader) PushData(data *api.ConsistencyData, e *api.Empty) error {
+	log.Printf("Received data: %+v\n", data)
+	var id string = util.RegisterGatewayUserParamsToString(data.Replica)
+	this.replicas.setReplicaLastSyncTime(data.Clock, id)
+	this.replicas.resetSyncTimer(id)
+	//if not leader and data from leader update node assignments
+	if !this.isLeader() && data.Replica == this.leader.Get() {
+		this.replicas.setAssignments(&(data.AssignedNodes))
+	}
+	return this.GatewayInterface.PushData(data, e)
 }
 
 // Receive election msg from self or another replica.
@@ -269,6 +377,8 @@ func (this *GatewayLeader) sendIWons() {
 	}
 	// Rebalance load
 	this.rebalanceLoad()
+	// Release consistency
+	this.sendDataToAllReplicas()
 	// End election.
 	this.electionCheckLock.Lock()
 	if this.electionInProgress {
@@ -295,9 +405,9 @@ func (this *GatewayLeader) handleIWonReplies(_, reply interface{}, err error) {
 // faults if leader.
 func (this *GatewayLeader) Alive(replica api.RegisterGatewayUserParams, yes *api.Empty) error {
 	log.Println("Received alive probe")
-	// TODO Determine if other replicas are active.
+	// Determine if other replicas are active.
 	var key string = util.RegisterGatewayUserParamsToString(replica)
-	this.replicas.ResetTimer(key)
+	this.replicas.resetDeadTimer(key)
 	return nil
 }
 
@@ -310,6 +420,20 @@ func (this *GatewayLeader) getHandleNonleaderDeath(ipPort string) func() {
 		// Starting an election to load balance. Election is not necessary, but elections already
 		// have the nice property that they block request processing.
 		this.Election(this.ipPort, &api.Empty{})
+	}
+}
+
+// Get a closure that syncs with replica.
+// Used as callback functions replica sync request timers.
+func (this *GatewayLeader) getHandleSyncTimeout(replicaIpPort api.RegisterGatewayUserParams) func() {
+	return func() {
+		var id string = util.RegisterGatewayUserParamsToString(replicaIpPort)
+		if !this.replicas.getAlive(id) {
+			this.replicas.resetSyncTimer(id)
+			return
+		}
+		log.Printf("Syncing with replica: %+v\n", replicaIpPort)
+		this.getDataFromReplica(&replicaIpPort)
 	}
 }
 

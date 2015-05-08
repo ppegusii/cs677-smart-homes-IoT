@@ -12,7 +12,6 @@ import (
 	"net"
 	"net/rpc"
 	"os"
-	"time"
 )
 
 // This struct contains all the attributes of the motion sensor and information needed for
@@ -192,7 +191,7 @@ func (m *MotionSensor) QueryState(params *int, reply *api.StateInfo) error {
 func (m *MotionSensor) sendState() {
 	replica := m.greplica.Get()
 	var stateInfo *api.StateInfo = &api.StateInfo{
-		Clock:      int(time.Now().Unix()), //current timestamp for event ordering
+		Clock:      util.GetTime(), //current timestamp for event ordering
 		DeviceId:   m.id.Get(),
 		DeviceName: api.Motion,
 		State:      m.state.GetState(),

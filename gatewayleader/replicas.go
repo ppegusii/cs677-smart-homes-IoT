@@ -7,17 +7,20 @@ import (
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
 	"github.com/ppegusii/cs677-smart-homes-IoT/util"
+	"log"
 	"math"
 	"sync"
 )
 
 // Struct that contains all necessary replica information.
 type replica struct {
-	alive  *structs.SyncBool
-	ipPort api.RegisterGatewayUserParams
-	isThis bool                        // true if replica represents this gatewayleader
-	timer  *structs.SyncTimer          // timer used by leader to help determine if replica is dead
-	nodes  *structs.SyncMapIntRegParam // stores the sensors currently serviced by this replica
+	alive     *structs.SyncBool
+	ipPort    api.RegisterGatewayUserParams
+	isThis    bool                        // true if replica represents this gatewayleader
+	deadTimer *structs.SyncTimer          // timer used by leader to help determine if replica is dead
+	lastSynch *structs.SyncInt64          // last time replica synced with this gatewayleader
+	nodes     *structs.SyncMapIntRegParam // stores the sensors currently serviced by this replica
+	syncTimer *structs.SyncTimer          // timer used to enforce eventual consistency
 }
 
 // Data structure to store replicas.
@@ -25,6 +28,7 @@ type replica struct {
 // Read operations:
 // 		Get replica ipPort, stop or reset timer.
 // 		Alive operations also OK since registrations will not occur during elections.
+//		Update last sync time.
 // Write operations:
 //		Any load balancing operations that change the nodes structure.
 type syncMapStringReplica struct {
@@ -41,15 +45,33 @@ func newSyncMapStringReplica(replicasIpPort []api.RegisterGatewayUserParams, g *
 	for _, ipPort := range replicasIpPort {
 		var key string = util.RegisterGatewayUserParamsToString(ipPort)
 		var isSelf bool = g.ipPort == ipPort
-		s.m[key] = &replica{
-			alive:  structs.NewSyncBool(isSelf),
-			ipPort: ipPort,
-			isThis: isSelf,
-			timer:  structs.NewSyncTimer(nonleaderAliveWait, g.getHandleNonleaderDeath(key)),
-			nodes:  structs.NewSyncMapIntRegParam(),
+		var r replica = replica{
+			alive:     structs.NewSyncBool(isSelf),
+			ipPort:    ipPort,
+			isThis:    isSelf,
+			deadTimer: structs.NewSyncTimer(nonleaderAliveWait, g.getHandleNonleaderDeath(key)),
+			lastSynch: structs.NewSyncInt64(api.EarliestTime),
+			nodes:     structs.NewSyncMapIntRegParam(),
 		}
+		// Create and start a sync timer unless replica represents this gateway leader.
+		if g.ipPort != ipPort {
+			r.syncTimer = structs.NewSyncTimer(syncWait, g.getHandleSyncTimeout(ipPort))
+			r.syncTimer.Reset()
+		}
+		s.m[key] = &r
 	}
 	return s
+}
+
+func (this *syncMapStringReplica) getAlive(key string) bool {
+	this.RLock()
+	defer this.RUnlock()
+	r, ok := this.m[key]
+	if !ok {
+		log.Printf("Replica key not found: %s", key)
+		return false
+	}
+	return r.alive.Get()
 }
 
 func (this *syncMapStringReplica) setAlive(key string, alive bool) {
@@ -71,12 +93,12 @@ func (this *syncMapStringReplica) setAllReplicasDead() {
 			continue
 		}
 		replica.alive.Set(false)
-		replica.timer.Stop()
+		replica.deadTimer.Stop()
 	}
 	this.RUnlock()
 }
 
-func (this *syncMapStringReplica) ResetTimer(key string) {
+func (this *syncMapStringReplica) resetDeadTimer(key string) {
 	this.RLock()
 	r, ok := this.m[key]
 	//Never reset your own timer
@@ -84,18 +106,30 @@ func (this *syncMapStringReplica) ResetTimer(key string) {
 		this.RUnlock()
 		return
 	}
-	r.timer.Reset()
+	r.deadTimer.Reset()
 	this.RUnlock()
 }
 
-func (this *syncMapStringReplica) StopTimer(key string) {
+func (this *syncMapStringReplica) stopDeadTimer(key string) {
 	this.RLock()
 	r, ok := this.m[key]
 	if !ok {
 		this.RUnlock()
 		return
 	}
-	r.timer.Stop()
+	r.deadTimer.Stop()
+	this.RUnlock()
+}
+
+func (this *syncMapStringReplica) resetSyncTimer(key string) {
+	this.RLock()
+	r, ok := this.m[key]
+	//Never reset your own timer
+	if !ok || r.isThis {
+		this.RUnlock()
+		return
+	}
+	r.deadTimer.Reset()
 	this.RUnlock()
 }
 
@@ -174,4 +208,56 @@ func (this *syncMapStringReplica) rebalanceLoad() *map[api.RegisterGatewayUserPa
 	}
 	this.Unlock()
 	return &newAssigns
+}
+
+func (this *syncMapStringReplica) getAssignments() *map[api.RegisterGatewayUserParams][]api.RegisterParams {
+	this.RLock()
+	var assigns map[api.RegisterGatewayUserParams][]api.RegisterParams = make(
+		map[api.RegisterGatewayUserParams][]api.RegisterParams)
+	for _, r := range this.m {
+		assigns[r.ipPort] = *(r.nodes.GetAllRegParams())
+	}
+	this.RUnlock()
+	return &assigns
+}
+
+func (this *syncMapStringReplica) setAssignments(assigns *map[api.RegisterGatewayUserParams][]api.RegisterParams) {
+	this.Lock()
+	for ipPort, nodes := range *assigns {
+		var id string = util.RegisterGatewayUserParamsToString(ipPort)
+		this.m[id].nodes = structs.NewSyncMapIntRegParam()
+		for _, node := range nodes {
+			this.m[id].nodes.AddExistingRegParam(&node, node.DeviceId)
+		}
+	}
+	this.Unlock()
+}
+
+func (this *syncMapStringReplica) getReplicaLastSyncTime(id string) int64 {
+	this.RLock()
+	defer this.RUnlock()
+	return this.m[id].lastSynch.Get()
+}
+
+// Change sync time and restart timer
+func (this *syncMapStringReplica) setReplicaLastSyncTime(clock int64, id string) {
+	this.RLock()
+	this.m[id].syncTimer.Stop()
+	this.m[id].lastSynch.Set(clock)
+	this.m[id].syncTimer.Reset()
+	this.RUnlock()
+}
+
+// Return true if the node is assigned to this gatewayleader
+func (this *syncMapStringReplica) isNodeIsAssignedToMe(selfId string, nodeId int) bool {
+	this.RLock()
+	defer this.RUnlock()
+	var self *replica
+	var ok bool
+	self, ok = this.m[selfId]
+	if !ok || !self.isThis {
+		log.Printf("Given incorrect selfId: %s\n", selfId)
+	}
+	_, ok = self.nodes.GetRegParam(nodeId)
+	return ok
 }

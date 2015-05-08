@@ -14,9 +14,9 @@ roughly equal.
 replicas implement a consistency technique to ensure that their states (e.g., 
 database states) are synchronized.
   * We need to choose a consistency guarantee.
-    * Entry for auto home/away?
-	* Release for registration.
-    * Gateway coming up pulls from other?
+    * Entry and release for auto home/away.
+    * Release for node and user registration and election (leader only).
+    * Gateway coming up pulls from other.
     * Otherwise weak consistency with a stale threshold (keep track of timestamp of latest sync)
 
 4. Implement a cache in the front-end tier to enhance performance of the

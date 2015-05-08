@@ -75,17 +75,14 @@ const (
 	OutletsOff Mode = "outletsoff"
 )
 
-// Used to log gateway state in database.
-type ModeAndClock struct {
-	Clock int
-	Mode  Mode
-}
+const EarliestTime int64 = 0
 
 // Interfaces provided by the Database layer
 type DatabaseInterface interface {
 	AddDeviceOrSensor(params *RegisterParams, _ *struct{}) error
 	AddEvent(params *StateInfo, _ *struct{}) error
 	AddState(params *StateInfo, _ *struct{}) error
+	GetDataSince(clock int64, data *ConsistencyData) error // For synchronization
 	GetHappensBefore(params StateInfo, reply *StateInfo) error
 	//log the gateway mode
 	LogMode(params ModeAndClock, _ *struct{}) error
@@ -103,7 +100,9 @@ type NodeInterface interface {
 // have meaningful returns to node RPC calls.***
 // Interface provided by the Gateway
 type GatewayInterface interface {
-	Query(params Name, _ *struct{}) error // Used for testing
+	PullData(clock int64, data *ConsistencyData) error // For synchronization
+	PushData(data *ConsistencyData, _ *Empty) error    // For synchronization
+	Query(params Name, _ *struct{}) error              // Used for testing
 	Register(params *RegisterParams, reply *RegisterReturn) error
 	RegisterUser(params *RegisterGatewayUserParams, _ *struct{}) error
 	ReportDoorState(params *StateInfo, _ *struct{}) error
@@ -157,16 +156,26 @@ type UserInterface interface {
 	TextMessage(params *string, _ *struct{}) error
 }
 
+// Returns a clock value
+type ClockInterface interface {
+	GetClock() int64
+}
+
 //Structure used during device registration,
 //it is send as one of the parameters during RPC Register call to gateway
 type RegisterParams struct {
 	Address  string
-	Clock    int
+	Clock    int64
 	DeviceId int
 	Name     Name
 	Port     string
 	State    State
 	Type     Type
+}
+
+// You don't see this.
+func (this RegisterParams) GetClock() int64 {
+	return this.Clock
 }
 
 type RegisterReturn struct {
@@ -181,21 +190,40 @@ type RegisterGatewayUserParams struct {
 	Port    string
 }
 
+// Used to log gateway state in database.
+type ModeAndClock struct {
+	Clock int64
+	Mode  Mode
+}
+
+// You don't see this.
+func (this ModeAndClock) GetClock() int64 {
+	return this.Clock
+}
+
 // To report the state use this struct
 type StateInfo struct {
-	Clock      int
+	Clock      int64
 	DeviceId   int
 	DeviceName Name
 	State      State
+}
+
+// You don't see this.
+func (this StateInfo) GetClock() int64 {
+	return this.Clock
 }
 
 // Used for no arguments or replies in RPCs
 type Empty struct{}
 
 // Sent during synchronization RPCs
-type Data struct {
+type ConsistencyData struct {
+	AssignedNodes   map[RegisterGatewayUserParams][]RegisterParams
+	Clock           int64
+	HomeAway        ModeAndClock
 	RegisteredNodes []RegisterParams
-	AssignedNodes   map[RegisterGatewayUserParams]int
-	User            RegisterGatewayUserParams
+	Replica         RegisterGatewayUserParams // data source
 	StateInfos      []StateInfo
+	User            RegisterGatewayUserParams
 }
