@@ -762,56 +762,141 @@ func (s *SyncBool) Set(b bool) {
 
 //Main Cache structure
 type Cache struct {
-    lock sync.RWMutex
-    datamap map[int]api.StateInfo
-    size int //size of cache
-    evictlist map[int]int // key is the index of record of datamap and value is the reference count
+	lock      sync.RWMutex
+	used      int
+	datamap   map[int]api.StateInfo
+	size      int           //size of cache
+	evictlist map[int]int64 // key is the index of record of datamap and value is the reference count
 }
 
 //Create new cache
 func NewCache(maxEntries int) *Cache {
 	return &Cache{
-		size: 		maxEntries,
-		datamap:    make(map[int]api.StateInfo),
-		evictlist:	make(map[int]int),
+		used:      api.EMPTY,
+		size:      maxEntries,
+		datamap:   make(map[int]api.StateInfo),
+		evictlist: make(map[int]int64),
 	}
 }
 
 //Get a specific record from the cache
-func (c *Cache) Get(key int) (*api.StateInfo, error) {
-    c.lock.RLock()
-    defer c.lock.RUnlock()
-    data := c.datamap[key]
-    c.evictlist[key] += 1 
-    return &data, nil
+func (c *Cache) Get(key int) *api.StateInfo {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	//Check that the cache is non-Empty
+	if c.used == api.EMPTY {
+		return nil
+	} else {
+		data, exists := c.datamap[key]
+		if exists == false {
+			return nil
+		} else {
+			c.evictlist[key] = int64(time.Now().Unix()) //set the reference time to current timestamp
+			return &data
+		}
+	}
 }
 
 //Add a new record in the cache
 func (c *Cache) Set(key int, d *api.StateInfo) {
-    c.lock.Lock()
-    defer c.lock.Unlock()
-    c.datamap[key] = *d
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.datamap[key] = *d
+	c.evictlist[key] = int64(time.Now().Unix())
+	c.used++
 }
 
 // Delete a cache entry
-func (c *Cache) Delete(key int) bool{
+func (c *Cache) Delete(key int) bool {
 	var s bool
-    c.lock.Lock()
-    defer c.lock.Unlock()
-    //Check if cache has non zero length
-    if(c.LenCache() > 0) {
-        delete(c.datamap, key)
-        s = true	
-    } else {
-    	s = false
-    }
-    return s
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	//Check if cache has non zero length
+	if c.used > 0 {
+		delete(c.datamap, key)
+		c.evictlist[key] = 0
+		c.used-- //Decrement the number of cache entries in the cache map
+		s = true
+	} else {
+		s = false
+	}
+	return s
 }
 
-//Find the length of the cache
+//Find the length of the cache; returns the number of entries in the cache
+func (c *Cache) UsedCache() int {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.used
+}
+
+//Find the size of the cache; returns the max number of entries the cache can hold
 func (c *Cache) LenCache() int {
 	c.lock.RLock()
-    defer c.lock.RUnlock()
-    r := len(c.datamap)
-    return r
+	defer c.lock.RUnlock()
+	return c.size
+}
+
+//Find the oldest entry in the Cache for eviction, returns the index of map to be evicted
+func (c *Cache) OldCache() int {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	min := c.evictlist[0]
+	minindex := 0
+	for index, value := range c.evictlist {
+		if value < min && value > 0 {
+			min = value
+			minindex = index
+		}
+	}
+	fmt.Println("Evicting page with index number %d and timestamp is %d", minindex, min)
+	return (minindex)
+}
+
+//search for index with timestamp as 0
+func (c *Cache) Get0timestamp() int {
+	var Zindex int = -1
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	for index, value := range c.evictlist {
+		if value == 0 {
+			Zindex = index
+			break
+		}
+	}
+	fmt.Println("Hole found at index number %d and timestamp", Zindex)
+	return Zindex
+}
+
+//this function is for testing the reference timestamp
+//search for index with timestamp as 0
+func (c *Cache) Gettimestamp(key int) int64 {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	return (c.evictlist[key])
+}
+
+func (cachemap *Cache) AddEntry(d *api.StateInfo){
+	var Zindex, evict int
+	//Check if the Cache is full
+	if cachemap.UsedCache() < cachemap.LenCache() {
+		//Since there are indices not inserted into the cache map use 
+		// c.used value to find the index to add the value at
+		cachemap.Set(cachemap.UsedCache(), d)
+	} else {
+		// The cache entries seem to be used but wait there might be holes inside,
+		//So, let us use the timestamp field to find any 0's inside indicating the corresponding index is free
+		// due to a prio delete request of a particular block
+		Zindex = cachemap.Get0timestamp()
+		if (Zindex != -1){
+		//Yea, we found a hole in the cache map. Now, get that damn new entry at this spot.
+			cachemap.Set(Zindex, d)
+			} else {
+				//Ok, so no hole found in the cachemap. I command you to evict an entry based on LRU
+				evict = cachemap.OldCache()
+				cachemap.Set(evict, d)
+			}		
+	}
 }
