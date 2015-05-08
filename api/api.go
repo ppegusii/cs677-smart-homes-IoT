@@ -74,12 +74,6 @@ const (
 	OutletsOff Mode = "outletsoff"
 )
 
-// Used to log gateway state in database.
-type ModeAndClock struct {
-	Clock int
-	Mode  Mode
-}
-
 // Interfaces provided by the Database layer
 type DatabaseInterface interface {
 	AddDeviceOrSensor(params *RegisterParams, _ *struct{}) error
@@ -156,6 +150,11 @@ type UserInterface interface {
 	TextMessage(params *string, _ *struct{}) error
 }
 
+// Returns a clock value
+type ClockInterface interface {
+	GetClock() int
+}
+
 //Structure used during device registration,
 //it is send as one of the parameters during RPC Register call to gateway
 type RegisterParams struct {
@@ -166,6 +165,11 @@ type RegisterParams struct {
 	Port     string
 	State    State
 	Type     Type
+}
+
+// You don't see this.
+func (this RegisterParams) GetClock() int {
+	return this.Clock
 }
 
 type RegisterReturn struct {
@@ -180,12 +184,28 @@ type RegisterGatewayUserParams struct {
 	Port    string
 }
 
+// Used to log gateway state in database.
+type ModeAndClock struct {
+	Clock int
+	Mode  Mode
+}
+
+// You don't see this.
+func (this ModeAndClock) GetClock() int {
+	return this.Clock
+}
+
 // To report the state use this struct
 type StateInfo struct {
 	Clock      int
 	DeviceId   int
 	DeviceName Name
 	State      State
+}
+
+// You don't see this.
+func (this StateInfo) GetClock() int {
+	return this.Clock
 }
 
 // Used for no arguments or replies in RPCs

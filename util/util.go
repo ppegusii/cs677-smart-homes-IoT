@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/rpc"
 	"os"
+	"time"
 )
 
 func LogCurrentState(s api.State) {
@@ -116,6 +117,10 @@ func TypeToString(t api.Type) string {
 	default:
 		return "invalid"
 	}
+}
+
+func GetTime() int {
+	return int(time.Now().Unix())
 }
 
 func RegisterGatewayUserParamsToString(p api.RegisterGatewayUserParams) string {

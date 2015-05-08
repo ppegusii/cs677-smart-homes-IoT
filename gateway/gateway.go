@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ppegusii/cs677-smart-homes-IoT/api"
 	"github.com/ppegusii/cs677-smart-homes-IoT/structs"
+	"github.com/ppegusii/cs677-smart-homes-IoT/util"
 	"log"
 	//"net"
 	//"net/rpc"
@@ -156,6 +157,7 @@ func (g *Gateway) RegisterUser(params *api.RegisterGatewayUserParams, _ *struct{
 
 // Register devices and sensors to the gateway
 func (g *Gateway) Register(params *api.RegisterParams, reply *api.RegisterReturn) error {
+	params.Clock = util.GetTime()
 	log.Printf("Attempting to register device with this info: %+v", params)
 	var err error = nil
 	var id int

@@ -304,7 +304,7 @@ func (s *SyncFile) WriteString(str string) (int, error) {
 	return n, err
 }
 
-func (s *SyncFile) WriteJson(o interface{}) error {
+func (s *SyncFile) writeJson(o interface{}) error {
 	var err error
 	var b []byte
 	var str string
@@ -314,15 +314,40 @@ func (s *SyncFile) WriteJson(o interface{}) error {
 	}
 	str = string(b)
 	str += "\n"
-	_, err = s.WriteString(str)
+	_, err = s.f.WriteString(str)
 	return err
+}
+
+// This is bad.
+// Assume clock values are unique
+// Read all structs into a map of clock to struct
+// Write structs back to file
+func (s *SyncFile) WriteRegParam(things *[]api.RegisterParams) error {
+	s.Lock()
+	defer s.Unlock()
+	var m map[int]api.RegisterParams = make(map[int]api.RegisterParams)
+	old, _ := s.getRegParamsSince(-1)
+	for _, thing := range append(*old, *things...) {
+		m[thing.Clock] = thing
+	}
+	s.f.Seek(0, 0)
+	var err error
+	for _, thing := range m {
+		err = s.writeJson(thing)
+	}
+	return err
+}
+
+// Locking wrapper to internal function
+func (s *SyncFile) GetRegParamsSince(startTime int) (*[]api.RegisterParams, error) {
+	s.Lock()
+	defer s.Unlock()
+	return s.getRegParamsSince(startTime)
 }
 
 // Unmarshal all lines into structs
 // Return the lines that have times greater than the given clock
-func (s *SyncFile) GetRegParamsSince(startTime int) (*[]api.RegisterParams, error) {
-	s.Lock()
-	defer s.Unlock()
+func (s *SyncFile) getRegParamsSince(startTime int) (*[]api.RegisterParams, error) {
 	s.f.Seek(0, 0)
 	var scanner *bufio.Scanner = bufio.NewScanner(s.f)
 	var err error
@@ -344,11 +369,36 @@ func (s *SyncFile) GetRegParamsSince(startTime int) (*[]api.RegisterParams, erro
 	return &things, nil
 }
 
-// Unmarshal all lines into structs
-// Return the lines that have times greater than the given clock
+// This is bad.
+// Assume clock values are unique
+// Read all structs into a map of clock to struct
+// Write structs back to file
+func (s *SyncFile) WriteStateInfo(things *[]api.StateInfo) error {
+	s.Lock()
+	defer s.Unlock()
+	var m map[int]api.StateInfo = make(map[int]api.StateInfo)
+	old, _ := s.getStateInfoSince(-1)
+	for _, thing := range append(*old, *things...) {
+		m[thing.Clock] = thing
+	}
+	s.f.Seek(0, 0)
+	var err error
+	for _, thing := range m {
+		err = s.writeJson(thing)
+	}
+	return err
+}
+
+// Locking wrapper to internal function
 func (s *SyncFile) GetStateInfoSince(startTime int) (*[]api.StateInfo, error) {
 	s.Lock()
 	defer s.Unlock()
+	return s.getStateInfoSince(startTime)
+}
+
+// Unmarshal all lines into structs
+// Return the lines that have times greater than the given clock
+func (s *SyncFile) getStateInfoSince(startTime int) (*[]api.StateInfo, error) {
 	s.f.Seek(0, 0)
 	var scanner *bufio.Scanner = bufio.NewScanner(s.f)
 	var err error
@@ -369,6 +419,40 @@ func (s *SyncFile) GetStateInfoSince(startTime int) (*[]api.StateInfo, error) {
 	}
 	return &things, nil
 }
+
+/*
+// Locking wrapper to internal function
+func (s *SyncFile) GetThingSince(startTime int, t api.ClockInterface) (*[]api.ClockInterface, error) {
+	s.Lock()
+	defer s.Unlock()
+	return s.getThingSince(startTime, t)
+}
+
+// Unmarshal all lines into structs
+// Return the lines that have times greater than the given clock
+func (s *SyncFile) getThingSince(startTime int, t api.ClockInterface) (*[]api.ClockInterface, error) {
+	s.f.Seek(0, 0)
+	var scanner *bufio.Scanner = bufio.NewScanner(s.f)
+	var err error
+	var b []byte
+	var things []api.ClockInterface = make([]api.ClockInterface, 0)
+	// http://stackoverflow.com/questions/8757389/reading-file-line-by-line-in-go
+	for scanner.Scan() {
+		b = []byte(scanner.Text())
+		sw
+		var thing api.ClockInterface
+		err = json.Unmarshal(b, &thing)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		if thing.GetClock() > startTime {
+			things = append(things, thing)
+		}
+	}
+	return &things, nil
+}
+*/
 
 type SyncMapIntStateInfo struct {
 	sync.RWMutex

@@ -103,12 +103,16 @@ func (d *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) er
 		clock.(jj
 		clock.GetClock()
 	*/
-	err = d.devSen.WriteJson(*params)
+	//err = d.devSen.WriteJson(*params)
+	var s []api.RegisterParams = []api.RegisterParams{*params}
+	err = d.devSen.WriteRegParam(&s)
 	if err != nil {
 		return err
 	}
-	unm, _ := d.devSen.GetRegParamsSince(-1)
-	log.Printf("unmarshaled = %+v\n", unm)
+	/*
+		unm, _ := d.devSen.GetRegParamsSince(-1)
+		log.Printf("unmarshaled = %+v\n", unm)
+	*/
 	//Creates tables to track object states and events.
 	var f *structs.SyncFile
 	f, err = structs.NewSyncFile(fmt.Sprintf("%d_%s_events.tbl",
@@ -185,6 +189,8 @@ func (d *Database) writeStateInfo(stateInfo *api.StateInfo, f *structs.SyncFile)
 				i, err = f.WriteString(line)
 		return i, err
 	*/
-	var err error = f.WriteJson(stateInfo)
+	//var err error = f.WriteJson(stateInfo)
+	var s []api.StateInfo = []api.StateInfo{*stateInfo}
+	var err error = f.WriteStateInfo(&s)
 	return 0, err
 }
