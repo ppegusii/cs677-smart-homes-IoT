@@ -85,6 +85,7 @@ type DatabaseInterface interface {
 	GetHappensBefore(params StateInfo, reply *StateInfo) error
 	//log the gateway mode
 	LogMode(params ModeAndClock, _ *struct{}) error
+	LogLoad(params map[RegisterGatewayUserParams][]RegisterParams, _ *Empty) error
 	RegisterGateway(params *RegisterGatewayUserParams, _ *struct{}) error
 }
 

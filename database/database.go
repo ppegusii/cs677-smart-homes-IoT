@@ -20,6 +20,7 @@ type Database struct {
 	devSen  *structs.SyncFile
 	events  *structs.SyncMapIntSyncFile
 	gateway *structs.SyncRegGatewayUserParam
+	gwLoad  *structs.SyncFile
 	gwMode  *structs.SyncFile
 	ip      string
 	orderMW api.OrderingMiddlewareInterface
@@ -51,6 +52,11 @@ func (d *Database) start() {
 	if err != nil {
 		log.Fatal("Error creating gwMode file: %s\n", err)
 	}
+	//create file for gateway load
+	d.gwLoad, err = structs.NewSyncFile("gw_load.tbl")
+	if err != nil {
+		log.Fatal("Error creating gwLoad file: %s\n", err)
+	}
 	//start RPC server
 	err = rpc.Register(api.DatabaseInterface(d))
 	if err != nil {
@@ -79,6 +85,17 @@ func (d *Database) LogMode(params api.ModeAndClock, _ *struct{}) error {
 	_, err = d.gwMode.WriteString(fmt.Sprintf("%d,%s\n",
 		params.Clock,
 		modeStr))
+	return err
+}
+
+//Writes object information to table.
+//Creates tables to track assigned sensors
+func (d *Database) LogLoad(params map[api.RegisterGatewayUserParams][]api.RegisterParams, _ *api.Empty) error {
+	var err error = nil
+	//Write object information to table.
+	_, err = d.gwLoad.WriteString(fmt.Sprintf("%d,%+v\n",
+		util.GetTime(),
+		params))
 	return err
 }
 
