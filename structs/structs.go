@@ -1029,8 +1029,8 @@ func (c *Cache) Get0timestamp() int {
 			break
 		}
 	}
-	if (Zindex > -1) {
-	fmt.Println("Hole found at index number ", Zindex)
+	if Zindex > -1 {
+		fmt.Println("Hole found at index number ", Zindex)
 	} else {
 		fmt.Println("No hole found... go kill that stale page ... Evict it")
 	}
@@ -1059,29 +1059,57 @@ func (c *Cache) Exists(key int) bool {
 }
 
 func (cachemap *Cache) AddEntry(d *api.StateInfo) {
-	var Zindex, evict int
-	//Check if the Cache is full
-
-	fmt.Println(cachemap.UsedCache(), cachemap.LenCache(), cachemap.Exists(cachemap.LenCache() - 1))
-	if (cachemap.UsedCache() < cachemap.LenCache() && !cachemap.Exists(cachemap.LenCache() - 1)){
-		//Since there are indices not inserted into the cache map use
-		// c.used value to find the index to add the value at
-		fmt.Println("The cache is not full, so appending entry at the end of cachemap")
-		cachemap.Set(cachemap.UsedCache(), d)
+	var Zindex, evict int = -1 - 1
+	//Check if the Cache already contains this device info
+	Zindex = cachemap.LookupDeviceID(d.DeviceId)
+	if Zindex > -1 {
+		//Found an existing entry, so just update its cache and touch the ref timestamp
+		cachemap.Set(Zindex, d)
+		fmt.Println("Updated the cachemap value to the new stateInfo value and touched the ref timestamp")
 	} else {
-		// The cache entries seem to be used but wait there might be holes inside,
-		//So, let us use the timestamp field to find any 0's inside indicating the corresponding index is free
-		// due to a prio delete request of a particular block
-		Zindex = cachemap.Get0timestamp()
-		if Zindex != -1 {
-			//Yea, we found a hole in the cache map. Now, get that damn new entry at this spot.
-			fmt.Println("The cache has a hole, so replacing hole with the new entry in cachemap at index ",Zindex)
-			cachemap.Set(Zindex, d)
+		//The entry does not exist add it in the cache ... But, where... Follow the code
+		//Check if the Cache is full
+		fmt.Println(cachemap.UsedCache(), cachemap.LenCache(), cachemap.Exists(cachemap.LenCache()-1))
+		if cachemap.UsedCache() < cachemap.LenCache() && !cachemap.Exists(cachemap.LenCache()-1) {
+			//Since there are indices not inserted into the cache map use
+			// c.used value to find the index to add the value at
+			fmt.Println("The cache is not full, so appending entry at the end of cachemap")
+			cachemap.Set(cachemap.UsedCache(), d)
 		} else {
-			//Ok, so no hole found in the cachemap. I command you to evict an entry based on LRU
-			fmt.Println("The cache has no holes, so evicting the LRU entry in cachemap")
-			evict = cachemap.OldCache()
-			cachemap.Set(evict, d)
+			// The cache entries seem to be used but wait there might be holes inside,
+			//So, let us use the timestamp field to find any 0's inside indicating the corresponding index is free
+			// due to a prio delete request of a particular block
+			Zindex = cachemap.Get0timestamp()
+			if Zindex != -1 {
+				//Yea, we found a hole in the cache map. Now, get that damn new entry at this spot.
+				fmt.Println("The cache has a hole, so replacing hole with the new entry in cachemap at index ", Zindex)
+				cachemap.Set(Zindex, d)
+			} else {
+				//Ok, so no hole found in the cachemap. I command you to evict an entry based on LRU
+				fmt.Println("The cache has no holes, so evicting the LRU entry in cachemap")
+				evict = cachemap.OldCache()
+				cachemap.Set(evict, d)
+			}
 		}
 	}
+}
+
+//Find the oldest entry in the Cache for eviction, returns the index of map to be evicted
+func (c *Cache) LookupDeviceID(id int) int {
+	var devindex int = -1
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	for index, _ := range c.datamap {
+		if c.datamap[index].DeviceId == id {
+			devindex = index
+			break
+		}
+	}
+	if devindex == -1 {
+		fmt.Println("No such device found")
+	} else {
+		fmt.Println("Found the device at index ", devindex)
+	}
+	return (devindex)
 }

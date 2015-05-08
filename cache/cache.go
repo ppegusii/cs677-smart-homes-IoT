@@ -66,11 +66,22 @@ func main(){
 
 	stateInfo = &api.StateInfo{
 		Clock:      int64(time.Now().Unix()), //current timestamp for event ordering
-		DeviceId:   4,
+		DeviceId:   100,
 		DeviceName: api.Temperature,
 		State:      api.On,
 		}
 
-	cachemap.AddEntry(stateInfo) //Should at at 7
+	cachemap.AddEntry(stateInfo) //Should at at 7 or 8 depends if cachemap[0] and [1] have same values or diff
+
+	cachemap.LookupDeviceID(100)
+
+	stateInfo = &api.StateInfo{
+		Clock:      int64(time.Now().Unix()), //current timestamp for event ordering
+		DeviceId:   100,
+		DeviceName: api.Temperature,
+		State:      api.On,
+		}
+
+	cachemap.AddEntry(stateInfo) 
 
 }
