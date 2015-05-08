@@ -81,15 +81,32 @@ func (this *GatewayLeader) Register(params *api.RegisterParams, reply *api.Regis
 		this.RUnlock()
 		return err
 	}
+	var start int = util.GetTime()
 	var err error = this.GatewayInterface.Register(params, reply)
 	if err != nil {
 		this.RUnlock()
 		return err
 	}
+	// Assign the node to a replica.
 	var assigned *api.RegisterGatewayUserParams = this.replicas.loadBalance(*params, reply.DeviceId)
 	log.Printf("Node %+v assigned to replica: %+v\n", params, assigned)
 	reply.Address = assigned.Address
 	reply.Port = assigned.Port
+	// Release consistency.
+	// Get local data.
+	var data api.ConsistencyData
+	this.GatewayInterface.PullData(start, &data)
+	// Add sensor assignments.
+	data.AssignedNodes = *(this.replicas.getAssignments())
+	// Send local data.
+	var thisId string = util.RegisterGatewayUserParamsToString(this.ipPort)
+	for _, ipPort := range this.replicas.getIpPorts() {
+		var id string = util.RegisterGatewayUserParamsToString(ipPort)
+		if id != thisId {
+			go util.RpcSync(ipPort.Address, ipPort.Port,
+				"Gateway.PushData", &data, &api.Empty{}, false)
+		}
+	}
 	this.RUnlock()
 	return err
 }
@@ -125,6 +142,25 @@ func (this *GatewayLeader) ReportMotion(params *api.StateInfo, empty *struct{}) 
 	var err error = this.GatewayInterface.ReportMotion(params, empty)
 	this.RUnlock()
 	return err
+}
+
+// Data requested by another replica
+func (this *GatewayLeader) PullData(clock int, data *api.ConsistencyData) error {
+	var err error = this.GatewayInterface.PullData(clock, data)
+	log.Printf("Sending data: %+v\n", data)
+	// Add sensor assignments.
+	data.AssignedNodes = *(this.replicas.getAssignments())
+	return err
+}
+
+// Data sent from another replica
+func (this *GatewayLeader) PushData(data *api.ConsistencyData, e *api.Empty) error {
+	log.Printf("Received data: %+v\n", data)
+	//TODO if not leader update node assignments
+	if !this.isLeader() {
+		this.replicas.setAssignments(&(data.AssignedNodes))
+	}
+	return this.GatewayInterface.PushData(data, e)
 }
 
 // Receive election msg from self or another replica.

@@ -194,3 +194,26 @@ func (d *Database) writeStateInfo(stateInfo *api.StateInfo, f *structs.SyncFile)
 	var err error = f.WriteStateInfo(&s)
 	return 0, err
 }
+
+func (d *Database) GetDataSince(clock int, data *api.ConsistencyData) error {
+	var err error
+	var rp *[]api.RegisterParams
+	var si []api.StateInfo
+	rp, err = d.devSen.GetRegParamsSince(clock)
+	if err != nil {
+		return err
+	}
+	data.RegisteredNodes = *rp
+	var stateFiles map[int]*structs.SyncFile = d.states.GetAll()
+	var sip *[]api.StateInfo
+	for _, stateFile := range stateFiles {
+		sip, err = stateFile.GetStateInfoSince(clock)
+		if err != nil {
+			return err
+		}
+		si = append(si, (*sip)...)
+	}
+	data.StateInfos = si
+	data.Clock = util.GetTime()
+	return nil
+}

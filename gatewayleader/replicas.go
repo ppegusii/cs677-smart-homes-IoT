@@ -175,3 +175,26 @@ func (this *syncMapStringReplica) rebalanceLoad() *map[api.RegisterGatewayUserPa
 	this.Unlock()
 	return &newAssigns
 }
+
+func (this *syncMapStringReplica) getAssignments() *map[api.RegisterGatewayUserParams][]api.RegisterParams {
+	this.RLock()
+	var assigns map[api.RegisterGatewayUserParams][]api.RegisterParams = make(
+		map[api.RegisterGatewayUserParams][]api.RegisterParams)
+	for _, r := range this.m {
+		assigns[r.ipPort] = *(r.nodes.GetAllRegParams())
+	}
+	this.RUnlock()
+	return &assigns
+}
+
+func (this *syncMapStringReplica) setAssignments(assigns *map[api.RegisterGatewayUserParams][]api.RegisterParams) {
+	this.Lock()
+	for ipPort, nodes := range *assigns {
+		var id string = util.RegisterGatewayUserParamsToString(ipPort)
+		this.m[id].nodes = structs.NewSyncMapIntRegParam()
+		for _, node := range nodes {
+			this.m[id].nodes.AddExistingRegParam(&node, node.DeviceId)
+		}
+	}
+	this.Unlock()
+}
