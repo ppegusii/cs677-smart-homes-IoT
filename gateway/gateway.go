@@ -18,6 +18,7 @@ import (
 type Gateway struct {
 	bulbDev         structs.SyncMapIntBool
 	bulbTimer       structs.SyncTimer
+	cache           *structs.Cache
 	database        structs.SyncRegGatewayUserParam
 	doorSen         structs.SyncMapIntBool
 	ip              string
@@ -34,9 +35,10 @@ type Gateway struct {
 }
 
 // create and initialize the fields of gateway
-func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInterval int, port string, rpcSync api.RpcSyncInterface) api.GatewayInterface {
+func newGateway(dbIP string, dbPort string, ip string, mode api.Mode, pollingInterval int, port string, rpcSync api.RpcSyncInterface, cacheSize int) api.GatewayInterface {
 	var g *Gateway = &Gateway{
 		bulbDev:  *structs.NewSyncMapIntBool(),
+		cache:    structs.NewCache(cacheSize),
 		database: *structs.NewSyncRegGatewayUserParam(),
 		doorSen:  *structs.NewSyncMapIntBool(),
 		ip:       ip,
@@ -446,6 +448,9 @@ func (g *Gateway) writeMode(m api.ModeAndClock) {
 
 //Send state info to the specified rpc on the database
 func (g *Gateway) writeStateInfo(rpcName string, stateInfo *api.StateInfo) {
+	if rpcName == "Database.AddState" {
+		g.cache.AddEntry(stateInfo)
+	}
 	var db api.RegisterGatewayUserParams = g.database.Get()
 	var empty struct{}
 	g.rpcSync.RpcSync(db.Address, db.Port,

@@ -211,6 +211,7 @@ func (m *MotionSensor) sendState() {
 // This is an RPC function that is issued by the gateway to update the address port of the
 // loadsharing gateway the device is talking to. It returns the device id
 func (m *MotionSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
+	log.Printf("Changing gateway to: %+v\n", *params)
 	m.greplica.Set(api.RegisterGatewayUserParams{Address: params.Address, Port: params.Port})
 	*reply = m.id.Get()
 	return nil

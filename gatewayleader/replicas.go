@@ -55,6 +55,7 @@ func newSyncMapStringReplica(replicasIpPort []api.RegisterGatewayUserParams, g *
 		}
 		// Create and start a sync timer unless replica represents this gateway leader.
 		if g.ipPort != ipPort {
+			log.Printf("Starting timer g.ipPort = %+v | ipPort = %+v", g.ipPort, ipPort)
 			r.syncTimer = structs.NewSyncTimer(syncWait, g.getHandleSyncTimeout(ipPort))
 			r.syncTimer.Reset()
 		}
@@ -129,7 +130,7 @@ func (this *syncMapStringReplica) resetSyncTimer(key string) {
 		this.RUnlock()
 		return
 	}
-	r.deadTimer.Reset()
+	r.syncTimer.Reset()
 	this.RUnlock()
 }
 
@@ -167,6 +168,7 @@ func (this *syncMapStringReplica) simpleLoadBalance(regParams api.RegisterParams
 	for _, r := range this.m {
 		// Never assign to a dead replica
 		if !r.alive.Get() {
+			log.Printf("simpleLoadBalance dead replica\n")
 			continue
 		}
 		if r.nodes.Size() < smallestLoad {
@@ -229,6 +231,7 @@ func (this *syncMapStringReplica) setAssignments(assigns *map[api.RegisterGatewa
 		for _, node := range nodes {
 			this.m[id].nodes.AddExistingRegParam(&node, node.DeviceId)
 		}
+		log.Printf("After setAssignments %s has %+v\n", id, this.m[id].nodes.GetAllRegParams())
 	}
 	this.Unlock()
 }

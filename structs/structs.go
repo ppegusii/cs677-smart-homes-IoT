@@ -254,7 +254,10 @@ func NewSyncRegGatewayUserParam() *SyncRegGatewayUserParam {
 
 func (s *SyncRegGatewayUserParam) Get() api.RegisterGatewayUserParams {
 	s.RLock()
-	var r api.RegisterGatewayUserParams = *s.u
+	var r api.RegisterGatewayUserParams
+	if s.u != nil {
+		r = *s.u
+	}
 	s.RUnlock()
 	return r
 }
@@ -1084,7 +1087,7 @@ func (c *Cache) Exists(key int) bool {
 //Call AddEntry to add new stateinfo in cache...
 // No need to check if the device record exists in cache... AddEntry will handle it all
 func (cachemap *Cache) AddEntry(d *api.StateInfo) {
-	var Zindex, evict int = -1, - 1
+	var Zindex, evict int = -1, -1
 	//Check if the Cache already contains this device info
 	Zindex = cachemap.LookupDeviceID(d.DeviceId)
 	if Zindex > -1 {
@@ -1145,7 +1148,7 @@ func (c *Cache) GetEntry(id int) *api.StateInfo {
 	var Zindex int = -1
 	//Check if the Cache already contains this device info
 	Zindex = c.LookupDeviceID(id)
-	if (Zindex > -1){
+	if Zindex > -1 {
 		fmt.Println("Device information exists")
 		return c.Get(Zindex)
 	} else {

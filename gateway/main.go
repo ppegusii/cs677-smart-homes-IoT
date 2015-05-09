@@ -19,6 +19,7 @@ func main() {
 	var dbPort *string = flag.String("P", "6777", "database port")
 	var replicaIp *string = flag.String("ri", "127.0.0.1", "gateway replica IP")
 	var replicaPort *string = flag.String("rp", "", "gateway replica port")
+	var cacheSize *int = flag.Int("c", 0, "cache size")
 	//var order *string = flag.String("o", "n", "none=n,clock sync=c,logical clocks=l, fault tolerant=f")
 	// TODO remove the following
 	flag.String("o", "n", "none=n,clock sync=c,logical clocks=l, fault tolerant=f")
@@ -45,7 +46,7 @@ func main() {
 	}
 	var replicas = []api.RegisterGatewayUserParams{replica}
 	var gl api.GatewayLeaderInterface = gatewayleader.NewGatewayLeader(*ip, *port, *dbIP, *dbPort, replicas)
-	var g api.GatewayInterface = newGateway(*dbIP, *dbPort, *ip, mode, *pollingInterval, *port, gl)
+	var g api.GatewayInterface = newGateway(*dbIP, *dbPort, *ip, mode, *pollingInterval, *port, gl, *cacheSize)
 	gl.SetGateway(g)
 	util.RpcRegister(gl, *ip, *port, "Gateway", false)
 	gl.StartLeader()

@@ -43,17 +43,17 @@ func newDatabase(ip string, port string, ordering api.Ordering) *Database {
 func (d *Database) start() {
 	var err error
 	//create file for device and sensor info
-	d.devSen, err = structs.NewSyncFile("dev_sen.tbl")
+	d.devSen, err = structs.NewSyncFile(fmt.Sprintf("%s_%s_dev_sen.tbl", d.ip, d.port))
 	if err != nil {
 		log.Fatal("Error creating devSen file: %s\n", err)
 	}
 	//create file for gateway mode
-	d.gwMode, err = structs.NewSyncFile("gw_modes.tbl")
+	d.gwMode, err = structs.NewSyncFile(fmt.Sprintf("%s_%s_gw_modes.tbl", d.ip, d.port))
 	if err != nil {
 		log.Fatal("Error creating gwMode file: %s\n", err)
 	}
 	//create file for gateway load
-	d.gwLoad, err = structs.NewSyncFile("gw_load.tbl")
+	d.gwLoad, err = structs.NewSyncFile(fmt.Sprintf("%s_%s_gw_load.tbl", d.ip, d.port))
 	if err != nil {
 		log.Fatal("Error creating gwLoad file: %s\n", err)
 	}
@@ -119,14 +119,18 @@ func (d *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) er
 	}
 	//Creates tables to track object states and events.
 	var f *structs.SyncFile
-	f, err = structs.NewSyncFile(fmt.Sprintf("%d_%s_events.tbl",
+	f, err = structs.NewSyncFile(fmt.Sprintf("%s_%s_%d_%s_events.tbl",
+		d.ip,
+		d.port,
 		params.DeviceId,
 		util.NameToString(params.Name)))
 	if err != nil {
 		return err
 	}
 	d.events.Set(params.DeviceId, f)
-	f, err = structs.NewSyncFile(fmt.Sprintf("%d_%s_states.tbl",
+	f, err = structs.NewSyncFile(fmt.Sprintf("%s_%s_d_%s_states.tbl",
+		d.ip,
+		d.port,
 		params.DeviceId,
 		util.NameToString(params.Name)))
 	if err != nil {

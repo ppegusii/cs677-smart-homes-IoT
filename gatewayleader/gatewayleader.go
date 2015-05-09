@@ -91,9 +91,9 @@ func (this *GatewayLeader) SetGateway(g api.GatewayInterface) {
 
 // Start routines necessary for leader.
 func (this *GatewayLeader) StartLeader() {
-	this.Election(this.ipPort, &api.Empty{})
 	// Get all possible data.
 	this.getDataFromAllReplicas()
+	this.Election(this.ipPort, &api.Empty{})
 }
 
 // Intercept registration requests. Hold incoming requests during an election.
@@ -114,6 +114,7 @@ func (this *GatewayLeader) Register(params *api.RegisterParams, reply *api.Regis
 	// Assign the node to a replica.
 	var assigned *api.RegisterGatewayUserParams = this.replicas.loadBalance(*params, reply.DeviceId)
 	log.Printf("Node %+v assigned to replica: %+v\n", params, assigned)
+	this.logAssignments(this.replicas.getAssignments())
 	reply.Address = assigned.Address
 	reply.Port = assigned.Port
 	// Release consistency.
@@ -233,11 +234,12 @@ func (this *GatewayLeader) PushData(data *api.ConsistencyData, e *api.Empty) err
 	var id string = util.RegisterGatewayUserParamsToString(data.Replica)
 	this.replicas.setReplicaLastSyncTime(data.Clock, id)
 	this.replicas.resetSyncTimer(id)
+	this.replicas.setAlive(id, true)
 	//if not leader and data from leader update node assignments
-	if !this.isLeader() && data.Replica == this.leader.Get() {
-		this.replicas.setAssignments(&(data.AssignedNodes))
-		this.logAssignments(&(data.AssignedNodes))
-	}
+	//if !this.isLeader() && data.Replica == this.leader.Get() {
+	this.replicas.setAssignments(&(data.AssignedNodes))
+	this.logAssignments(&(data.AssignedNodes))
+	//}
 	return this.GatewayInterface.PushData(data, e)
 }
 
@@ -317,6 +319,7 @@ func (this *GatewayLeader) handleAliveTimeout() {
 func (this *GatewayLeader) handleAlive(_ interface{}, _ interface{}, err error) {
 	log.Println("Handling alive reply")
 	if err != nil {
+		log.Println("Error not nil when handling alive reply")
 		return
 	}
 	// handle RPC reply by stopping timer and recalling pollLeader
@@ -443,6 +446,7 @@ func (this *GatewayLeader) getHandleSyncTimeout(replicaIpPort api.RegisterGatewa
 	return func() {
 		var id string = util.RegisterGatewayUserParamsToString(replicaIpPort)
 		if !this.replicas.getAlive(id) {
+			log.Printf("Not syncing with dead replica: %+v\n", replicaIpPort)
 			this.replicas.resetSyncTimer(id)
 			return
 		}
@@ -482,7 +486,10 @@ func (this *GatewayLeader) rebalanceLoad() {
 			// Calling a synchronous RPC in a new routine.
 			// Don't care if the sensor is dead or other communication error.
 			var id int
-			go util.RpcSync(assignee.Address, assignee.Port, rpcName, ipPort, &id, false)
+			var err error = util.RpcSync(assignee.Address, assignee.Port, rpcName, ipPort, &id, false)
+			if err != nil {
+				log.Printf("Error notifying sensor: %s:%s\n", assignee.Address, assignee.Port)
+			}
 		}
 	}
 }

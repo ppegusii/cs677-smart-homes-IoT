@@ -195,6 +195,7 @@ func (d *DoorSensor) sendState() {
 // This is an RPC function that is issued by the gateway to update the address port of the
 // loadsharing gateway the device is talking to. It returns the device id
 func (d *DoorSensor) ChangeGateway(params *api.RegisterGatewayUserParams, reply *int) error {
+	log.Printf("Changing gateway to: %+v\n", *params)
 	d.greplica.Set(api.RegisterGatewayUserParams{Address: params.Address, Port: params.Port})
 	*reply = d.id.Get()
 	return nil
