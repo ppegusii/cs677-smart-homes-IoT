@@ -1051,7 +1051,11 @@ func (c *Cache) Get0timestamp() int {
 			break
 		}
 	}
-	fmt.Println("Hole found at index number %d and timestamp", Zindex)
+	if Zindex > -1 {
+		fmt.Println("Hole found at index number ", Zindex)
+	} else {
+		fmt.Println("No hole found... go kill that stale page ... Evict it")
+	}
 	return Zindex
 }
 
@@ -1064,25 +1068,87 @@ func (c *Cache) Gettimestamp(key int) int64 {
 	return (c.evictlist[key])
 }
 
-func (cachemap *Cache) AddEntry(d *api.StateInfo) {
-	var Zindex, evict int
-	//Check if the Cache is full
-	if cachemap.UsedCache() < cachemap.LenCache() {
-		//Since there are indices not inserted into the cache map use
-		// c.used value to find the index to add the value at
-		cachemap.Set(cachemap.UsedCache(), d)
+//Check if entry exists in the cachemap
+func (c *Cache) Exists(key int) bool {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	_, ok := c.datamap[key]
+	if ok {
+		return true
 	} else {
-		// The cache entries seem to be used but wait there might be holes inside,
-		//So, let us use the timestamp field to find any 0's inside indicating the corresponding index is free
-		// due to a prio delete request of a particular block
-		Zindex = cachemap.Get0timestamp()
-		if Zindex != -1 {
-			//Yea, we found a hole in the cache map. Now, get that damn new entry at this spot.
-			cachemap.Set(Zindex, d)
+		return false
+	}
+}
+
+//Call AddEntry to add new stateinfo in cache...
+// No need to check if the device record exists in cache... AddEntry will handle it all
+func (cachemap *Cache) AddEntry(d *api.StateInfo) {
+	var Zindex, evict int = -1, - 1
+	//Check if the Cache already contains this device info
+	Zindex = cachemap.LookupDeviceID(d.DeviceId)
+	if Zindex > -1 {
+		//Found an existing entry, so just update its cache and touch the ref timestamp
+		cachemap.Set(Zindex, d)
+		fmt.Println("Updated the cachemap value to the new stateInfo value and touched the ref timestamp")
+	} else {
+		//The entry does not exist add it in the cache ... But, where... Follow the code
+		//Check if the Cache is full
+		fmt.Println(cachemap.UsedCache(), cachemap.LenCache(), cachemap.Exists(cachemap.LenCache()-1))
+		if cachemap.UsedCache() < cachemap.LenCache() && !cachemap.Exists(cachemap.LenCache()-1) {
+			//Since there are indices not inserted into the cache map use
+			// c.used value to find the index to add the value at
+			fmt.Println("The cache is not full, so appending entry at the end of cachemap")
+			cachemap.Set(cachemap.UsedCache(), d)
 		} else {
-			//Ok, so no hole found in the cachemap. I command you to evict an entry based on LRU
-			evict = cachemap.OldCache()
-			cachemap.Set(evict, d)
+			// The cache entries seem to be used but wait there might be holes inside,
+			//So, let us use the timestamp field to find any 0's inside indicating the corresponding index is free
+			// due to a prior delete request of a particular block
+			Zindex = cachemap.Get0timestamp()
+			if Zindex != -1 {
+				//Yea, we found a hole in the cache map. Now, get that damn new entry at this spot.
+				fmt.Println("The cache has a hole, so replacing hole with the new entry in cachemap at index ", Zindex)
+				cachemap.Set(Zindex, d)
+			} else {
+				//Ok, so no hole found in the cachemap. I command you to evict an entry based on LRU
+				fmt.Println("The cache has no holes, so evicting the LRU entry in cachemap")
+				evict = cachemap.OldCache()
+				cachemap.Set(evict, d)
+			}
 		}
+	}
+}
+
+//Find the oldest entry in the Cache for eviction, returns the index of map to be evicted
+func (c *Cache) LookupDeviceID(id int) int {
+	var devindex int = -1
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	for index, _ := range c.datamap {
+		if c.datamap[index].DeviceId == id {
+			devindex = index
+			break
+		}
+	}
+	if devindex == -1 {
+		fmt.Println("No such device found")
+	} else {
+		fmt.Println("Found the device at index ", devindex)
+	}
+	return (devindex)
+}
+
+// To retrive the StateInfo of a device for cache
+//If GetEntry returns a nil it means cache does not have that value, fetch it from the database
+func (c *Cache) GetEntry(id int) *api.StateInfo {
+	var Zindex int = -1
+	//Check if the Cache already contains this device info
+	Zindex = c.LookupDeviceID(id)
+	if (Zindex > -1){
+		fmt.Println("Device information exists")
+		return c.Get(Zindex)
+	} else {
+		return nil
 	}
 }
