@@ -128,7 +128,7 @@ func (d *Database) AddDeviceOrSensor(params *api.RegisterParams, _ *struct{}) er
 		return err
 	}
 	d.events.Set(params.DeviceId, f)
-	f, err = structs.NewSyncFile(fmt.Sprintf("%s_%s_d_%s_states.tbl",
+	f, err = structs.NewSyncFile(fmt.Sprintf("%s_%s_%d_%s_states.tbl",
 		d.ip,
 		d.port,
 		params.DeviceId,
