@@ -1,0 +1,76 @@
+{
+  "Instructions": [
+    {
+      "Time": 1000,
+      "Command": "ChangeState",
+      "Target": "motionsensor",
+      "State": 2
+    },
+    {
+      "Time": 2000,
+      "Command": "ChangeState",
+      "Target": "doorsensor",
+      "State": 6
+    },
+    {
+      "Time": 3000,
+      "Command": "ChangeState",
+      "Target": "doorsensor",
+      "State": 1
+    },
+    {
+      "Time": 4000,
+      "Command": "ChangeState",
+      "Target": "motionsensor",
+      "State": 2
+    },
+    {
+      "Time": 5000,
+      "Command": "ChangeState",
+      "Target": "motionsensor",
+      "State": 2
+    },
+    {
+      "Time": 5500,
+      "Command": "KillProcess",
+      "Target": "gateway2",
+      "State": 0
+    },
+    {
+      "Time": 6000,
+      "Command": "KillProcess",
+      "Target": "database2",
+      "State": 0
+    },
+    {
+      "Time": 6500,
+      "Command": "StartProcess",
+      "Target": "database2",
+      "State": 0
+    },
+    {
+      "Time": 6501,
+      "Command": "StartProcess",
+      "Target": "gateway2",
+      "State": 0
+    },
+    {
+      "Time": 7000,
+      "Command": "ChangeState",
+      "Target": "motionsensor",
+      "State": 3
+    },
+    {
+      "Time": 8000,
+      "Command": "ChangeState",
+      "Target": "doorsensor",
+      "State": 6
+    },
+    {
+      "Time": 9000,
+      "Command": "ChangeState",
+      "Target": "motionsensor",
+      "State": 2
+    }
+  ]
+}
