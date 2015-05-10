@@ -1040,7 +1040,7 @@ func (c *Cache) OldCache() int {
 			minindex = index
 		}
 	}
-	fmt.Println("Evicting page with index number %d and timestamp is %d", minindex, min)
+	//fmt.Println("Evicting page with index number %d and timestamp is %d", minindex, min)
 	return (minindex)
 }
 
@@ -1056,9 +1056,9 @@ func (c *Cache) Get0timestamp() int {
 		}
 	}
 	if Zindex > -1 {
-		fmt.Println("Hole found at index number ", Zindex)
+		//fmt.Println("Hole found at index number ", Zindex)
 	} else {
-		fmt.Println("No hole found... go kill that stale page ... Evict it")
+		//fmt.Println("No hole found... go kill that stale page ... Evict it")
 	}
 	return Zindex
 }
@@ -1094,7 +1094,7 @@ func (cachemap *Cache) AddEntry(d *api.StateInfo) {
 	if Zindex > -1 {
 		//Found an existing entry, so just update its cache and touch the ref timestamp
 		cachemap.Set(Zindex, d)
-		fmt.Println("Updated the cachemap value to the new stateInfo value and touched the ref timestamp")
+		//fmt.Println("Updated the cachemap value to the new stateInfo value and touched the ref timestamp")
 	} else {
 		//The entry does not exist add it in the cache ... But, where... Follow the code
 		//Check if the Cache is full
@@ -1102,7 +1102,7 @@ func (cachemap *Cache) AddEntry(d *api.StateInfo) {
 		if cachemap.UsedCache() < cachemap.LenCache() && !cachemap.Exists(cachemap.LenCache()-1) {
 			//Since there are indices not inserted into the cache map use
 			// c.used value to find the index to add the value at
-			fmt.Println("The cache is not full, so appending entry at the end of cachemap")
+			//fmt.Println("The cache is not full, so appending entry at the end of cachemap")
 			cachemap.Set(cachemap.UsedCache(), d)
 		} else {
 			// The cache entries seem to be used but wait there might be holes inside,
@@ -1111,11 +1111,11 @@ func (cachemap *Cache) AddEntry(d *api.StateInfo) {
 			Zindex = cachemap.Get0timestamp()
 			if Zindex != -1 {
 				//Yea, we found a hole in the cache map. Now, get that damn new entry at this spot.
-				fmt.Println("The cache has a hole, so replacing hole with the new entry in cachemap at index ", Zindex)
+				//fmt.Println("The cache has a hole, so replacing hole with the new entry in cachemap at index ", Zindex)
 				cachemap.Set(Zindex, d)
 			} else {
 				//Ok, so no hole found in the cachemap. I command you to evict an entry based on LRU
-				fmt.Println("The cache has no holes, so evicting the LRU entry in cachemap")
+				//fmt.Println("The cache has no holes, so evicting the LRU entry in cachemap")
 				evict = cachemap.OldCache()
 				cachemap.Set(evict, d)
 			}
@@ -1136,9 +1136,9 @@ func (c *Cache) LookupDeviceID(id int) int {
 		}
 	}
 	if devindex == -1 {
-		fmt.Println("No such device found")
+		//fmt.Println("No such device found")
 	} else {
-		fmt.Println("Found the device at index ", devindex)
+		//fmt.Println("Found the device at index ", devindex)
 	}
 	return (devindex)
 }
@@ -1150,7 +1150,7 @@ func (c *Cache) GetEntry(id int) *api.StateInfo {
 	//Check if the Cache already contains this device info
 	Zindex = c.LookupDeviceID(id)
 	if Zindex > -1 {
-		fmt.Println("Device information exists")
+		//fmt.Println("Device information exists")
 		return c.Get(Zindex)
 	} else {
 		return nil
