@@ -76,6 +76,7 @@ func (s *SyncMapIntRegParam) AddNewRegParam(regParam *api.RegisterParams) int {
 	var i int
 	s.Lock()
 	s.m[s.i] = regParam
+	regParam.DeviceId = s.i
 	i = s.i
 	s.i++
 	s.Unlock()

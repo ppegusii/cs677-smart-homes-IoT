@@ -1,0 +1,56 @@
+{
+  "DatabaseDirectory": "./db",
+  "GatewayTempPollInterval": 1,
+  "IPAddress": "127.0.0.1",
+  "Ordering": "n",
+  "Port": "6778",
+  "ProcessDescriptions": {
+    "database1": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6777"
+    },
+    "gateway1": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6770"
+    },
+    "database2": {
+      "IPAddress": "127.0.0.1",
+      "Port": "9998"
+    },
+    "gateway2": {
+      "IPAddress": "127.0.0.1",
+      "Port": "9999"
+    },
+    "motionsensor": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6771"
+    },
+    "doorsensor": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6776"
+    },
+    "smartbulb": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6772"
+    },
+    "temperaturesensor": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6773"
+    },
+    "user": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6775"
+    },
+    "smartoutlet": {
+      "IPAddress": "127.0.0.1",
+      "Port": "6774"
+    }
+  },
+  "StartLocalProcesses": [
+    "motionsensor",
+    "doorsensor",
+    "smartbulb",
+    "temperaturesensor",
+    "smartoutlet"
+  ]
+}

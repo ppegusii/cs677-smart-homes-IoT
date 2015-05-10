@@ -68,14 +68,15 @@ func (this *GatewayLeader) RpcSync(ip, port, rpcName string, args interface{}, r
 	// add filtering as needed
 	// if call is to sensor and sensor not assigned to this replica, return an error
 	var id string = util.RegisterGatewayUserParamsToString(this.ipPort)
-	var nodeId int
+	var nodeId *int
 	var ok bool
 	//type assertion
-	nodeId, ok = args.(int)
+	nodeId, ok = args.(*int)
+	log.Printf("Trying to filter rpcName=%s, ok=%t, args=%+v\n", rpcName, ok, args)
 	if ok && (rpcName == "TemperatureSensor.QueryState" ||
 		rpcName == "MotionSensor.QueryState" ||
 		rpcName == "DoorSensor.QueryState") &&
-		!this.replicas.isNodeIsAssignedToMe(id, nodeId) {
+		!this.replicas.isNodeIsAssignedToMe(id, *nodeId) {
 		var msg string = "Filtering temp sensor query"
 		log.Println(msg)
 		return errors.New(msg)
