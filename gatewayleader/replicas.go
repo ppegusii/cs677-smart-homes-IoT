@@ -33,12 +33,14 @@ type replica struct {
 //		Any load balancing operations that change the nodes structure.
 type syncMapStringReplica struct {
 	sync.RWMutex
-	m map[string]*replica
+	dbIpPort api.RegisterGatewayUserParams
+	m        map[string]*replica
 }
 
 func newSyncMapStringReplica(replicasIpPort []api.RegisterGatewayUserParams, g *GatewayLeader) *syncMapStringReplica {
 	var s *syncMapStringReplica = &syncMapStringReplica{
-		m: make(map[string]*replica),
+		dbIpPort: g.dbIpPort,
+		m:        make(map[string]*replica),
 	}
 	//add this gateway's ipPort
 	replicasIpPort = append(replicasIpPort, g.ipPort)
@@ -166,6 +168,7 @@ func (this *syncMapStringReplica) simpleLoadBalance(regParams api.RegisterParams
 	var smallestLoad int = math.MaxInt32
 	var assigned *replica
 	for _, r := range this.m {
+		log.Printf("r = %s, r.nodes.Size() = %d\n", r, r.nodes.Size())
 		// Never assign to a dead replica
 		if !r.alive.Get() {
 			log.Printf("simpleLoadBalance dead replica\n")
@@ -193,16 +196,21 @@ func (this *syncMapStringReplica) rebalanceLoad() *map[api.RegisterGatewayUserPa
 	// no need to create slice, since nils act like zero length slices
 	var newAssigns map[api.RegisterGatewayUserParams][]api.RegisterParams = make(
 		map[api.RegisterGatewayUserParams][]api.RegisterParams)
-	//create the data structure to hold nodes
-	var assignees []api.RegisterParams
-	// all nodes will be reassigned, gather them
+	// all nodes will be reassigned, pull from db
+	var data api.ConsistencyData
+	var err error = util.RpcSync(this.dbIpPort.Address, this.dbIpPort.Port,
+		"Database.GetDataSince", api.EarliestTime, &data, false)
+	if err != nil {
+		return nil
+	}
+	// delete assignments by creating new data structure
 	for _, r := range this.m {
-		assignees = append(assignees, *(r.nodes.GetAllRegParams())...)
 		// empty replica's nodes by creating new data structure
 		r.nodes = structs.NewSyncMapIntRegParam()
 	}
 	// reassign nodes
-	for _, assignee := range assignees {
+	//for _, assignee := range assignees {
+	for _, assignee := range data.RegisteredNodes {
 		// assign node to gateway
 		var assign *api.RegisterGatewayUserParams = this.simpleLoadBalance(assignee, assignee.DeviceId)
 		// add that node to return map for node notification

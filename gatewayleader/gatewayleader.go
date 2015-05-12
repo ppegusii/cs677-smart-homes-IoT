@@ -113,6 +113,7 @@ func (this *GatewayLeader) Register(params *api.RegisterParams, reply *api.Regis
 		return err
 	}
 	// Assign the node to a replica.
+	log.Println("Calling loadBalance")
 	var assigned *api.RegisterGatewayUserParams = this.replicas.loadBalance(*params, reply.DeviceId)
 	log.Printf("Node %+v assigned to replica: %+v\n", params, assigned)
 	this.logAssignments(this.replicas.getAssignments())
@@ -261,6 +262,7 @@ func (this *GatewayLeader) Election(replica api.RegisterGatewayUserParams, ok *a
 		this.electionInProgress = true
 		this.Lock()
 	} else {
+		log.Println("Disregarding election msg. Already in progress.")
 		defer this.electionCheckLock.Unlock()
 		return nil
 	}
@@ -410,13 +412,14 @@ func (this *GatewayLeader) sendIWons() {
 
 // Handle IWon replies by declaring the responding replica alive.
 func (this *GatewayLeader) handleIWonReplies(_, reply interface{}, err error) {
-	this.iWonReplies <- 1
 	if err != nil {
+		this.iWonReplies <- 1
 		return
 	}
 	var key string = util.RegisterGatewayUserParamsToString(
 		*(reply.(*api.RegisterGatewayUserParams))) // last bit is a type assertion
 	this.replicas.setAlive(key, true)
+	this.iWonReplies <- 1
 }
 
 // Receive alive probes. Reset timer for the requesting replica to detect replica crash
